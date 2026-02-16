@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.generate-simulated-impact]
 verify_jwt = false
+
+[functions.generate-summary]
+verify_jwt = false
