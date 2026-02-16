@@ -3,9 +3,10 @@ import FigureCard from './FigureCard';
 
 interface FiguresSectionProps {
   figures: Figure[];
+  storagePath: string | null;
 }
 
-const FiguresSection = ({ figures }: FiguresSectionProps) => {
+const FiguresSection = ({ figures, storagePath }: FiguresSectionProps) => {
   if (!figures || figures.length === 0) return null;
 
   return (
@@ -16,7 +17,7 @@ const FiguresSection = ({ figures }: FiguresSectionProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {figures.map((fig) => (
-          <FigureCard key={fig.id} figure={fig} />
+          <FigureCard key={fig.id} figure={fig} storagePath={storagePath} />
         ))}
       </div>
     </section>
