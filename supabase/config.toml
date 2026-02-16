@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.generate-summary]
 verify_jwt = false
+
+[functions.generate-module-content]
+verify_jwt = false
