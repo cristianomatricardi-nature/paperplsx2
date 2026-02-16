@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.generate-module-content]
 verify_jwt = false
+
+[functions.explain-metric]
+verify_jwt = false

@@ -117,6 +117,7 @@ const ModuleAccordion = ({
                 content={cachedContent}
                 moduleId={moduleId}
                 figures={figures}
+                paperId={paperId}
               />
             )}
 

@@ -15,6 +15,7 @@ interface ModuleContentRendererProps {
   content: unknown;
   moduleId: ModuleId;
   figures?: Figure[];
+  paperId?: number;
 }
 
 const humanizeKey = (key: string) =>
@@ -36,7 +37,7 @@ function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[]
 }
 
 /** Render a single content block based on moduleId heuristics */
-function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[]): React.ReactNode {
+function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paperId?: number): React.ReactNode {
   if (data === null || data === undefined) return null;
 
   // String with figure tokens
@@ -52,9 +53,11 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[]): Reac
         <MetricsGrid
           rows={obj.metrics}
           quantitativeHighlights={typeof obj.quantitative_highlights === 'string' ? obj.quantitative_highlights : undefined}
+          paperId={paperId}
         />
       );
     }
+  }
   }
 
   // Array rendering with module-specific cards
@@ -107,7 +110,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[]): Reac
   return <GenericFallback data={data} />;
 }
 
-const ModuleContentRenderer = ({ content, moduleId, figures = [] }: ModuleContentRendererProps) => {
+const ModuleContentRenderer = ({ content, moduleId, figures = [], paperId }: ModuleContentRendererProps) => {
   const contentObj = content as Record<string, unknown> | null;
 
   // Check for tabbed structure
@@ -135,7 +138,7 @@ const ModuleContentRenderer = ({ content, moduleId, figures = [] }: ModuleConten
         </TabsList>
         {tabKeys.map((key) => (
           <TabsContent key={key} value={key} className="mt-3">
-            {renderBlock(tabs[key], moduleId, figures)}
+            {renderBlock(tabs[key], moduleId, figures, paperId)}
           </TabsContent>
         ))}
       </Tabs>
@@ -143,7 +146,7 @@ const ModuleContentRenderer = ({ content, moduleId, figures = [] }: ModuleConten
   }
 
   // Non-tabbed: render directly
-  return <div>{renderBlock(content, moduleId, figures)}</div>;
+  return <div>{renderBlock(content, moduleId, figures, paperId)}</div>;
 };
 
 export default ModuleContentRenderer;

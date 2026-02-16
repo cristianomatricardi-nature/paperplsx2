@@ -2,11 +2,13 @@ import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowUpDown, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { renderWithPageRefs } from './PageReference';
+import { explainMetric } from '@/lib/api';
 
 interface MetricRow {
   metric?: string;
@@ -19,6 +21,13 @@ interface MetricRow {
 interface MetricsGridProps {
   rows: MetricRow[];
   quantitativeHighlights?: string;
+  paperId?: number;
+}
+
+interface Passage {
+  content: string;
+  page_numbers: number[];
+  similarity: number;
 }
 
 type SortMode = 'default' | 'page';
@@ -33,32 +42,43 @@ function getSentiment(comparison?: string): 'positive' | 'negative' | 'neutral' 
   return 'neutral';
 }
 
-function MetricCard({ row }: { row: MetricRow }) {
+function MetricCard({ row, paperId }: { row: MetricRow; paperId?: number }) {
+  const [passages, setPassages] = useState<Passage[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const sentiment = getSentiment(row.comparison);
 
-  const extraKeys = Object.keys(row).filter(
-    (k) => !['metric', 'value', 'comparison', 'page_ref'].includes(k) && row[k] != null,
-  );
+  const handleOpen = async (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen && !passages && !loading && paperId) {
+      setLoading(true);
+      try {
+        const query = [row.metric, row.value, row.comparison].filter(Boolean).join(' ');
+        const data = await explainMetric(paperId, query);
+        setPassages(data?.passages ?? []);
+      } catch {
+        setPassages([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpen}>
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <CollapsibleTrigger asChild>
+            <PopoverTrigger asChild>
               <Card
                 className={cn(
                   'cursor-pointer p-3 transition-all duration-200 hover:shadow-md hover:border-primary/30',
                   open && 'ring-1 ring-primary/20 shadow-md',
                 )}
               >
-                {/* Metric name */}
                 <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground truncate mb-1">
                   {row.metric ?? 'Metric'}
                 </p>
-
-                {/* Value */}
                 <p
                   className={cn(
                     'text-lg font-bold leading-tight mb-1.5',
@@ -69,8 +89,6 @@ function MetricCard({ row }: { row: MetricRow }) {
                 >
                   {row.value ?? '—'}
                 </p>
-
-                {/* Comparison preview + page ref */}
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground truncate flex-1">
                     {row.comparison ?? ''}
@@ -81,16 +99,8 @@ function MetricCard({ row }: { row: MetricRow }) {
                     </Badge>
                   )}
                 </div>
-
-                {/* Expand indicator */}
-                <ChevronDown
-                  className={cn(
-                    'h-3 w-3 text-muted-foreground mx-auto mt-1 transition-transform duration-200',
-                    open && 'rotate-180',
-                  )}
-                />
               </Card>
-            </CollapsibleTrigger>
+            </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
             <p className="font-medium">{row.metric}</p>
@@ -99,22 +109,47 @@ function MetricCard({ row }: { row: MetricRow }) {
         </Tooltip>
       </TooltipProvider>
 
-      <CollapsibleContent className="px-3 pb-3 pt-1 text-sm space-y-1">
-        {row.comparison && (
-          <p className="text-muted-foreground text-xs leading-relaxed">{row.comparison}</p>
-        )}
-        {extraKeys.map((k) => (
-          <div key={k} className="flex justify-between text-xs">
-            <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
-            <span className="font-medium">{String(row[k])}</span>
+      <PopoverContent side="bottom" align="start" className="w-80 p-0">
+        <div className="p-3 border-b border-border">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <BookOpen className="h-3.5 w-3.5" />
+            Source in manuscript
           </div>
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
+        </div>
+        <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+          {loading && (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          )}
+          {!loading && passages && passages.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">No matching passages found.</p>
+          )}
+          {!loading && passages && passages.map((p, i) => (
+            <div key={i} className="space-y-1">
+              <p className="text-xs leading-relaxed text-foreground/90 border-l-2 border-primary/30 pl-2">
+                {p.content.length > 250 ? p.content.slice(0, 250) + '…' : p.content}
+              </p>
+              <div className="flex items-center gap-1.5">
+                {p.page_numbers?.map((pn) => (
+                  <Badge key={pn} variant="secondary" className="text-[10px] px-1.5 py-0">
+                    p.{pn}
+                  </Badge>
+                ))}
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  {Math.round(p.similarity * 100)}% match
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-export function MetricsGrid({ rows, quantitativeHighlights }: MetricsGridProps) {
+export function MetricsGrid({ rows, quantitativeHighlights, paperId }: MetricsGridProps) {
   const [sortMode, setSortMode] = useState<SortMode>('default');
 
   const sorted = useMemo(() => {
@@ -132,7 +167,6 @@ export function MetricsGrid({ rows, quantitativeHighlights }: MetricsGridProps) 
 
   return (
     <div className="space-y-4">
-      {/* Sort toggle */}
       <div className="flex justify-end">
         <Button
           variant="ghost"
@@ -145,14 +179,12 @@ export function MetricsGrid({ rows, quantitativeHighlights }: MetricsGridProps) 
         </Button>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {sorted.map((row, i) => (
-          <MetricCard key={i} row={row} />
+          <MetricCard key={i} row={row} paperId={paperId} />
         ))}
       </div>
 
-      {/* Quantitative highlights narrative */}
       {quantitativeHighlights && (
         <div className="rounded-lg border border-border bg-muted/30 p-4 mt-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
