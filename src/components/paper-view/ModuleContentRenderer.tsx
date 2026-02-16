@@ -213,14 +213,14 @@ const ModuleContentRenderer = ({ content, moduleId, figures = [], paperId }: Mod
           if (!block) return null;
 
           return (
-            <section key={key} className="space-y-3">
+            <div key={key} className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
               <ModuleSectionHeader
                 title={humanizeKey(key)}
                 description={description}
                 accentColor={accentColor}
               />
               {block}
-            </section>
+            </div>
           );
         })}
       </div>
