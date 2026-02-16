@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { renderWithPageRefs } from './PageReference';
 
@@ -16,11 +15,11 @@ interface ClaimData {
   page_refs?: number[];
 }
 
-const STRENGTH_STYLES: Record<string, { border: string; badge: string }> = {
-  strong: { border: 'border-l-green-500', badge: 'bg-green-50 text-green-700' },
-  moderate: { border: 'border-l-blue-500', badge: 'bg-blue-50 text-blue-700' },
-  preliminary: { border: 'border-l-yellow-500', badge: 'bg-yellow-50 text-yellow-700' },
-  speculative: { border: 'border-l-gray-400', badge: 'bg-gray-100 text-gray-600' },
+const STRENGTH_STYLES: Record<string, { border: string; dot: string }> = {
+  strong: { border: 'border-l-green-500', dot: 'bg-green-500' },
+  moderate: { border: 'border-l-blue-500', dot: 'bg-blue-500' },
+  preliminary: { border: 'border-l-yellow-500', dot: 'bg-yellow-500' },
+  speculative: { border: 'border-l-gray-400', dot: 'bg-gray-400' },
 };
 
 export function ClaimCard({ claim }: { claim: ClaimData }) {
@@ -31,72 +30,46 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
   const figRefs = claim.figure_refs ?? claim.related_figure_ids ?? [];
   const methodRefs = claim.method_refs ?? claim.related_method_ids ?? [];
 
+  // Build consolidated refs segments
+  const refSegments: string[] = [];
+  if (figRefs.length > 0) refSegments.push(figRefs.join(', '));
+  if (methodRefs.length > 0) refSegments.push(methodRefs.join(', '));
+  if (pages.length > 0) refSegments.push(pages.map((p) => `p. ${p}`).join(', '));
+
+  // Build inline stats string
+  const statsInline = claim.statistics?.map((stat) =>
+    typeof stat === 'string' ? stat : `${stat.name}: ${stat.value}`
+  ).join('  ·  ');
+
   return (
-    <div className={cn('rounded-md border border-border bg-card p-4 border-l-4 space-y-2 h-full flex flex-col', styles.border)}>
-      <div className="flex items-center gap-2">
-        <Badge className={cn('text-[10px] font-medium border-0 capitalize', styles.badge)}>
-          {strength}
-        </Badge>
+    <div className={cn('rounded-md border border-border bg-card p-3 border-l-4 space-y-1.5 h-full flex flex-col', styles.border)}>
+      {/* Header: dot + strength + statement */}
+      <div className="flex items-start gap-2">
+        <span className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', styles.dot)} />
+        <div className="min-w-0">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{strength}</span>
+          <p className="text-sm font-semibold text-foreground leading-snug">{claim.statement}</p>
+        </div>
       </div>
 
-      <p className="text-sm font-semibold text-foreground">{claim.statement}</p>
-
-      {evidence && (
-        <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-          {renderWithPageRefs(evidence)}
-        </p>
-      )}
-
-      {/* Statistics */}
-      {claim.statistics && claim.statistics.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {claim.statistics.map((stat, i) => {
-            const label = typeof stat === 'string' ? stat : `${stat.name}: ${stat.value}`;
-            return (
-              <span key={i} className="font-mono text-xs bg-muted px-2 py-0.5 rounded-sm text-foreground">
-                {label}
-              </span>
-            );
-          })}
+      {/* Evidence (clamped) + inline stats */}
+      {(evidence || statsInline) && (
+        <div className="flex-1 min-w-0">
+          {evidence && (
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+              {renderWithPageRefs(evidence)}
+            </p>
+          )}
+          {statsInline && (
+            <p className="font-mono text-xs text-muted-foreground mt-1">{statsInline}</p>
+          )}
         </div>
       )}
 
-      {/* Figure references */}
-      {figRefs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {figRefs.map((ref, i) => (
-            <button
-              key={i}
-              className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full hover:bg-accent/20 transition-colors"
-            >
-              📊 {ref}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Method references */}
-      {methodRefs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {methodRefs.map((ref, i) => (
-            <button
-              key={i}
-              className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full hover:bg-purple-100 transition-colors"
-            >
-              📋 {ref}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Page references */}
-      {pages.length > 0 && (
-        <div className="flex gap-1">
-          {pages.map((p) => (
-            <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
-              (p.&nbsp;{p})
-            </span>
-          ))}
+      {/* Consolidated refs footer */}
+      {refSegments.length > 0 && (
+        <div className="text-xs text-muted-foreground pt-1 border-t border-border">
+          {refSegments.join('  |  ')}
         </div>
       )}
     </div>
