@@ -244,7 +244,7 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
                   </div>
 
                   {/* Scores breakdown */}
-                  <h4 className="font-serif text-sm font-semibold text-foreground">
+                  <h4 className="font-sans text-sm font-semibold text-foreground">
                     Projected Impact Analysis
                   </h4>
                   <div className="space-y-2">
