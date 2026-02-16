@@ -110,7 +110,7 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
   /* ---------- collapsed state ---------- */
   if (!isExpanded) {
     return (
-      <aside className="hidden lg:flex flex-col items-center w-12 bg-secondary/60 border-l border-border py-4 gap-6 sticky top-14 h-[calc(100vh-3.5rem)]">
+      <aside className="hidden lg:flex flex-col items-center w-12 bg-muted/30 border-l border-border py-4 gap-6 sticky top-14 h-[calc(100vh-3.5rem)]">
         <button
           onClick={() => handleCollapsedTabClick('insights')}
           className="flex items-center justify-center"
@@ -143,10 +143,10 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
 
   /* ---------- expanded state ---------- */
   return (
-    <aside className="col-span-12 lg:col-span-4 animate-slide-in-right">
-      <div className="sticky top-14 space-y-4">
+    <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
+      <div className="sticky top-14 space-y-4 p-5">
         {/* ── Mode toggle card ── */}
-        <div className="rounded-xl border border-border bg-card shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-between">
           <span className="text-xs font-sans text-muted-foreground">
             {authorsMode ? 'Authors Mode' : 'Article Mode'}
           </span>
@@ -158,10 +158,10 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         </div>
 
         {/* ── 1. Strategic Insights card ── */}
-        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
           <Collapsible open={openSections.insights} onOpenChange={() => toggleSection('insights')}>
-            <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <div className="text-left">
+            <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
+              <div className="text-center">
                 <span>Strategic Insights</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">AI-powered research assistant</p>
               </div>
@@ -180,10 +180,10 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         </div>
 
         {/* ── 2. Community Engagement card ── */}
-        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
           <Collapsible open={openSections.community} onOpenChange={() => toggleSection('community')}>
-            <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <div className="text-left">
+            <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
+              <div className="text-center">
                 <span>Community Engagement</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Discussion & networking</p>
               </div>
@@ -212,10 +212,10 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         </div>
 
         {/* ── 3. Multidimensional Assessment card ── */}
-        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
           <Collapsible open={openSections.assessment} onOpenChange={() => toggleSection('assessment')}>
-            <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <div className="text-left">
+            <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
+              <div className="text-center">
                 <span>Multidimensional Assessment</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Projected impact analysis</p>
               </div>
