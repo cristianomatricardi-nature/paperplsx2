@@ -81,7 +81,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
     <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm rounded-xl">
       {/* Header row */}
       <div className="flex items-center justify-between p-5 pb-3">
-        <h2 className="font-sans text-lg font-semibold text-foreground">
+        <h2 className="font-sans text-xl font-semibold text-foreground">
           Key Insights for {persona?.shortLabel ?? 'You'}
         </h2>
         <PersonaSelector value={subPersonaId} onChange={onPersonaChange} />
@@ -118,7 +118,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
             {/* Bullet points */}
             <ul className="space-y-2.5">
               {content.summary_points.map((point, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90 leading-relaxed">
+                <li key={i} className="flex items-start gap-2.5 text-base text-foreground/90 leading-relaxed">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                   <span>{renderBullet(point)}</span>
                 </li>

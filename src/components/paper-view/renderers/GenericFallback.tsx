@@ -9,12 +9,12 @@ export function GenericFallback({ data }: GenericFallbackProps) {
 
   // String → paragraph with page ref detection
   if (typeof data === 'string') {
-    return <p className="text-sm text-foreground/90 leading-relaxed">{renderWithPageRefs(data)}</p>;
+    return <p className="text-base text-foreground/90 leading-relaxed">{renderWithPageRefs(data)}</p>;
   }
 
   // Number / boolean
   if (typeof data !== 'object') {
-    return <p className="text-sm text-foreground/90">{String(data)}</p>;
+    return <p className="text-base text-foreground/90">{String(data)}</p>;
   }
 
   // Array
@@ -24,7 +24,7 @@ export function GenericFallback({ data }: GenericFallbackProps) {
       return (
         <ul className="list-disc list-inside space-y-1">
           {data.map((item, i) => (
-            <li key={i} className="text-sm text-foreground/90">{renderWithPageRefs(item)}</li>
+            <li key={i} className="text-base text-foreground/90">{renderWithPageRefs(item)}</li>
           ))}
         </ul>
       );

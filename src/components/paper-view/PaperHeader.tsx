@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Eye, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
@@ -56,45 +55,26 @@ const PaperHeader = ({
 
   return (
     <header className="border-b border-border pb-8 mb-8">
+      {/* Meta line */}
+      <div className="flex flex-wrap items-center gap-2 mb-3 text-sm font-sans text-muted-foreground">
+        <span className="font-medium text-foreground">Article</span>
+        {journal && <><span className="text-primary font-medium">Open access</span></>}
+        {formattedDate && <span>Published: {formattedDate}</span>}
+      </div>
+
       {/* Title */}
-      <h1 className="font-sans text-2xl md:text-3xl lg:text-4xl font-bold text-foreground leading-tight mb-3">
+      <h1 className="font-sans text-[1.75rem] md:text-[2rem] lg:text-[2.25rem] font-bold text-foreground leading-[1.2] mb-5">
         {title ?? 'Untitled Paper'}
       </h1>
 
-      {/* Badges row */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        {isOpenAccess && (
-          <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 font-sans text-xs">
-            Open Access
-          </Badge>
-        )}
-        {journal && (
-          <span className="text-sm font-sans text-muted-foreground">{journal}</span>
-        )}
-        {formattedDate && (
-          <span className="text-sm font-sans text-muted-foreground">{formattedDate}</span>
-        )}
-        {doi && (
-          <a
-            href={`https://doi.org/${doi}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-sans text-foreground hover:underline"
-          >
-            DOI: {doi}
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        )}
-      </div>
-
       {/* Authors */}
       {displayedAuthors.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-5">
           <div className="flex flex-wrap items-center gap-1.5">
             {visibleAuthors.map((author, i) => (
               <Tooltip key={i}>
                 <TooltipTrigger asChild>
-                  <span className="inline-flex items-center gap-1.5 font-sans text-sm">
+                  <span className="inline-flex items-center gap-1.5 font-sans text-base">
                     <span className="text-foreground">
                       {author.name}
                       {i < visibleAuthors.length - 1 && ','}
@@ -110,7 +90,7 @@ const PaperHeader = ({
             {!showAllAuthors && hiddenCount > 0 && (
               <button
                 onClick={() => setShowAllAuthors(true)}
-                className="inline-flex items-center gap-0.5 text-sm font-sans text-[hsl(var(--deep-blue))] hover:underline"
+                className="inline-flex items-center gap-0.5 text-base font-sans text-[hsl(var(--deep-blue))] hover:underline"
               >
                 +{hiddenCount} more
                 <ChevronDown className="h-3 w-3" />
@@ -119,7 +99,7 @@ const PaperHeader = ({
             {showAllAuthors && hiddenCount > 0 && (
               <button
                 onClick={() => setShowAllAuthors(false)}
-                className="inline-flex items-center gap-0.5 text-sm font-sans text-[hsl(var(--deep-blue))] hover:underline"
+                className="inline-flex items-center gap-0.5 text-base font-sans text-[hsl(var(--deep-blue))] hover:underline"
               >
                 Show less
                 <ChevronUp className="h-3 w-3" />
@@ -128,6 +108,7 @@ const PaperHeader = ({
           </div>
         </div>
       )}
+
 
       {/* Actions row */}
       <div className="flex flex-wrap items-center gap-3">

@@ -143,7 +143,7 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
 
   /* ---------- expanded state ---------- */
   return (
-    <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
+    <aside className="col-span-12 lg:col-span-5 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
       <div className="sticky top-14 space-y-4 p-5">
         {/* ── Mode toggle card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-between">
