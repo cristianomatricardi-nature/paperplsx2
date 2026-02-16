@@ -67,6 +67,12 @@ export interface Figure {
   key_findings: string[];
   data_series: string[];
   image_url: string | null;
+  bounding_box?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface TableData {
