@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import ProfileCard from '@/components/researcher-home/ProfileCard';
 import UploadSection from '@/components/researcher-home/UploadSection';
+import PaperLibrary from '@/components/researcher-home/PaperLibrary';
 import {
   Dialog,
   DialogContent,
@@ -92,16 +93,7 @@ const ResearcherHomePage = () => {
           {/* Right column — upload + library */}
           <main className="flex-1 space-y-8">
             <UploadSection userId={user.id} onPaperAdded={handlePaperAdded} />
-
-            {/* Paper library placeholder — will be built in next prompt */}
-            <section>
-              <h2 className="mb-4 text-xl font-semibold font-serif text-foreground">
-                Your Paper Library
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Papers you upload or resolve via DOI will appear here.
-              </p>
-            </section>
+            <PaperLibrary userId={user.id} refreshKey={refreshKey} />
           </main>
         </div>
       </div>
