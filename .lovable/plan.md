@@ -1,61 +1,28 @@
 
 
-## Lighter Left Column and Sans-Serif Font Overhaul
+## Narrow the Content Area
 
-### Problem
-The left content column has a gray background (`--background: 0 0% 97%`) instead of near-white. The typography uses serif fonts (`Playfair Display`) for headings, but the reference design uses clean sans-serif fonts throughout.
+### Change
 
----
+**File: `src/pages/PaperViewPage.tsx`**
 
-### 1. Lighten the Background Color
+Add a `max-w-3xl` constraint to the left content column's inner content so the text doesn't stretch the full 8-column width. This keeps the reading area comfortable and centered within the left column.
 
-**File: `src/index.css`**
+On line 132, wrap the content inside the left column div with an additional inner container:
 
-Change `--background` from `0 0% 97%` to `0 0% 100%` (pure white). This makes the left content area white while the sidebar's `bg-muted/30` remains visibly distinct as a slightly darker column.
+```tsx
+<div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
+  <div className="max-w-3xl mx-auto">
+    <PaperHeader ... />
+    {/* Summary, Modules, Figures -- all inside this narrower wrapper */}
+  </div>
+</div>
+```
 
----
-
-### 2. Switch All Serif References to Sans-Serif
-
-Multiple files currently use `font-serif` (Playfair Display) for headings. The reference shows all text in a clean sans-serif. Changes needed:
-
-**File: `src/components/paper-view/PaperHeader.tsx`**
-- Line 60: Change `font-serif` to `font-sans` on the paper title `<h1>`
-
-**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
-- Line 84: Change `font-serif` to `font-sans` on "Key Insights" heading
-
-**File: `src/components/paper-view/ModuleAccordionList.tsx`**
-- Line 52: Change `font-serif` to `font-sans` on section headers ("Core Research", "Satellite Modules")
-
-**File: `src/components/paper-view/PaperSidebar.tsx`**
-- Line 247: Change `font-serif` to `font-sans` on "Projected Impact Analysis" heading
-
----
-
-### 3. Match the Reference Header Layout
-
-**File: `src/components/paper-view/PaperHeader.tsx`**
-
-Looking at the reference more closely:
-- "Article" label + "Open access" badge + date are on a small meta line above the title
-- The title is bold sans-serif
-- Below the title: "7 Authors" as a rounded chip with a dropdown chevron, and "Download PDF" button on the right
-- The "viewing now" counter moves to the top bar area
-
-Add an "Article" text label before the badges row, and style the authors as a compact chip button (already partially done but ensure it matches).
-
----
-
-### Summary of Changes
+This constrains the reading content to ~768px max width and centers it within the left column, matching the narrower, more focused layout from the reference.
 
 | File | Change |
 |------|--------|
-| `src/index.css` | `--background: 0 0% 100%` (white) |
-| `PaperHeader.tsx` | `font-serif` to `font-sans` on title |
-| `PersonalizedSummaryCard.tsx` | `font-serif` to `font-sans` on heading |
-| `ModuleAccordionList.tsx` | `font-serif` to `font-sans` on section headers |
-| `PaperSidebar.tsx` | `font-serif` to `font-sans` on impact heading |
+| `PaperViewPage.tsx` | Add `max-w-3xl mx-auto` inner wrapper around all left-column content |
 
-Minimal className-level changes only. No logic changes.
-
+Single line-level change, no logic modifications.
