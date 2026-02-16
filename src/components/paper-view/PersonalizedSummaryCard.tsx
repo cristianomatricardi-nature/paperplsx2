@@ -116,12 +116,6 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
               {renderStars(content.relevance_score)}
             </div>
 
-            {/* Why this matters */}
-            <p className="text-sm italic text-muted-foreground leading-relaxed">
-              <span className="font-semibold not-italic text-foreground">Why this matters for you: </span>
-              {content.why_this_matters}
-            </p>
-
             {/* Bullet points */}
             <ul className="space-y-2.5">
               {content.summary_points.map((point, i) => (
