@@ -154,6 +154,7 @@ const PaperViewPage = () => {
                 paperId={numericId}
                 subPersonaId={subPersonaId}
                 moduleOrder={moduleOrder}
+                figures={structured?.figures}
               />
             )}
           </div>
