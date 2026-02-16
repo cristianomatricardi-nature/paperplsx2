@@ -1,49 +1,49 @@
 
 
-## Sidebar Column Redesign and Layout Refinement
+## Lighter Left Column and Sans-Serif Font Overhaul
 
 ### Problem
-The current layout places the header spanning the full width above both columns, and the sidebar cards float on a white background. The reference shows the sidebar as a distinct column with a slightly darker background stretching from the top banner to the bottom, with the paper title/header only above the left content column. Sidebar cards also need stronger shadows.
+The left content column has a gray background (`--background: 0 0% 97%`) instead of near-white. The typography uses serif fonts (`Playfair Display`) for headings, but the reference design uses clean sans-serif fonts throughout.
 
 ---
 
-### 1. Restructure the Page Layout
+### 1. Lighten the Background Color
 
-**File: `src/pages/PaperViewPage.tsx`**
+**File: `src/index.css`**
 
-Change the layout so the 12-column grid starts immediately after the top bar, with:
-- The header (`PaperHeader`) placed inside the left column (col-span-8), not above the full grid
-- The sidebar column (`col-span-4`) gets a subtle `bg-muted/30` background that stretches full height using `min-h-[calc(100vh-3.5rem)]` and padding, creating the "side column" feel from the reference
-- Remove `max-w-7xl mx-auto` from the outer wrapper and instead apply width constraints to just the grid content, so the sidebar background can bleed edge-to-edge on the right
-
-The structure becomes:
-```
-[top bar - full width]
-[  left col (8/12)          |  right col (4/12, bg-muted/30)  ]
-[  PaperHeader              |  mode toggle card               ]
-[  PersonalizedSummary      |  Strategic Insights card        ]
-[  ModuleAccordionList      |  Community card                 ]
-[  FiguresSection           |  Assessment card                ]
-```
+Change `--background` from `0 0% 97%` to `0 0% 100%` (pure white). This makes the left content area white while the sidebar's `bg-muted/30` remains visibly distinct as a slightly darker column.
 
 ---
 
-### 2. Sidebar Background Column
+### 2. Switch All Serif References to Sans-Serif
+
+Multiple files currently use `font-serif` (Playfair Display) for headings. The reference shows all text in a clean sans-serif. Changes needed:
+
+**File: `src/components/paper-view/PaperHeader.tsx`**
+- Line 60: Change `font-serif` to `font-sans` on the paper title `<h1>`
+
+**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
+- Line 84: Change `font-serif` to `font-sans` on "Key Insights" heading
+
+**File: `src/components/paper-view/ModuleAccordionList.tsx`**
+- Line 52: Change `font-serif` to `font-sans` on section headers ("Core Research", "Satellite Modules")
 
 **File: `src/components/paper-view/PaperSidebar.tsx`**
-
-- In the expanded state, wrap the aside in a container with `bg-muted/30 border-l border-border min-h-full` to create the continuous darker column effect
-- Add more padding (`p-5`) inside the sidebar column
-- Center the section titles (Strategic Insights, Community Engagement, Multidimensional Assessment) and their subtitles using `text-center` on the trigger content
-- Increase card shadow from `shadow-sm` to `shadow-md` for more depth
+- Line 247: Change `font-serif` to `font-sans` on "Projected Impact Analysis" heading
 
 ---
 
-### 3. Collapsed Sidebar Update
+### 3. Match the Reference Header Layout
 
-**File: `src/components/paper-view/PaperSidebar.tsx`**
+**File: `src/components/paper-view/PaperHeader.tsx`**
 
-The collapsed sidebar already uses `bg-secondary/60` -- update to `bg-muted/30` to match the expanded column background.
+Looking at the reference more closely:
+- "Article" label + "Open access" badge + date are on a small meta line above the title
+- The title is bold sans-serif
+- Below the title: "7 Authors" as a rounded chip with a dropdown chevron, and "Download PDF" button on the right
+- The "viewing now" counter moves to the top bar area
+
+Add an "Article" text label before the badges row, and style the authors as a compact chip button (already partially done but ensure it matches).
 
 ---
 
@@ -51,8 +51,11 @@ The collapsed sidebar already uses `bg-secondary/60` -- update to `bg-muted/30` 
 
 | File | Change |
 |------|--------|
-| `PaperViewPage.tsx` | Move PaperHeader inside left column; add bg-muted/30 to right column |
-| `PaperSidebar.tsx` | Add background column styling, center titles, increase shadow to shadow-md |
+| `src/index.css` | `--background: 0 0% 100%` (white) |
+| `PaperHeader.tsx` | `font-serif` to `font-sans` on title |
+| `PersonalizedSummaryCard.tsx` | `font-serif` to `font-sans` on heading |
+| `ModuleAccordionList.tsx` | `font-serif` to `font-sans` on section headers |
+| `PaperSidebar.tsx` | `font-serif` to `font-sans` on impact heading |
 
-CSS/className-level changes only -- no logic changes.
+Minimal className-level changes only. No logic changes.
 
