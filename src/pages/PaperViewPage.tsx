@@ -155,6 +155,9 @@ const PaperViewPage = () => {
             publicationDate={publicationDate}
             doi={doi}
             storagePath={storagePath}
+            isOwner={isOwner}
+            authorsMode={authorsMode}
+            onAuthorsModeChange={setAuthorsMode}
           />
 
             {/* Summary card */}
