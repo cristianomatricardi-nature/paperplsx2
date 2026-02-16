@@ -58,7 +58,6 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
       );
     }
   }
-  }
 
   // Array rendering with module-specific cards
   if (Array.isArray(data) && data.length > 0) {
