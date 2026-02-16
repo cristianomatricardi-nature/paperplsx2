@@ -1,56 +1,54 @@
 
-## Fix Module Content: Clear Cache + Restore Card Layout
 
-### Problem 1: Paper 11 still shows old content
-We cleared the cache for paper 9, but you're viewing paper 11 which still has content generated with the old narrow prompts. The new "Context Bridge / Focal Content / Cross-reference" structure only takes effect when modules regenerate from scratch.
+## Redesign Claim Cards: Compact and Clean
 
-**Fix**: Delete cached content for paper 11 (and optionally all papers) so modules regenerate with the updated prompts.
+### Problems
+1. **Cards are too tall** -- each card shows the statement, evidence, statistics, figure refs, method refs, and page refs as separate stacked sections, making them very tall.
+2. **Too many badges/buttons are distracting** -- figure refs (with emoji), method refs (with emoji), page refs, and the strength badge all compete for attention and clutter the card.
 
-### Problem 2: Restore card-based visualization
-The current layout renders modules as paragraph sections with `ModuleSectionHeader` + flowing text. You want the previous card-based layout back -- where each section appears as a distinct card with borders and structure.
+### Solution: Compact, scannable claim cards
 
-**Fix**: In `ModuleContentRenderer.tsx`, replace the current `<section>` + `ModuleSectionHeader` layout with a card-based layout where each section is wrapped in a bordered card component. The section title and description go inside the card header.
+**Redesign `ClaimCard.tsx`** with these changes:
 
----
+| Current | New |
+|---------|-----|
+| Strength badge as a standalone row | Subtle colored dot + strength label inline with the statement |
+| Evidence as a full paragraph | Evidence trimmed to 2 lines with expand on hover/click |
+| Statistics as separate badge row | Inline with evidence as subtle mono text |
+| Figure refs as emoji buttons (separate row) | Collapsed into a single "refs" line: `Fig 2, 3 -- Method 1 -- p. 2, 3` |
+| Method refs as separate emoji buttons | Merged into the same refs line above |
+| Page refs as separate row | Merged into refs line |
+| 5 distinct visual sections | 3 sections max: header, evidence, refs |
+
+**Visual structure of new card:**
+
+```text
++---------------------------------------+
+| * strong  Claim statement text here   |
+|           that can wrap to two lines  |
+|                                       |
+| Evidence text kept to 2-3 lines max  |
+| with key stats inline like p<0.001   |
+|                                       |
+| Fig 2, 3  |  Method 1  |  p. 2, 3   |
++---------------------------------------+
+```
+
+The left border color still indicates strength (green/blue/yellow/gray). No emoji icons. References consolidated into one compact footer line with subtle separators.
 
 ### Technical details
 
-**Files to modify:**
+**File: `src/components/paper-view/renderers/ClaimCard.tsx`**
 
-| File | Change |
-|------|--------|
-| `src/components/paper-view/ModuleContentRenderer.tsx` | Replace the `<section className="space-y-3">` + `ModuleSectionHeader` layout with a card wrapper: each section rendered inside a `<div className="rounded-lg border bg-card p-4 shadow-sm">` with the title as a card header |
+- Remove the `Badge` import and standalone badge row
+- Replace with a small colored dot (`w-2 h-2 rounded-full`) next to strength text, inline with the claim statement
+- Reduce padding from `p-4` to `p-3`
+- Clamp evidence text to 3 lines using `line-clamp-3`
+- Merge figure refs, method refs, and page refs into one `<div>` footer row separated by a middle dot or pipe, no emoji icons, just plain text labels
+- Remove the separate sections for figRefs, methodRefs, and pages
+- Use `text-xs text-muted-foreground` for the consolidated refs line
 
-**Database operation:**
-- Clear cache for paper 11: `DELETE FROM generated_content_cache WHERE paper_id = 11 AND content_type = 'module'`
-- Optionally clear all papers: `DELETE FROM generated_content_cache WHERE content_type = 'module'`
+**File: `src/components/paper-view/ModuleContentRenderer.tsx`**
 
-### What the card layout looks like
+- No structural changes needed -- the carousel wrapper stays the same, cards just become more compact inside it
 
-```text
-+------------------------------------------+
-| [accent border]  OVERVIEW                |
-| What this paper contributes...           |
-|                                          |
-| Context paragraph...                     |
-| +-- Core Contribution card --+           |
-| | The main novel finding...  |           |
-| +----------------------------+           |
-| Novelty statement in italic...           |
-+------------------------------------------+
-
-+------------------------------------------+
-| [accent border]  IMPACT ANALYSIS         |
-| Quantitative results and their...        |
-|                                          |
-| [MetricsGrid cards]                      |
-+------------------------------------------+
-```
-
-Each section becomes a self-contained card rather than a flowing paragraph section. The `ModuleSectionHeader` component stays but is embedded inside the card as its header, and the card itself gets a border, background, and subtle shadow.
-
-### What stays the same
-- All specialized renderers (ClaimCard carousel, ProtocolStep, MetricsGrid, etc.)
-- The edge function prompts (already updated)
-- The `ModuleSectionHeader` component (reused inside cards)
-- The `SECTION_DESCRIPTIONS` map
