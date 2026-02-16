@@ -1,65 +1,15 @@
 
+## Fix Module Content: Clear Cache + Restore Card Layout
 
-## Self-Contained Knowledge Lenses: Backend Prompts + Claims Carousel
+### Problem 1: Paper 11 still shows old content
+We cleared the cache for paper 9, but you're viewing paper 11 which still has content generated with the old narrow prompts. The new "Context Bridge / Focal Content / Cross-reference" structure only takes effect when modules regenerate from scratch.
 
-### Problem
+**Fix**: Delete cached content for paper 11 (and optionally all papers) so modules regenerate with the updated prompts.
 
-The modules currently extract only their "slice" of the paper (e.g., M1 pulls only from introduction/discussion, M3 pulls only methods). This makes each module feel like a fragment rather than a complete lens. The user wants each module to be **self-contained**: it should cover the entire paper but with a different emphasis. Additionally, the M2 claims are stacked vertically, making them hard to browse -- a horizontal scrollable carousel would be better.
+### Problem 2: Restore card-based visualization
+The current layout renders modules as paragraph sections with `ModuleSectionHeader` + flowing text. You want the previous card-based layout back -- where each section appears as a distinct card with borders and structure.
 
-### Two changes
-
-**A. Backend: Rewrite MODULE_QUERIES and MODULE_PROMPTS** so each module retrieves broader context from the paper and generates a self-contained narrative with a specific focal point.
-
-**B. Frontend: Replace vertical ClaimCard list with a horizontal scrollable carousel.**
-
----
-
-### A. Backend prompt restructuring
-
-**File: `supabase/functions/generate-module-content/index.ts`**
-
-**MODULE_QUERIES** (the embedding search queries) currently target narrow topics. We broaden each to pull chunks from the full paper while weighting toward the module's focus:
-
-| Module | Current query (narrow) | New query (broad + focused) |
-|--------|----------------------|---------------------------|
-| M1 | "main contribution, novelty, impact..." | "introduction, background, motivation, contribution, novelty, significance, key results summary, discussion of implications" |
-| M2 | "claims, evidence, findings..." | "results, findings, statistical analysis, evidence, claims, methodology context, discussion of limitations" |
-| M3 | "methods, protocols, procedures..." | "methods, protocols, experimental setup, research context and motivation, key results validating the approach" |
-| M4 | "negative results, failed experiments..." | "negative results, null findings, limitations, failed approaches, context of what was expected, discussion" |
-| M5 | "future directions, recommendations..." | "future work, recommendations, conclusions, research context, key findings motivating next steps" |
-| M6 | "plain language summary, public impact..." | "abstract, introduction, key results, real world applications, conclusions, broader impact" |
-
-Also increase `p_match_count` from 12 to 15 to pull more diverse chunks.
-
-**MODULE_PROMPTS** restructured so each module generates a self-contained narrative:
-
-Each prompt will now instruct the AI to produce:
-1. **Context Bridge** (2-3 sentences) -- what is this paper about, why does it matter (present in every module)
-2. **Focal content** -- the module's main lens (metrics for M1, claims for M2, protocols for M3, etc.)
-3. **Cross-reference summary** -- brief pointers to what other modules cover in more depth
-
-For example, M1 prompt changes to emphasize: "Pull heavily from the introduction to set context. Include ALL quantitative metrics from results. Add a brief discussion synthesis. The reader should be able to understand the paper's contribution without opening any other module."
-
-M3 prompt changes to: "Start with 2-3 sentences of research context (what problem is being solved and why). Then provide the full protocol detail. End with a brief note on which results validate these methods."
-
-The JSON schema stays the same (still uses `tabs` structure) but each section's content will be richer and more self-contained.
-
-**Cache invalidation**: After deploying the updated prompts, we delete existing cached content for paper 9 so the modules regenerate with the new prompts.
-
----
-
-### B. Frontend: Horizontal claims carousel
-
-**File: `src/components/paper-view/renderers/ClaimCard.tsx`** -- minor width adjustments to work as a carousel card (fixed width ~320px, flex-shrink-0).
-
-**File: `src/components/paper-view/ModuleContentRenderer.tsx`** -- replace the vertical `space-y-3` div for M2 claims with a horizontally scrollable container using `embla-carousel-react` (already installed).
-
-The carousel will:
-- Show one claim card at a time on mobile, ~2 on desktop
-- Have left/right navigation arrows
-- Show dot indicators for position
-- Each card is a fixed-width ClaimCard with the same content as today
-- Snap scrolling for a "picker wheel" feel
+**Fix**: In `ModuleContentRenderer.tsx`, replace the current `<section>` + `ModuleSectionHeader` layout with a card-based layout where each section is wrapped in a bordered card component. The section title and description go inside the card header.
 
 ---
 
@@ -69,14 +19,38 @@ The carousel will:
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-module-content/index.ts` | Rewrite MODULE_QUERIES (broader retrieval) and MODULE_PROMPTS (self-contained lens instructions); increase chunk count to 15 |
-| `src/components/paper-view/ModuleContentRenderer.tsx` | Replace M2 claims vertical list with embla-carousel horizontal scroller |
-| `src/components/paper-view/renderers/ClaimCard.tsx` | Add fixed width + flex-shrink-0 for carousel layout |
+| `src/components/paper-view/ModuleContentRenderer.tsx` | Replace the `<section className="space-y-3">` + `ModuleSectionHeader` layout with a card wrapper: each section rendered inside a `<div className="rounded-lg border bg-card p-4 shadow-sm">` with the title as a card header |
 
 **Database operation:**
-- Delete cached content for paper 9 to force regeneration: `DELETE FROM generated_content_cache WHERE paper_id = 9 AND content_type = 'module'`
+- Clear cache for paper 11: `DELETE FROM generated_content_cache WHERE paper_id = 11 AND content_type = 'module'`
+- Optionally clear all papers: `DELETE FROM generated_content_cache WHERE content_type = 'module'`
 
-**No new dependencies** -- `embla-carousel-react` is already installed.
+### What the card layout looks like
 
-**No schema changes** -- the JSON structure returned by the AI stays the same, only the content quality and breadth changes.
+```text
++------------------------------------------+
+| [accent border]  OVERVIEW                |
+| What this paper contributes...           |
+|                                          |
+| Context paragraph...                     |
+| +-- Core Contribution card --+           |
+| | The main novel finding...  |           |
+| +----------------------------+           |
+| Novelty statement in italic...           |
++------------------------------------------+
 
++------------------------------------------+
+| [accent border]  IMPACT ANALYSIS         |
+| Quantitative results and their...        |
+|                                          |
+| [MetricsGrid cards]                      |
++------------------------------------------+
+```
+
+Each section becomes a self-contained card rather than a flowing paragraph section. The `ModuleSectionHeader` component stays but is embedded inside the card as its header, and the card itself gets a border, background, and subtle shadow.
+
+### What stays the same
+- All specialized renderers (ClaimCard carousel, ProtocolStep, MetricsGrid, etc.)
+- The edge function prompts (already updated)
+- The `ModuleSectionHeader` component (reused inside cards)
+- The `SECTION_DESCRIPTIONS` map
