@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,15 @@ import { Loader2 } from 'lucide-react';
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/researcher-home', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   // Sign in state
   const [signInEmail, setSignInEmail] = useState('');
