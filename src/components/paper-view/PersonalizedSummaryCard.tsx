@@ -78,7 +78,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
   };
 
   return (
-    <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm">
+    <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm rounded-xl">
       {/* Header row */}
       <div className="flex items-center justify-between p-5 pb-3">
         <h2 className="font-serif text-lg font-semibold text-foreground flex items-center gap-2">

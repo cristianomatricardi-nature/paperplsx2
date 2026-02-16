@@ -127,7 +127,7 @@ const PaperViewPage = () => {
       </div>
 
       {/* Main grid */}
-      <div className="px-4 md:px-8 py-6">
+      <div className="px-4 md:px-8 py-8">
         <PaperHeader
           title={title}
           authors={authors}
@@ -137,7 +137,7 @@ const PaperViewPage = () => {
           storagePath={storagePath}
         />
 
-        <div className={cn('grid gap-6', sidebarOpen ? 'grid-cols-12' : 'flex')}>
+        <div className={cn('grid gap-8', sidebarOpen ? 'grid-cols-12' : 'flex')}>
           {/* Main content area */}
           <div className={sidebarOpen ? 'col-span-12 lg:col-span-8' : 'flex-1'}>
             {/* Summary card */}
