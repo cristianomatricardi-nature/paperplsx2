@@ -1,50 +1,49 @@
 
 
-## Layout Ratio Fix and Icon Removal
+## Sidebar Column Redesign and Layout Refinement
 
 ### Problem
-The paper view content stretches edge-to-edge across the full screen width, making it hard to read on wide monitors. The reference design shows content constrained to a comfortable max-width centered on the page. Additionally, emoji icons next to module titles and sidebar section titles need to be removed.
+The current layout places the header spanning the full width above both columns, and the sidebar cards float on a white background. The reference shows the sidebar as a distinct column with a slightly darker background stretching from the top banner to the bottom, with the paper title/header only above the left content column. Sidebar cards also need stronger shadows.
 
 ---
 
-### 1. Constrain Page Width
+### 1. Restructure the Page Layout
 
 **File: `src/pages/PaperViewPage.tsx`**
 
-Wrap the main content area (`px-4 md:px-8 py-8` div, line 130) with a `max-w-7xl mx-auto` container so the content stays centered and doesn't stretch beyond ~1280px on wide screens.
+Change the layout so the 12-column grid starts immediately after the top bar, with:
+- The header (`PaperHeader`) placed inside the left column (col-span-8), not above the full grid
+- The sidebar column (`col-span-4`) gets a subtle `bg-muted/30` background that stretches full height using `min-h-[calc(100vh-3.5rem)]` and padding, creating the "side column" feel from the reference
+- Remove `max-w-7xl mx-auto` from the outer wrapper and instead apply width constraints to just the grid content, so the sidebar background can bleed edge-to-edge on the right
 
----
-
-### 2. Remove Emoji Icons from Module Accordion Headers
-
-**File: `src/components/paper-view/ModuleAccordion.tsx`**
-
-Remove the icon span on line 76:
-```tsx
-// Remove this line:
-<span className="text-lg">{moduleDefinition.icon}</span>
+The structure becomes:
+```
+[top bar - full width]
+[  left col (8/12)          |  right col (4/12, bg-muted/30)  ]
+[  PaperHeader              |  mode toggle card               ]
+[  PersonalizedSummary      |  Strategic Insights card        ]
+[  ModuleAccordionList      |  Community card                 ]
+[  FiguresSection           |  Assessment card                ]
 ```
 
-Also remove the "Core" / "Satellite" badge (line 80-82) to clean up the header further -- keeping just the module title text.
-
 ---
 
-### 3. Remove Emoji Icons from Sidebar Section Headers
+### 2. Sidebar Background Column
 
 **File: `src/components/paper-view/PaperSidebar.tsx`**
 
-Remove the emoji spans from each collapsible trigger:
-- Line 164: Remove `<span>💡</span>`
-- Line 187: Remove `<span>👥</span>`  
-- Line 219: Remove `<span>📊</span>`
+- In the expanded state, wrap the aside in a container with `bg-muted/30 border-l border-border min-h-full` to create the continuous darker column effect
+- Add more padding (`p-5`) inside the sidebar column
+- Center the section titles (Strategic Insights, Community Engagement, Multidimensional Assessment) and their subtitles using `text-center` on the trigger content
+- Increase card shadow from `shadow-sm` to `shadow-md` for more depth
 
 ---
 
-### 4. Remove Emoji from Personalized Summary Card Header
+### 3. Collapsed Sidebar Update
 
-**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
+**File: `src/components/paper-view/PaperSidebar.tsx`**
 
-Remove the persona emoji span on line 85 (the long ternary producing graduation cap, microscope, etc.).
+The collapsed sidebar already uses `bg-secondary/60` -- update to `bg-muted/30` to match the expanded column background.
 
 ---
 
@@ -52,10 +51,8 @@ Remove the persona emoji span on line 85 (the long ternary producing graduation 
 
 | File | Change |
 |------|--------|
-| `PaperViewPage.tsx` | Add `max-w-7xl mx-auto` wrapper |
-| `ModuleAccordion.tsx` | Remove icon span and badge from header |
-| `PaperSidebar.tsx` | Remove 3 emoji spans from section triggers |
-| `PersonalizedSummaryCard.tsx` | Remove persona emoji from title |
+| `PaperViewPage.tsx` | Move PaperHeader inside left column; add bg-muted/30 to right column |
+| `PaperSidebar.tsx` | Add background column styling, center titles, increase shadow to shadow-md |
 
-All changes are className/JSX-level -- no logic changes.
+CSS/className-level changes only -- no logic changes.
 
