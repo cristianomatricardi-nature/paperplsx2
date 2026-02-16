@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
+    --background: 0 0% 97%;
     --foreground: 0 0% 13%;
 
     --card: 0 0% 100%;
@@ -18,42 +18,42 @@
     --primary: 348 83% 47%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
+    --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 20%;
 
-    --muted: 210 12% 94%;
+    --muted: 0 0% 94%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 195 80% 28%;
+    --accent: 348 83% 47%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 89%;
-    --input: 0 0% 89%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
     --ring: 348 83% 47%;
 
-    --radius: 0.375rem;
+    --radius: 0.25rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 20%;
     --sidebar-primary: 348 83% 47%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent: 0 0% 96%;
     --sidebar-accent-foreground: 0 0% 20%;
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 348 83% 47%;
 
-    /* Custom tokens — Springer Nature palette */
+    /* Custom tokens — Nature palette */
     --nature-red: 348 83% 47%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 195 80% 28%;
+    --nature-teal: 348 83% 47%;
     --nature-teal-foreground: 0 0% 100%;
     --nature-dark: 0 0% 13%;
     --nature-gray: 0 0% 45%;
-    --surface-warm: 40 15% 97%;
-    --deep-blue: 212 52% 24%;
+    --surface-warm: 0 0% 97%;
+    --deep-blue: 348 83% 47%;
     --deep-blue-foreground: 0 0% 100%;
   }
 
@@ -76,7 +76,7 @@
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 55%;
 
-    --accent: 195 70% 40%;
+    --accent: 348 83% 52%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
@@ -97,12 +97,12 @@
 
     --nature-red: 348 83% 52%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 195 70% 40%;
+    --nature-teal: 348 83% 52%;
     --nature-teal-foreground: 0 0% 100%;
     --nature-dark: 0 0% 92%;
     --nature-gray: 0 0% 55%;
     --surface-warm: 0 0% 10%;
-    --deep-blue: 212 52% 34%;
+    --deep-blue: 348 83% 52%;
     --deep-blue-foreground: 0 0% 100%;
   }
 }
