@@ -8,6 +8,7 @@ interface ActionData {
   target_audience?: string;
   urgency?: 'high' | 'medium' | 'low';
   page_numbers?: number[];
+  page_refs?: number[];
 }
 
 const URGENCY_DOT: Record<string, string> = {
@@ -19,6 +20,7 @@ const URGENCY_DOT: Record<string, string> = {
 export function ActionCard({ action }: { action: ActionData }) {
   const urgency = action.urgency ?? 'medium';
   const dotColor = URGENCY_DOT[urgency] ?? URGENCY_DOT.medium;
+  const pages = action.page_numbers ?? action.page_refs ?? [];
 
   return (
     <div className="rounded-md border border-border bg-card p-4 space-y-2">
@@ -39,12 +41,11 @@ export function ActionCard({ action }: { action: ActionData }) {
             {action.target_audience}
           </Badge>
         )}
-        {action.page_numbers && action.page_numbers.length > 0 &&
-          action.page_numbers.map((p) => (
-            <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
-              (p.&nbsp;{p})
-            </span>
-          ))}
+        {pages.map((p) => (
+          <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
+            (p.&nbsp;{p})
+          </span>
+        ))}
       </div>
     </div>
   );

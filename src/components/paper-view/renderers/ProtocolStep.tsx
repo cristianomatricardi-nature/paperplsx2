@@ -8,9 +8,12 @@ interface StepData {
   duration?: string | null;
   critical_notes?: string[];
   page_numbers?: number[];
+  page_refs?: number[];
 }
 
 export function ProtocolStep({ step, index }: { step: StepData; index: number }) {
+  const pages = step.page_numbers ?? step.page_refs ?? [];
+
   return (
     <div className="flex gap-3">
       {/* Numbered circle */}
@@ -68,9 +71,9 @@ export function ProtocolStep({ step, index }: { step: StepData; index: number })
         )}
 
         {/* Page refs */}
-        {step.page_numbers && step.page_numbers.length > 0 && (
+        {pages.length > 0 && (
           <div className="flex gap-1">
-            {step.page_numbers.map((p) => (
+            {pages.map((p) => (
               <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
                 (p.&nbsp;{p})
               </span>

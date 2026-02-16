@@ -7,12 +7,13 @@ interface ClaimData {
   evidence?: string;
   evidence_summary?: string;
   strength?: 'strong' | 'moderate' | 'preliminary' | 'speculative';
-  statistics?: string[];
+  statistics?: (string | { name: string; value: string })[];
   figure_refs?: string[];
   related_figure_ids?: string[];
   method_refs?: string[];
   related_method_ids?: string[];
   page_numbers?: number[];
+  page_refs?: number[];
 }
 
 const STRENGTH_STYLES: Record<string, { border: string; badge: string }> = {
@@ -26,6 +27,7 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
   const strength = claim.strength ?? 'moderate';
   const styles = STRENGTH_STYLES[strength] ?? STRENGTH_STYLES.moderate;
   const evidence = claim.evidence ?? claim.evidence_summary ?? '';
+  const pages = claim.page_numbers ?? claim.page_refs ?? [];
   const figRefs = claim.figure_refs ?? claim.related_figure_ids ?? [];
   const methodRefs = claim.method_refs ?? claim.related_method_ids ?? [];
 
@@ -48,11 +50,14 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
       {/* Statistics */}
       {claim.statistics && claim.statistics.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {claim.statistics.map((stat, i) => (
-            <span key={i} className="font-mono text-xs bg-muted px-2 py-0.5 rounded-sm text-foreground">
-              {stat}
-            </span>
-          ))}
+          {claim.statistics.map((stat, i) => {
+            const label = typeof stat === 'string' ? stat : `${stat.name}: ${stat.value}`;
+            return (
+              <span key={i} className="font-mono text-xs bg-muted px-2 py-0.5 rounded-sm text-foreground">
+                {label}
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -85,9 +90,9 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
       )}
 
       {/* Page references */}
-      {claim.page_numbers && claim.page_numbers.length > 0 && (
+      {pages.length > 0 && (
         <div className="flex gap-1">
-          {claim.page_numbers.map((p) => (
+          {pages.map((p) => (
             <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
               (p.&nbsp;{p})
             </span>
