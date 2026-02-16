@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MODULE_REGISTRY } from '@/types/modules';
 import type { ModuleId, SubPersonaId } from '@/types/modules';
+import type { Figure } from '@/types/structured-paper';
 import ModuleAccordion from './ModuleAccordion';
 
 interface ModuleAccordionListProps {
   paperId: number;
   subPersonaId: SubPersonaId;
   moduleOrder: ModuleId[];
+  figures?: Figure[];
 }
 
-const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder }: ModuleAccordionListProps) => {
+const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder, figures = [] }: ModuleAccordionListProps) => {
   const [openModuleId, setOpenModuleId] = useState<ModuleId | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, unknown>>({});
   const prevPersona = useRef(subPersonaId);
@@ -64,6 +66,7 @@ const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder }: ModuleAccor
                 onToggle={() => handleToggle(mod.id)}
                 cachedContent={contentCache[cacheKey] ?? null}
                 onContentLoaded={handleContentLoaded}
+                figures={figures}
               />
             );
           })}

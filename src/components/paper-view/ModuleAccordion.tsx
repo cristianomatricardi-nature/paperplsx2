@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchModuleContent } from '@/lib/api';
 import type { ModuleDefinition, ModuleId, SubPersonaId } from '@/types/modules';
+import type { Figure } from '@/types/structured-paper';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ModuleContentRenderer from './ModuleContentRenderer';
 
 interface ModuleAccordionProps {
   paperId: number;
@@ -17,6 +19,7 @@ interface ModuleAccordionProps {
   onToggle: () => void;
   cachedContent: unknown | null;
   onContentLoaded: (moduleId: ModuleId, content: unknown) => void;
+  figures?: Figure[];
 }
 
 const RESEARCHER_PERSONAS: SubPersonaId[] = ['phd_postdoc', 'pi_tenure'];
@@ -30,6 +33,7 @@ const ModuleAccordion = ({
   onToggle,
   cachedContent,
   onContentLoaded,
+  figures = [],
 }: ModuleAccordionProps) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -113,11 +117,11 @@ const ModuleAccordion = ({
 
             {/* Cached / loaded content */}
             {!loading && cachedContent && (
-              <div className="font-sans text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                {typeof cachedContent === 'string'
-                  ? cachedContent
-                  : JSON.stringify(cachedContent, null, 2)}
-              </div>
+              <ModuleContentRenderer
+                content={cachedContent}
+                moduleId={moduleId}
+                figures={figures}
+              />
             )}
 
             {/* Replicate button for M3 + researcher personas */}
