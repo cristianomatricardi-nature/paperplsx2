@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     const queryEmbedding = embeddingData.data[0].embedding;
 
     // 4. Match chunks via database function
-    const { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
+    let { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
       p_paper_id: paperId,
       p_query_embedding: JSON.stringify(queryEmbedding),
       p_match_threshold: 0.5,
@@ -100,6 +100,21 @@ Deno.serve(async (req) => {
     if (matchError) {
       console.error("[generate-summary] match_chunks error:", matchError);
       throw new Error(`match_chunks failed: ${matchError.message}`);
+    }
+
+    if (!chunks || chunks.length === 0) {
+      console.warn("[generate-summary] No chunks above 0.5 threshold, retrying with 0.2");
+      const fallback = await supabase.rpc("match_chunks", {
+        p_paper_id: paperId,
+        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_match_threshold: 0.2,
+        p_match_count: 12,
+      });
+      if (fallback.error) {
+        console.error("[generate-summary] Fallback match_chunks error:", fallback.error);
+        throw new Error(`match_chunks fallback failed: ${fallback.error.message}`);
+      }
+      chunks = fallback.data;
     }
 
     if (!chunks || chunks.length === 0) {
