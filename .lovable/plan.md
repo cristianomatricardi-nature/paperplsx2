@@ -1,52 +1,66 @@
 
 
-# Fix Field Name Mismatches — Impact Analysis & Implementation
+## Two-Step Upload with Real-Time Pipeline Progress
 
-## Summary
+### What changes
 
-The proposed changes are **completely safe**. They only modify internal rendering logic within 4 leaf components. No shared types, imports, component APIs, or other files are affected.
+**1. UploadSection gets a two-step flow with progress tracking**
 
-## Why It's Safe (Full Trace)
+When you select a PDF, instead of immediately uploading it, you'll see:
+- A **file preview card** showing the PDF name, size, and an "X" to remove it
+- A red **"Generate Paper++"** button to trigger the pipeline
+- Once triggered, a **real-time progress tracker** replaces the button, showing each pipeline step with a filling progress bar and red-themed icons
 
-The data flows like this:
+**2. Pipeline steps displayed with progress bars**
 
-```text
-Backend (edge function) returns JSONB with "page_refs"
-  -> stored in generated_content_cache.content (untyped JSONB)
-  -> fetched by ModuleAccordion as `unknown`
-  -> passed to ModuleContentRenderer as `unknown`
-  -> cast and forwarded to ClaimCard / ProtocolStep / etc. as untyped objects
-  -> each renderer reads fields from its own local interface
-```
+The steps shown will match the actual backend pipeline:
+1. Uploading (local upload to storage)
+2. Parsing (text extraction from PDF)
+3. Structuring (AI structural analysis)
+4. Embedding (semantic chunking)
+5. Figures (figure extraction)
+6. Completed
 
-No shared TypeScript interface (like `Claim` in `structured-paper.ts`) is used by any renderer. Each renderer has its own private interface with optional fields. Adding `page_refs?: number[]` to a private interface has zero effect outside that file.
+Each step will have:
+- A red-themed icon (FileText, Brain, Database, Image, CheckCircle)
+- A label
+- A filling progress bar that turns red when active/completed
+- A checkmark when done, spinner when in progress
 
-## Changes (4 files only)
+### Files to create/edit
 
-### 1. ClaimCard.tsx
-- Add `page_refs?: number[]` to local interface
-- Alias: `const pages = claim.page_numbers ?? claim.page_refs ?? []`
-- Fix `statistics` to handle both `string` and `{name, value}` shapes
+**`src/components/researcher-home/UploadSection.tsx`** -- Major rework:
+- Add `selectedFile` state to stage the PDF before upload
+- Add `paperId` state to track the created paper after upload
+- When file is selected: show preview card + "Generate Paper++" button (red styling)
+- When button is clicked: call `uploadPaper`, get `paper_id`, switch to progress view
+- Use `useRealtimePaper` hook to subscribe to status changes for the created paper
+- Render a `PipelineProgressBar` component showing each step with filling bars
+- When pipeline completes or fails, show appropriate feedback and reset
 
-### 2. ProtocolStep.tsx
-- Add `page_refs?: number[]` to local interface
-- Alias: `const pages = step.page_numbers ?? step.page_refs ?? []`
+**`src/components/researcher-home/PipelineProgressBar.tsx`** -- New component:
+- Accepts `status` (current pipeline status) and `errorMessage`
+- Renders a vertical list of pipeline steps, each with:
+  - A red-themed Lucide icon (e.g., `FileText` for parsing, `Brain` for structuring, `Layers` for embedding, `ImageIcon` for figures, `CheckCircle2` for completed)
+  - Step label text
+  - A horizontal progress bar (using the existing `Progress` component or a custom one)
+  - States: pending (gray), active (red with animation), completed (red filled with check), failed (red-destructive)
+- Progress bar fills to 100% for completed steps, animates/pulses for the active step, stays empty for pending steps
+- Status text at the bottom showing current action
 
-### 3. NegativeResultCard.tsx
-- Add `page_refs?: number[]` to local interface
-- Alias: `const pages = result.page_numbers ?? result.page_refs ?? []`
+### Visual Design
 
-### 4. ActionCard.tsx
-- Add `page_refs?: number[]` to local interface
-- Alias: `const pages = action.page_numbers ?? action.page_refs ?? []`
+- **"Generate Paper++" button**: Red background (`bg-primary`), white text, with a `Sparkles` or `Zap` icon
+- **Progress bars**: Red fill color matching the primary/brand color
+- **Step icons**: Red-tinted Lucide icons
+- **File preview card**: Clean card with PDF icon, filename, size, and a subtle border
+- **Completed state**: Green checkmark or a "View Paper++" link button
 
-### Files NOT changed (verified safe)
-- ModuleContentRenderer.tsx — passes `unknown`, no field inspection
-- ModuleAccordion.tsx — passes opaque content, no field inspection
-- ModuleAccordionList.tsx — manages cache keys only
-- GenericFallback.tsx — recursive renderer, field-agnostic
-- PageReference.tsx — takes `{ page: number }`, leaf component
-- FigurePlaceholder.tsx — uses `Figure` type, unrelated
-- structured-paper.ts — types not imported by any renderer
-- supabase/types.ts — auto-generated, not touched
+### Technical Details
 
+- The `uploadPaper` function already returns `{ paper_id }` from the backend
+- The `useRealtimePaper` hook already subscribes to real-time status updates for a given paper ID
+- Pipeline statuses flow: `uploaded` -> `parsing` -> `structuring` -> `chunking` -> `completed` (or `failed`)
+- The progress tracker will use these real-time status updates to animate the bars
+- After completion, a "View Paper++" button will link to `/paper/{paperId}`
+- A "Reset" or "Upload Another" option will clear the state back to the drop zone
