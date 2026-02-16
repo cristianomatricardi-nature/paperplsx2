@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.run-chunking-and-embedding]
 verify_jwt = false
+
+[functions.run-figure-extraction]
+verify_jwt = false
