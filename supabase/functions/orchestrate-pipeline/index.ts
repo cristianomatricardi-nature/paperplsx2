@@ -154,6 +154,9 @@ Deno.serve(async (req) => {
       fireFunction("run-chunking-and-embedding", { paper_id: paperId });
       fireFunction("run-figure-extraction", { paper_id: paperId });
 
+      // Poll: figure extraction updates structured_papers.figures with bounding_box data
+      // (non-blocking — we only block on chunking)
+
       // Poll: chunking inserts rows into chunks table (blocking)
       await pollForCondition(
         "chunking complete (chunks exist)",

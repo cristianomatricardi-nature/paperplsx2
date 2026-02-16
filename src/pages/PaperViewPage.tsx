@@ -164,7 +164,7 @@ const PaperViewPage = () => {
             {/* Figures section */}
             {structured?.figures && structured.figures.length > 0 && (
               <div className="mt-6">
-                <FiguresSection figures={structured.figures} />
+                <FiguresSection figures={structured.figures} storagePath={storagePath} />
               </div>
             )}
           </div>

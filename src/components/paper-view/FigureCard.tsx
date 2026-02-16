@@ -2,12 +2,14 @@ import { useState } from 'react';
 import type { Figure } from '@/types/structured-paper';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { FigureRenderer } from '@/components/paper/FigureRenderer';
 
 interface FigureCardProps {
   figure: Figure;
+  storagePath: string | null;
 }
 
-const FigureCard = ({ figure }: FigureCardProps) => {
+const FigureCard = ({ figure, storagePath }: FigureCardProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,6 +25,10 @@ const FigureCard = ({ figure }: FigureCardProps) => {
                 className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
                 loading="lazy"
               />
+            </div>
+          ) : figure.bounding_box && storagePath ? (
+            <div className="w-full aspect-video bg-muted/30 overflow-hidden">
+              <FigureRenderer figure={figure} storagePath={storagePath} scale={1.5} className="w-full h-full" />
             </div>
           ) : (
             <div className="w-full aspect-video bg-muted/40 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
@@ -76,6 +82,8 @@ const FigureCard = ({ figure }: FigureCardProps) => {
               alt={figure.caption}
               className="w-full h-auto max-h-[60vh] object-contain rounded-md"
             />
+          ) : figure.bounding_box && storagePath ? (
+            <FigureRenderer figure={figure} storagePath={storagePath} scale={3} className="w-full" />
           ) : (
             <div className="flex items-center justify-center h-48 bg-muted rounded-md text-muted-foreground">
               No image available
