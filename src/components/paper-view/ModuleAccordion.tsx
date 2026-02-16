@@ -73,7 +73,7 @@ const ModuleAccordion = ({
         className="flex w-full items-center justify-between px-5 py-[18px] text-left transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-3">
-          <span className="font-sans text-sm font-semibold text-foreground">
+          <span className="font-sans text-base font-semibold text-foreground">
             {moduleDefinition.title}
           </span>
         </div>
