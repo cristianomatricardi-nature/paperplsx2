@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import PaperSidebar from '@/components/paper-view/PaperSidebar';
+import FiguresSection from '@/components/paper-view/FiguresSection';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
@@ -158,6 +159,13 @@ const PaperViewPage = () => {
                 moduleOrder={moduleOrder}
                 figures={structured?.figures}
               />
+            )}
+
+            {/* Figures section */}
+            {structured?.figures && structured.figures.length > 0 && (
+              <div className="mt-6">
+                <FiguresSection figures={structured.figures} />
+              </div>
             )}
           </div>
 
