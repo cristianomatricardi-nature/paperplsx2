@@ -69,9 +69,7 @@ const PaperHeader = ({
           </Badge>
         )}
         {journal && (
-          <Badge variant="outline" className="font-sans text-xs border-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue))]">
-            {journal}
-          </Badge>
+          <span className="text-sm font-sans text-muted-foreground">{journal}</span>
         )}
         {formattedDate && (
           <span className="text-sm font-sans text-muted-foreground">{formattedDate}</span>
@@ -81,7 +79,7 @@ const PaperHeader = ({
             href={`https://doi.org/${doi}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-sans text-[hsl(var(--deep-blue))] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-sans text-foreground hover:underline"
           >
             DOI: {doi}
             <ExternalLink className="h-3 w-3" />
@@ -97,14 +95,6 @@ const PaperHeader = ({
               <Tooltip key={i}>
                 <TooltipTrigger asChild>
                   <span className="inline-flex items-center gap-1.5 font-sans text-sm">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue-foreground))] text-[10px] font-semibold shrink-0">
-                      {author.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join('')
-                        .toUpperCase()}
-                    </span>
                     <span className="text-foreground">
                       {author.name}
                       {i < visibleAuthors.length - 1 && ','}
