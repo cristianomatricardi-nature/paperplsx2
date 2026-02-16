@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.run-structuring]
 verify_jwt = false
+
+[functions.run-chunking-and-embedding]
+verify_jwt = false
