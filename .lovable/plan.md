@@ -1,49 +1,33 @@
 
 
-## Shareable Public Paper Link
+## Add Sidebar to Public Paper View
 
-### Goal
-Create a public, embeddable URL for any completed paper so authors/publishers can share or embed it on external webpages without requiring login.
+### What Changes
 
-### Current State
-- `/paper/:paperId` is wrapped in `ProtectedRoute`, requiring authentication
-- The database RLS policies already allow SELECT on `papers`, `structured_papers`, `chunks`, and `generated_content_cache` for papers with `status = 'completed'` -- so no backend changes are needed
+Add the `PaperSidebar` component to `PublicPaperViewPage.tsx` in read-only mode, matching the layout used in `PaperViewPage.tsx`.
 
-### What We'll Do
+### Details
 
-**1. Add a new public route `/paper/:paperId/public`**
-- This route renders a new `PublicPaperViewPage` component -- a read-only, streamlined version of the paper view (no Authors Mode, no sidebar toggle, no "Back to researcher home")
-- Unauthenticated users can access it freely
-- Only shows content if the paper status is `completed`; otherwise shows a "Paper not available" message
+**File: `src/pages/PublicPaperViewPage.tsx`**
 
-**2. Create `PublicPaperViewPage.tsx`**
-- Fetches the paper and structured data (same queries as `PaperViewPage`)
-- Renders `PaperHeader` (without owner controls), `PersonalizedSummaryCard`, `ModuleAccordionList`, and `FiguresSection` in a clean, embeddable layout
-- No navigation bar or sidebar -- just the paper content
-- Accepts an optional `?embed=true` query param that removes extra padding/chrome for iframe embedding
+1. Import `PaperSidebar` and add sidebar state (`sidebarOpen`, default `true`)
+2. Switch from the current single-column layout to the same 12-column grid layout used in `PaperViewPage`:
+   - Main content: `col-span-12 lg:col-span-8`
+   - Sidebar: renders `PaperSidebar` on the right
+3. Pass sidebar props in read-only mode:
+   - `isOwner={false}` -- no author controls
+   - `authorsMode={false}` -- no editing features
+   - `authorScores={null}` -- no author self-assessment
+   - `onAuthorsModeChange` / `onAuthorScoresChange` as no-ops
+4. When `?embed=true`, conditionally hide or keep the sidebar (hide it for iframe embeds to save space, show it for the regular public link)
+5. Add a sidebar toggle button in a minimal top bar (only visible on the non-embed public view)
 
-**3. Add a "Copy Link" / "Share" button in `PaperHeader`**
-- Visible on completed papers
-- Copies the public URL (`/paper/:paperId/public`) to the clipboard
-- Shows a toast confirmation
+### Result
 
-**4. Register the route in `App.tsx`**
-- Add `/paper/:paperId/public` as an unprotected route (no `ProtectedRoute` wrapper)
-
-### Technical Details
+- `/paper/:paperId/public` -- full paper view with sidebar (read-only, no owner tools)
+- `/paper/:paperId/public?embed=true` -- compact view without sidebar for iframe embedding
 
 | File | Change |
 |------|--------|
-| `src/pages/PublicPaperViewPage.tsx` | New file -- read-only public paper view |
-| `src/App.tsx` | Add unprotected route `/paper/:paperId/public` |
-| `src/components/paper-view/PaperHeader.tsx` | Add share/copy-link button for completed papers |
-
-### Embedding Usage
-Publishers can embed the paper using a standard iframe:
-```html
-<iframe src="https://your-app.lovable.app/paper/42/public?embed=true" 
-        width="100%" height="800" frameborder="0"></iframe>
-```
-
-The `?embed=true` parameter will strip outer padding and navigation elements for a clean embedded appearance.
+| `src/pages/PublicPaperViewPage.tsx` | Add PaperSidebar, grid layout, toggle button, embed-aware visibility |
 
