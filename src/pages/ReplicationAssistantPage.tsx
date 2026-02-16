@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FlaskConical, Download, Beaker } from 'lucide-react';
+import { ArrowLeft, FlaskConical, Download, Beaker, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,9 @@ import { GapSummary } from '@/components/replication/GapSummary';
 import { RequirementsComparison } from '@/components/replication/RequirementsComparison';
 import { CriticalNotes } from '@/components/replication/CriticalNotes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import type { MethodStep } from '@/types/structured-paper';
 
 const ReplicationAssistantPage = () => {
@@ -18,6 +21,7 @@ const ReplicationAssistantPage = () => {
   const numericId = paperId ? Number(paperId) : null;
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   const { data: structuredData, isLoading: loadingMethods } = useStructuredMethods(numericId);
   const { data: inventory = [], isLoading: loadingLab } = useLabInventory(user?.id ?? null);
@@ -27,9 +31,32 @@ const ReplicationAssistantPage = () => {
     const meta = structuredData?.metadata as Record<string, unknown> | null;
     return (meta?.title as string) ?? 'Untitled Paper';
   }, [structuredData]);
+  const paperField = useMemo(() => {
+    const meta = structuredData?.metadata as Record<string, unknown> | null;
+    return (meta?.field as string) ?? null;
+  }, [structuredData]);
 
   const [selectedIdx, setSelectedIdx] = useState<number | 'all' | null>(null);
+  const [simulating, setSimulating] = useState(false);
   const loading = loadingMethods || loadingLab;
+
+  const handleSimulateLab = async () => {
+    if (!numericId || !user?.id) return;
+    setSimulating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('simulate-lab', {
+        body: { paper_id: numericId, user_id: user.id },
+      });
+      if (error) throw error;
+      toast({ title: 'Lab Generated!', description: `${data.count} items added for ${data.field}.` });
+      queryClient.invalidateQueries({ queryKey: ['lab-inventory', user.id] });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: 'Simulation failed', description: e.message ?? 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   const selectedMethods: MethodStep[] = useMemo(() => {
     if (selectedIdx === 'all') return methods;
@@ -78,9 +105,24 @@ const ReplicationAssistantPage = () => {
             <p className="text-sm text-muted-foreground">
               Add instruments, reagents, and software to your Digital Lab first to use the Replication Assistant.
             </p>
-            <Button asChild>
-              <Link to="/digital-lab">Go to Digital Lab</Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <Button asChild variant="outline">
+                <Link to="/digital-lab">Go to Digital Lab</Link>
+              </Button>
+              <Button onClick={handleSimulateLab} disabled={simulating} className="gap-1.5">
+                {simulating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {paperField ? `Generating lab for ${paperField}…` : 'Generating lab…'}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Simulate a Lab
+                  </>
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
