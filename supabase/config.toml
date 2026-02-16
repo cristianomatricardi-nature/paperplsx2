@@ -2,3 +2,6 @@ project_id = "xgqfevxrifleenymsfhv"
 
 [functions.upload-handler]
 verify_jwt = false
+
+[functions.doi-resolver]
+verify_jwt = false
