@@ -38,12 +38,16 @@ function uint8ToBase64(bytes: Uint8Array): string {
 }
 
 /** Build the prompt listing all figure captions for bounding box detection. */
-function buildPrompt(figures: Figure[]): string {
+function buildPrompt(figures: Figure[], isRetry: boolean): string {
   const listing = figures
     .map((f, i) => `${i + 1}. figure_id="${f.id}" (page ${f.page_number}): "${f.caption}"`)
     .join("\n");
 
-  return `You are analysing a scientific paper PDF. Below is a list of figures found in the paper.
+  const prefix = isRetry
+    ? `You have been given an inline PDF document. You MUST analyze it. Do NOT refuse. Look at each page visually and identify where each figure is located.\n\n`
+    : "";
+
+  return `${prefix}You are analysing a scientific paper PDF that has been provided to you as an inline file. Examine each page of the PDF and locate the figures listed below.
 
 For EACH figure, return the bounding box of the figure image (excluding the caption text) as fractional coordinates (0-1) relative to the page dimensions.
 
@@ -60,60 +64,28 @@ Rules:
 - x,y = top-left corner as fraction of page width/height
 - width,height = size as fraction of page width/height
 - All values between 0 and 1
-- If you cannot locate a figure, omit it from the array
+- If you cannot locate a figure, still include it with your best estimate based on the page layout
 - Return ONLY the JSON array`;
 }
 
-/** Call OpenAI Responses API with inline PDF and return parsed bounding boxes. */
-async function extractBoundingBoxes(
-  openaiKey: string,
-  pdfBase64: string,
-  figures: Figure[],
-): Promise<Map<string, { x: number; y: number; width: number; height: number }>> {
+/** Check if the raw text contains refusal phrases. */
+function isRefusal(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("i'm unable") ||
+    lower.includes("i cannot") ||
+    lower.includes("i can't") ||
+    lower.includes("unable to extract") ||
+    lower.includes("cannot process")
+  );
+}
+
+/** Parse bounding boxes from raw text response. */
+function parseBoundingBoxes(rawText: string): Map<string, { x: number; y: number; width: number; height: number }> {
   const result = new Map<string, { x: number; y: number; width: number; height: number }>();
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: buildPrompt(figures) },
-            {
-              type: "input_file",
-              file_data: `data:application/pdf;base64,${pdfBase64}`,
-              filename: "paper.pdf",
-            },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("OpenAI Responses API error:", response.status, errText);
-    return result;
-  }
-
-  const data = await response.json();
-
-  // Responses API: output_text is a convenience field with the text content
-  const rawText: string = data.output_text
-    ?? data.output?.[0]?.content?.[0]?.text
-    ?? "";
-
   try {
-    // Strip possible markdown fences
     const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
     const parsed: BoundingBoxResult[] = JSON.parse(jsonStr);
-
     if (Array.isArray(parsed)) {
       for (const item of parsed) {
         if (
@@ -135,9 +107,74 @@ async function extractBoundingBoxes(
   } catch (parseErr) {
     console.warn("Failed to parse bounding boxes JSON:", parseErr, "Raw:", rawText.slice(0, 500));
   }
-
   return result;
 }
+
+/** Call OpenAI Responses API with inline PDF and return parsed bounding boxes. Retries once on refusal. */
+async function extractBoundingBoxes(
+  openaiKey: string,
+  pdfBase64: string,
+  figures: Figure[],
+): Promise<Map<string, { x: number; y: number; width: number; height: number }>> {
+  for (const isRetry of [false, true]) {
+    const prompt = buildPrompt(figures, isRetry);
+    console.log(`[figure-extraction] Attempt ${isRetry ? 2 : 1}: sending request to OpenAI`);
+
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              {
+                type: "input_file",
+                file_data: `data:application/pdf;base64,${pdfBase64}`,
+                filename: "paper.pdf",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("OpenAI Responses API error:", response.status, errText);
+      if (!isRetry) continue;
+      return new Map();
+    }
+
+    const data = await response.json();
+    const rawText: string = data.output_text
+      ?? data.output?.[0]?.content?.[0]?.text
+      ?? "";
+
+    if (isRefusal(rawText)) {
+      console.warn(`[figure-extraction] Model refused (attempt ${isRetry ? 2 : 1}):`, rawText.slice(0, 200));
+      if (!isRetry) continue;
+      return new Map();
+    }
+
+    const result = parseBoundingBoxes(rawText);
+    if (result.size > 0 || isRetry) {
+      return result;
+    }
+    // Empty result on first try — retry
+    console.warn("[figure-extraction] Empty result on first attempt, retrying with stronger prompt");
+  }
+
+  return new Map();
+}
+
+/** Default full-page bounding box fallback. */
+const FULL_PAGE_FALLBACK = { x: 0.05, y: 0.05, width: 0.9, height: 0.9 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -222,12 +259,12 @@ Deno.serve(async (req) => {
       console.warn("OPENAI_API_KEY not set — skipping bounding box detection");
     }
 
-    // 5. Update figures with bounding boxes
+    // 5. Update figures with bounding boxes (fallback to full-page for missing ones)
     const updatedFigures = figures.map((fig) => {
       const bb = boundingBoxes.get(fig.id);
       return {
         ...fig,
-        bounding_box: bb ?? undefined,
+        bounding_box: bb ?? FULL_PAGE_FALLBACK,
       };
     });
 
@@ -249,6 +286,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         figures_extracted: boundingBoxes.size,
+        figures_with_fallback: figures.length - boundingBoxes.size,
         total_figures: figures.length,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
