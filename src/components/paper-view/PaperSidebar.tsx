@@ -187,15 +187,18 @@ const PaperSidebar = ({
       <div className="sticky top-14 space-y-4 p-5">
         {/* ── Mode toggle card (only for owner) ── */}
         {isOwner && (
-          <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-between">
-            <span className="text-xs font-sans text-muted-foreground">
-              {authorsMode ? 'Authors Mode' : 'Article Mode'}
+          <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-center gap-3">
+            <span className={cn('text-xs font-sans font-medium transition-colors', !authorsMode ? 'text-foreground' : 'text-muted-foreground')}>
+              Article Mode
             </span>
             <Switch
               checked={authorsMode}
               onCheckedChange={(v) => onAuthorsModeChange?.(v)}
               className="scale-90"
             />
+            <span className={cn('text-xs font-sans font-medium transition-colors', authorsMode ? 'text-foreground' : 'text-muted-foreground')}>
+              Authors Mode
+            </span>
           </div>
         )}
 
