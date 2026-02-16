@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Eye, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { downloadPaperPDF } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import type { Author } from '@/types/database';
@@ -14,6 +14,9 @@ interface PaperHeaderProps {
   doi: string | null;
   storagePath: string | null;
   isOpenAccess?: boolean;
+  isOwner?: boolean;
+  authorsMode?: boolean;
+  onAuthorsModeChange?: (v: boolean) => void;
 }
 
 const PaperHeader = ({
@@ -24,6 +27,9 @@ const PaperHeader = ({
   doi,
   storagePath,
   isOpenAccess = false,
+  isOwner = false,
+  authorsMode = false,
+  onAuthorsModeChange,
 }: PaperHeaderProps) => {
   const { toast } = useToast();
   const [showAllAuthors, setShowAllAuthors] = useState(false);
@@ -122,6 +128,21 @@ const PaperHeader = ({
           >
             <Download className="h-4 w-4" />
             {downloading ? 'Preparing…' : 'Download PDF'}
+          </Button>
+        )}
+
+        {isOwner && (
+          <Button
+            variant={authorsMode ? 'default' : 'outline'}
+            size="sm"
+            className={authorsMode
+              ? 'font-sans gap-1.5'
+              : 'font-sans gap-1.5 border-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue))]/10'
+            }
+            onClick={() => onAuthorsModeChange?.(!authorsMode)}
+          >
+            <Pencil className="h-4 w-4" />
+            Authors Mode
           </Button>
         )}
 

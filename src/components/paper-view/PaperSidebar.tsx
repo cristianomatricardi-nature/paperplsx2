@@ -185,22 +185,6 @@ const PaperSidebar = ({
   return (
     <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
       <div className="sticky top-14 space-y-4 p-5">
-        {/* ── Mode toggle card (only for owner) ── */}
-        {isOwner && (
-          <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-center gap-3">
-            <span className={cn('text-xs font-sans font-medium transition-colors', !authorsMode ? 'text-foreground' : 'text-muted-foreground')}>
-              Article Mode
-            </span>
-            <Switch
-              checked={authorsMode}
-              onCheckedChange={(v) => onAuthorsModeChange?.(v)}
-              className="scale-90"
-            />
-            <span className={cn('text-xs font-sans font-medium transition-colors', authorsMode ? 'text-foreground' : 'text-muted-foreground')}>
-              Authors Mode
-            </span>
-          </div>
-        )}
 
         {/* ── 1. Strategic Insights card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
