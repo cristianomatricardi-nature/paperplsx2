@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MODULE_REGISTRY } from '@/types/modules';
 import type { ModuleId, SubPersonaId } from '@/types/modules';
 import type { Figure } from '@/types/structured-paper';
+import type { AuthorEnrichments } from './AuthorEnrichmentPanel';
 import ModuleAccordion from './ModuleAccordion';
 
 interface ModuleAccordionListProps {
@@ -9,9 +10,20 @@ interface ModuleAccordionListProps {
   subPersonaId: SubPersonaId;
   moduleOrder: ModuleId[];
   figures?: Figure[];
+  authorsMode?: boolean;
+  authorEnrichments?: AuthorEnrichments;
+  onEnrichmentsUpdate?: (e: AuthorEnrichments) => void;
 }
 
-const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder, figures = [] }: ModuleAccordionListProps) => {
+const ModuleAccordionList = ({
+  paperId,
+  subPersonaId,
+  moduleOrder,
+  figures = [],
+  authorsMode = false,
+  authorEnrichments = {},
+  onEnrichmentsUpdate,
+}: ModuleAccordionListProps) => {
   const [openModuleId, setOpenModuleId] = useState<ModuleId | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, unknown>>({});
   const prevPersona = useRef(subPersonaId);
@@ -68,6 +80,9 @@ const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder, figures = [] 
                 cachedContent={contentCache[cacheKey] ?? null}
                 onContentLoaded={handleContentLoaded}
                 figures={figures}
+                authorsMode={authorsMode}
+                authorEnrichments={authorEnrichments}
+                onEnrichmentsUpdate={onEnrichmentsUpdate}
               />
             );
           })}

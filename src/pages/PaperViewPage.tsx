@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
+import { useAuth } from '@/hooks/useAuth';
 import { MODULE_ORDER_BY_PERSONA } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -15,16 +16,28 @@ import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
+import type { AuthorEnrichments } from '@/components/paper-view/AuthorEnrichmentPanel';
 
 const PaperViewPage = () => {
   const { paperId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const numericId = paperId ? Number(paperId) : null;
 
   // Core data
   const [paper, setPaper] = useState<Record<string, unknown> | null>(null);
   const [structured, setStructured] = useState<StructuredPaper | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Authors mode
+  const [authorsMode, setAuthorsMode] = useState(false);
+  const isOwner = !!(user && paper && paper.user_id === user.id);
+
+  // Author enrichments (kept in sync with DB)
+  const [authorEnrichments, setAuthorEnrichments] = useState<AuthorEnrichments>({});
+
+  // Author impact scores
+  const [authorScores, setAuthorScores] = useState<Record<string, number> | null>(null);
 
   // Persona
   const [subPersonaId, setSubPersonaId] = useState<SubPersonaId>('phd_postdoc');
@@ -54,16 +67,20 @@ const PaperViewPage = () => {
         supabase.from('structured_papers').select('*').eq('paper_id', numericId).single(),
       ]);
 
-      if (paperRes.data) setPaper(paperRes.data as Record<string, unknown>);
+      if (paperRes.data) {
+        setPaper(paperRes.data as Record<string, unknown>);
+        setAuthorScores((paperRes.data as any).author_impact_scores ?? null);
+      }
       if (structuredRes.data) {
         setStructured(structuredRes.data as unknown as StructuredPaper);
+        setAuthorEnrichments(((structuredRes.data as any).author_enrichments as AuthorEnrichments) ?? {});
       }
 
       setLoading(false);
     };
 
     load();
-  }, [numericId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [numericId]);
 
   // Persona change handler
   const handlePersonaChange = useCallback(
@@ -158,6 +175,9 @@ const PaperViewPage = () => {
                 subPersonaId={subPersonaId}
                 moduleOrder={moduleOrder}
                 figures={structured?.figures}
+                authorsMode={authorsMode}
+                authorEnrichments={authorEnrichments}
+                onEnrichmentsUpdate={setAuthorEnrichments}
               />
             )}
 
@@ -178,6 +198,11 @@ const PaperViewPage = () => {
             subPersonaId={subPersonaId}
             isExpanded={sidebarOpen}
             onToggle={() => setSidebarOpen((o) => !o)}
+            isOwner={isOwner}
+            authorsMode={authorsMode}
+            onAuthorsModeChange={setAuthorsMode}
+            authorScores={authorScores}
+            onAuthorScoresChange={setAuthorScores}
           />
         )}
       </div>

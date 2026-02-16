@@ -152,6 +152,7 @@ export type Database = {
       papers: {
         Row: {
           abstract: string | null
+          author_impact_scores: Json | null
           authors: Json | null
           created_at: string | null
           doi: string | null
@@ -171,6 +172,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          author_impact_scores?: Json | null
           authors?: Json | null
           created_at?: string | null
           doi?: string | null
@@ -190,6 +192,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          author_impact_scores?: Json | null
           authors?: Json | null
           created_at?: string | null
           doi?: string | null
@@ -256,6 +259,7 @@ export type Database = {
       structured_papers: {
         Row: {
           abstract: string | null
+          author_enrichments: Json
           call_to_actions: Json
           claims: Json
           created_at: string | null
@@ -273,6 +277,7 @@ export type Database = {
         }
         Insert: {
           abstract?: string | null
+          author_enrichments?: Json
           call_to_actions?: Json
           claims?: Json
           created_at?: string | null
@@ -290,6 +295,7 @@ export type Database = {
         }
         Update: {
           abstract?: string | null
+          author_enrichments?: Json
           call_to_actions?: Json
           claims?: Json
           created_at?: string | null

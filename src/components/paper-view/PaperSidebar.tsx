@@ -3,9 +3,12 @@ import { ChevronLeft, ChevronRight, MessageSquare, Users } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   Radar,
   RadarChart,
@@ -34,6 +37,11 @@ interface PaperSidebarProps {
   subPersonaId: SubPersonaId;
   isExpanded: boolean;
   onToggle: () => void;
+  isOwner?: boolean;
+  authorsMode?: boolean;
+  onAuthorsModeChange?: (v: boolean) => void;
+  authorScores?: Record<string, number> | null;
+  onAuthorScoresChange?: (scores: Record<string, number>) => void;
 }
 
 /* ---------- constants ---------- */
@@ -74,13 +82,24 @@ function useAnimatedPlaceholder(items: string[], interval = 3500) {
 
 /* ---------- component ---------- */
 
-const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: PaperSidebarProps) => {
+const PaperSidebar = ({
+  paperId,
+  paper,
+  subPersonaId,
+  isExpanded,
+  onToggle,
+  isOwner = false,
+  authorsMode = false,
+  onAuthorsModeChange,
+  authorScores = null,
+  onAuthorScoresChange,
+}: PaperSidebarProps) => {
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     insights: true,
     community: false,
     assessment: true,
   });
-  const [authorsMode, setAuthorsMode] = useState(false);
+  const [savingScores, setSavingScores] = useState(false);
 
   const insightPlaceholder = useAnimatedPlaceholder(INSIGHT_PLACEHOLDERS);
   const communityPlaceholder = useAnimatedPlaceholder(COMMUNITY_PLACEHOLDERS, 4000);
@@ -104,8 +123,29 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
   const radarData = DIMENSIONS.map((d) => ({
     axis: d.short,
     value: (rawScores?.[d.key] as number) ?? 0,
+    author: authorScores?.[d.key] ?? 0,
     fullMark: 10,
   }));
+
+  const handleAuthorScoreChange = useCallback((key: string, value: number) => {
+    const updated = { ...(authorScores ?? {}), [key]: value };
+    onAuthorScoresChange?.(updated);
+  }, [authorScores, onAuthorScoresChange]);
+
+  const saveAuthorScores = useCallback(async () => {
+    if (!authorScores) return;
+    setSavingScores(true);
+    const { error } = await supabase
+      .from('papers')
+      .update({ author_impact_scores: authorScores as any })
+      .eq('id', paperId);
+    setSavingScores(false);
+    if (error) {
+      toast.error('Failed to save scores');
+    } else {
+      toast.success('Author scores saved');
+    }
+  }, [authorScores, paperId]);
 
   /* ---------- collapsed state ---------- */
   if (!isExpanded) {
@@ -145,17 +185,19 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
   return (
     <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
       <div className="sticky top-14 space-y-4 p-5">
-        {/* ── Mode toggle card ── */}
-        <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-between">
-          <span className="text-xs font-sans text-muted-foreground">
-            {authorsMode ? 'Authors Mode' : 'Article Mode'}
-          </span>
-          <Switch
-            checked={authorsMode}
-            onCheckedChange={setAuthorsMode}
-            className="scale-90"
-          />
-        </div>
+        {/* ── Mode toggle card (only for owner) ── */}
+        {isOwner && (
+          <div className="rounded-xl border border-border bg-card shadow-md px-4 py-3 flex items-center justify-between">
+            <span className="text-xs font-sans text-muted-foreground">
+              {authorsMode ? 'Authors Mode' : 'Article Mode'}
+            </span>
+            <Switch
+              checked={authorsMode}
+              onCheckedChange={(v) => onAuthorsModeChange?.(v)}
+              className="scale-90"
+            />
+          </div>
+        )}
 
         {/* ── 1. Strategic Insights card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
@@ -234,14 +276,36 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
                         />
                         <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
                         <Radar
+                          name="AI Projected"
                           dataKey="value"
                           stroke="#3B82F6"
                           fill="#3B82F6"
                           fillOpacity={0.3}
                         />
+                        {authorsMode && authorScores && Object.keys(authorScores).length > 0 && (
+                          <Radar
+                            name="Author"
+                            dataKey="author"
+                            stroke="#22C55E"
+                            fill="#22C55E"
+                            fillOpacity={0.2}
+                          />
+                        )}
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
+
+                  {/* Legend when both polygons visible */}
+                  {authorsMode && authorScores && Object.keys(authorScores).length > 0 && (
+                    <div className="flex items-center justify-center gap-4 text-xs font-sans">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#3B82F6]" /> AI Projected
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" /> Author
+                      </span>
+                    </div>
+                  )}
 
                   {/* Scores breakdown */}
                   <h4 className="font-sans text-sm font-semibold text-foreground">
@@ -288,6 +352,44 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
                   <p className="text-[10px] font-sans text-muted-foreground italic leading-relaxed">
                     These scores are AI-projected estimates based on the paper's content
                   </p>
+
+                  {/* Author Self-Assessment section */}
+                  {authorsMode && (
+                    <div className="border-t border-border pt-4 space-y-3">
+                      <h4 className="font-sans text-sm font-semibold text-foreground">
+                        Author's Self-Assessment
+                      </h4>
+                      <div className="space-y-3">
+                        {DIMENSIONS.map((d) => {
+                          const val = authorScores?.[d.key] ?? 5;
+                          return (
+                            <div key={d.key} className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-sans text-muted-foreground">{d.label}</span>
+                                <span className="text-xs font-mono font-semibold text-[#22C55E]">{val}/10</span>
+                              </div>
+                              <Slider
+                                value={[val]}
+                                min={1}
+                                max={10}
+                                step={1}
+                                onValueChange={([v]) => handleAuthorScoreChange(d.key, v)}
+                                className="w-full"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full text-xs"
+                        onClick={saveAuthorScores}
+                        disabled={savingScores}
+                      >
+                        {savingScores ? 'Saving...' : 'Save Self-Assessment'}
+                      </Button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-xs font-sans text-muted-foreground italic">
