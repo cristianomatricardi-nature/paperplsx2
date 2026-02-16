@@ -34,6 +34,14 @@ export async function fetchModuleContent(paperId: number, moduleId: string, subP
   return data;
 }
 
+export async function explainMetric(paperId: number, query: string) {
+  const { data, error } = await supabase.functions.invoke('explain-metric', {
+    body: { paper_id: paperId, query },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function downloadPaperPDF(storagePath: string) {
   const { data, error } = await supabase.storage.from('research-papers').createSignedUrl(storagePath, 3600);
   if (error) throw error;
