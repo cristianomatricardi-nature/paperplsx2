@@ -1,96 +1,73 @@
 
 
-## Restore Tabs UI with Introduction Tab
+## Simulate Lab Inventory from Paper Context
 
-### What changes
+### What it does
 
-Each module's content panel will switch from stacked section cards to a **tabbed interface**. The first tab is always **"Introduction"** -- a short context bridge explaining what the paper is about and what this module focuses on. The remaining tabs contain the module-specific content (e.g., Overview, Impact Analysis, Claims, etc.).
+When entering the Replication Assistant for a paper and the user has no lab inventory, instead of just showing "Go to Digital Lab", we add a **"Simulate a Lab"** button. Clicking it calls a new edge function that:
 
-### How it works
+1. Reads the paper's metadata (field, subfield, title) and methods (tools, reagents, software) from `structured_papers`
+2. Sends this to OpenAI asking it to generate a realistic but **partially overlapping** lab inventory for that research field -- some items match the paper's needs, some don't, creating an interesting gap analysis scenario
+3. Inserts the generated items into `digital_lab_inventory` for the current user
+4. Refreshes the page to show the Replication Assistant comparison
+
+### User flow
 
 ```text
-+-- Module Accordion (expanded) -------------------------+
-|                                                         |
-|  [ Introduction ]  [ Overview ]  [ Impact Analysis ]    |
-|  ~~~~~~~~~~~~~~~                                        |
-|                                                         |
-|  This paper addresses X problem in the field of Y.     |
-|  This module focuses on the paper's core contribution   |
-|  and quantitative impact...                             |
-|                                                         |
-|  What you'll find in other modules:                     |
-|  - Claims module: detailed evidence assessment          |
-|  - Methods module: step-by-step protocols               |
-+---------------------------------------------------------+
+Replication Assistant (empty lab)
+  "Set Up Your Digital Lab"
+  [ Go to Digital Lab ]  [ Simulate a Lab ]
+                              |
+                         click ↓
+                    Loading spinner...
+                    "Generating lab for Molecular Biology..."
+                              |
+                         ↓ done
+                    Page reloads with 10-15 items
+                    Gap analysis now visible
 ```
-
-Clicking another tab (e.g., "Overview") shows the corresponding section card content, same renderers as today (OverviewBlock, MetricsGrid, ClaimCard carousel, etc.).
 
 ### Technical details
 
-**1. Update edge function prompts (`supabase/functions/generate-module-content/index.ts`)**
+**1. New edge function: `supabase/functions/simulate-lab/index.ts`**
 
-Add an `introduction` key to the `tabs` JSON structure in every module prompt (M1-M6). This field contains:
-- `context_bridge`: 2-3 sentences about what the paper is about and why it matters
-- `module_focus`: 1-2 sentences about what this specific module covers
-- `cross_references`: brief pointers to what other modules cover
+- Accepts `{ paper_id, user_id }` in the request body
+- Fetches `structured_papers.metadata` and `structured_papers.methods` for that paper
+- Extracts the field/subfield and all tools/reagents/software mentioned in the methods
+- Calls OpenAI (using existing `OPENAI_API_KEY` secret) with a prompt like:
 
-Move the Context Bridge content from being embedded in existing sections (e.g., `overview.context`) into this dedicated `introduction` object.
+> "You are a lab manager. Given a research paper in the field of {field}, generate a realistic lab inventory of 12-18 items. Include some items that match these paper requirements: {tools list}. Also include items typical for this field that are NOT in the paper. Return JSON array with: item_name, item_type (instrument/reagent/software/consumable), manufacturer, model_number, description."
 
-Example for M1:
-```json
-{
-  "tabs": {
-    "introduction": {
-      "context_bridge": "This paper addresses...",
-      "module_focus": "This module analyzes the paper's core contribution and quantitative impact.",
-      "cross_references": "For detailed evidence assessment, see the Claims module. For step-by-step methods, see the Methods module."
-    },
-    "overview": { ... },
-    "impact_analysis": { ... },
-    "prior_work_comparison": { ... }
-  }
-}
-```
+- Inserts all generated items into `digital_lab_inventory` with the user's ID
+- Returns the count of items created
 
-**2. Refactor `ModuleContentRenderer.tsx`**
+**2. Update `supabase/config.toml`**
 
-- Import `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` from `@/components/ui/tabs`
-- When `sections` (from `content.tabs`) exist:
-  - Extract the `introduction` key separately
-  - Build a tabbed UI with "Introduction" as the default active tab
-  - Each remaining section key becomes a tab trigger + tab content panel
-  - Tab content panels use the same `renderBlock()` function and card styling as today
-- Create a new `IntroductionTab` renderer that displays:
-  - Context bridge text as a lead paragraph
-  - Module focus as a secondary paragraph
-  - Cross-references as a subtle footer with muted text
+- Add `[functions.simulate-lab]` with `verify_jwt = false`
 
-**3. Update `SECTION_DESCRIPTIONS`**
+**3. Update `src/pages/ReplicationAssistantPage.tsx`**
 
-Add an entry for the introduction tab for each module (e.g., `'M1:introduction': 'What this paper is about and what this module covers.'`).
+- In the "empty lab" card, add a second button: "Simulate a Lab"
+- On click, call `supabase.functions.invoke('simulate-lab', { body: { paper_id, user_id } })`
+- Show a loading state with a message like "Generating lab inventory..."
+- On success, invalidate the `lab-inventory` query to refresh the page
+- On error, show a toast
 
-**4. Clear the content cache**
+**4. Update `src/lib/api.ts`** (optional)
 
-Delete all cached module content so every module regenerates with the new `introduction` field:
-```sql
-DELETE FROM generated_content_cache WHERE content_type = 'module'
-```
+- Add a `simulateLab(paperId, userId)` helper function
 
-**5. Deploy edge function**
-
-Re-deploy `generate-module-content` with the updated prompts.
-
-### Files modified
+### Files changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-module-content/index.ts` | Add `introduction` object to all 6 MODULE_PROMPTS JSON schemas |
-| `src/components/paper-view/ModuleContentRenderer.tsx` | Replace stacked cards with Radix Tabs UI; add IntroductionTab renderer |
-| Database | Clear `generated_content_cache` for modules |
+| `supabase/functions/simulate-lab/index.ts` | New edge function -- reads paper context, calls OpenAI, inserts lab items |
+| `supabase/config.toml` | Add `[functions.simulate-lab]` entry |
+| `src/pages/ReplicationAssistantPage.tsx` | Add "Simulate a Lab" button with loading state in the empty-lab card |
 
 ### What stays the same
-- All specialized renderers (ClaimCard, ProtocolStep, MetricsGrid, etc.)
-- The accordion wrapper (ModuleAccordion)
-- The persona selector and module ordering
-- The Tabs UI component (already installed via Radix)
+
+- Digital Lab page (manual CRUD still works)
+- Replication Assistant comparison logic
+- All existing hooks and components
+
