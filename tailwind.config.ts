@@ -55,6 +55,10 @@ export default {
           DEFAULT: "hsl(var(--nature-red))",
           foreground: "hsl(var(--nature-red-foreground))",
         },
+        "nature-teal": {
+          DEFAULT: "hsl(var(--nature-teal))",
+          foreground: "hsl(var(--nature-teal-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
