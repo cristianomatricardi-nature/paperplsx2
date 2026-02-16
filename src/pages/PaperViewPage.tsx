@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
+import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
@@ -147,19 +148,14 @@ const PaperViewPage = () => {
               </div>
             )}
 
-            {/* Module slots — placeholder for future prompts */}
-            <div className="space-y-4">
-              {moduleOrder.map((moduleId) => (
-                <div
-                  key={moduleId}
-                  className="rounded-md border border-border bg-card p-5"
-                >
-                  <p className="font-sans text-sm text-muted-foreground">
-                    Module {moduleId} content will appear here
-                  </p>
-                </div>
-              ))}
-            </div>
+            {/* Module accordion list */}
+            {numericId && (
+              <ModuleAccordionList
+                paperId={numericId}
+                subPersonaId={subPersonaId}
+                moduleOrder={moduleOrder}
+              />
+            )}
           </div>
 
           {/* Sidebar */}
