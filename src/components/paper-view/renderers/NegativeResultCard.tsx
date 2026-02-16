@@ -5,12 +5,14 @@ interface NegativeResultData {
   what_happened?: string;
   why_it_matters?: string;
   page_numbers?: number[];
+  page_refs?: number[];
 }
 
 export function NegativeResultCard({ result }: { result: NegativeResultData }) {
   const tested = result.hypothesis_tested ?? result.what_was_tested ?? '';
   const happened = result.description ?? result.what_happened ?? '';
   const matters = result.why_it_matters ?? '';
+  const pages = result.page_numbers ?? result.page_refs ?? [];
 
   return (
     <div className="rounded-md border border-border bg-card p-4 border-l-4 border-l-destructive/60 space-y-2">
@@ -32,9 +34,9 @@ export function NegativeResultCard({ result }: { result: NegativeResultData }) {
           <p className="text-sm text-foreground">{matters}</p>
         </div>
       )}
-      {result.page_numbers && result.page_numbers.length > 0 && (
+      {pages.length > 0 && (
         <div className="flex gap-1">
-          {result.page_numbers.map((p) => (
+          {pages.map((p) => (
             <span key={p} className="text-xs font-mono text-accent hover:underline cursor-pointer">
               (p.&nbsp;{p})
             </span>
