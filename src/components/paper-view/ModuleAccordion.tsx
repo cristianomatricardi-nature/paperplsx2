@@ -73,13 +73,9 @@ const ModuleAccordion = ({
         className="flex w-full items-center justify-between px-5 py-[18px] text-left transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-3">
-          <span className="text-lg">{moduleDefinition.icon}</span>
           <span className="font-sans text-sm font-semibold text-foreground">
             {moduleDefinition.title}
           </span>
-          <Badge className={cn('text-[10px] font-medium border-0', badgeBg)}>
-            {isCore ? 'Core' : 'Satellite'}
-          </Badge>
         </div>
         <ChevronDown
           className={cn(

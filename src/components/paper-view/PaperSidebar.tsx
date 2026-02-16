@@ -161,7 +161,6 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <Collapsible open={openSections.insights} onOpenChange={() => toggleSection('insights')}>
             <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <span>💡</span>
               <div className="text-left">
                 <span>Strategic Insights</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">AI-powered research assistant</p>
@@ -184,7 +183,6 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <Collapsible open={openSections.community} onOpenChange={() => toggleSection('community')}>
             <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <span>👥</span>
               <div className="text-left">
                 <span>Community Engagement</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Discussion & networking</p>
@@ -217,7 +215,6 @@ const PaperSidebar = ({ paperId, paper, subPersonaId, isExpanded, onToggle }: Pa
         <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <Collapsible open={openSections.assessment} onOpenChange={() => toggleSection('assessment')}>
             <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
-              <span>📊</span>
               <div className="text-left">
                 <span>Multidimensional Assessment</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Projected impact analysis</p>

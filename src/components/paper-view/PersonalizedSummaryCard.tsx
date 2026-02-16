@@ -81,8 +81,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
     <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm rounded-xl">
       {/* Header row */}
       <div className="flex items-center justify-between p-5 pb-3">
-        <h2 className="font-serif text-lg font-semibold text-foreground flex items-center gap-2">
-          <span className="text-xl">{persona?.id === 'phd_postdoc' ? '🎓' : persona?.id === 'pi_tenure' ? '🔬' : persona?.id === 'think_tank' ? '💡' : persona?.id === 'gov_institution' ? '🏛️' : persona?.id === 'funder_governmental' ? '🏦' : persona?.id === 'funder_private' ? '🤝' : '🏭'}</span>
+        <h2 className="font-serif text-lg font-semibold text-foreground">
           Key Insights for {persona?.shortLabel ?? 'You'}
         </h2>
         <PersonaSelector value={subPersonaId} onChange={onPersonaChange} />
