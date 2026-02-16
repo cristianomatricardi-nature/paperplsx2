@@ -55,10 +55,10 @@ const LandingPage = () => {
       <section className="bg-card">
         <div className="container py-20 md:py-28 lg:py-32">
           <div className="max-w-2xl">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight text-foreground mb-2">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight text-primary font-sans mb-1">
               Paper++
             </h1>
-            <p className="text-2xl sm:text-3xl font-sans font-light text-nature-teal mb-6">
+            <p className="text-2xl sm:text-3xl font-sans font-light text-primary mb-6">
               Interactive research publication
             </p>
             <p className="text-sm font-sans text-muted-foreground mb-6">
