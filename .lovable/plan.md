@@ -1,45 +1,52 @@
 
 
-## Fix: Google Sign-In Redirect Issue
+# Fix Field Name Mismatches — Impact Analysis & Implementation
 
-### Problem
-Google OAuth sign-in completes successfully (confirmed in backend logs), but the AuthPage does not redirect the user to `/researcher-home` after the session is established. The page just stays on `/auth`.
+## Summary
 
-### Root Cause
-The `AuthPage` component lacks a check for an already-authenticated user. After the Google OAuth flow completes and the session is set, `onAuthStateChange` fires in the `useAuth` hook, but nothing in `AuthPage` reacts to it by navigating away.
+The proposed changes are **completely safe**. They only modify internal rendering logic within 4 leaf components. No shared types, imports, component APIs, or other files are affected.
 
-### Solution
-Add an effect in `AuthPage.tsx` that watches the auth state and redirects to `/researcher-home` when a user session is detected.
+## Why It's Safe (Full Trace)
 
----
+The data flows like this:
 
-### Technical Details
-
-**File: `src/pages/AuthPage.tsx`**
-
-1. Import and use the `useAuth` hook
-2. Add a `useEffect` that checks if the user is authenticated and redirects to `/researcher-home`
-
-```typescript
-import { useAuth } from '@/hooks/useAuth';
-
-const AuthPage = () => {
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (!loading && user) {
-      navigate('/researcher-home', { replace: true });
-    }
-  }, [user, loading, navigate]);
-
-  // ... rest of component
-};
+```text
+Backend (edge function) returns JSONB with "page_refs"
+  -> stored in generated_content_cache.content (untyped JSONB)
+  -> fetched by ModuleAccordion as `unknown`
+  -> passed to ModuleContentRenderer as `unknown`
+  -> cast and forwarded to ClaimCard / ProtocolStep / etc. as untyped objects
+  -> each renderer reads fields from its own local interface
 ```
 
-This single change ensures that:
-- After Google OAuth returns and the session is set, the user is automatically sent to `/researcher-home`
-- If someone visits `/auth` while already logged in, they are redirected immediately
-- The email/password `handleSignIn` existing `navigate('/researcher-home')` continues working as before
+No shared TypeScript interface (like `Claim` in `structured-paper.ts`) is used by any renderer. Each renderer has its own private interface with optional fields. Adding `page_refs?: number[]` to a private interface has zero effect outside that file.
+
+## Changes (4 files only)
+
+### 1. ClaimCard.tsx
+- Add `page_refs?: number[]` to local interface
+- Alias: `const pages = claim.page_numbers ?? claim.page_refs ?? []`
+- Fix `statistics` to handle both `string` and `{name, value}` shapes
+
+### 2. ProtocolStep.tsx
+- Add `page_refs?: number[]` to local interface
+- Alias: `const pages = step.page_numbers ?? step.page_refs ?? []`
+
+### 3. NegativeResultCard.tsx
+- Add `page_refs?: number[]` to local interface
+- Alias: `const pages = result.page_numbers ?? result.page_refs ?? []`
+
+### 4. ActionCard.tsx
+- Add `page_refs?: number[]` to local interface
+- Alias: `const pages = action.page_numbers ?? action.page_refs ?? []`
+
+### Files NOT changed (verified safe)
+- ModuleContentRenderer.tsx — passes `unknown`, no field inspection
+- ModuleAccordion.tsx — passes opaque content, no field inspection
+- ModuleAccordionList.tsx — manages cache keys only
+- GenericFallback.tsx — recursive renderer, field-agnostic
+- PageReference.tsx — takes `{ page: number }`, leaf component
+- FigurePlaceholder.tsx — uses `Figure` type, unrelated
+- structured-paper.ts — types not imported by any renderer
+- supabase/types.ts — auto-generated, not touched
 
