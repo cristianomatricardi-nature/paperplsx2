@@ -14,13 +14,330 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chunks: {
+        Row: {
+          chunk_id: string
+          chunk_type: string | null
+          content: string
+          embedding: string | null
+          id: number
+          module_relevance: Json
+          page_numbers: number[]
+          paper_id: number
+          source_ids: string[]
+        }
+        Insert: {
+          chunk_id: string
+          chunk_type?: string | null
+          content: string
+          embedding?: string | null
+          id?: never
+          module_relevance?: Json
+          page_numbers?: number[]
+          paper_id: number
+          source_ids?: string[]
+        }
+        Update: {
+          chunk_id?: string
+          chunk_type?: string | null
+          content?: string
+          embedding?: string | null
+          id?: never
+          module_relevance?: Json
+          page_numbers?: number[]
+          paper_id?: number
+          source_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chunks_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      digital_lab_inventory: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          item_name: string
+          item_type: string
+          manufacturer: string | null
+          model_number: string | null
+          quantity: number | null
+          specifications: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: never
+          item_name: string
+          item_type: string
+          manufacturer?: string | null
+          model_number?: string | null
+          quantity?: number | null
+          specifications?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: never
+          item_name?: string
+          item_type?: string
+          manufacturer?: string | null
+          model_number?: string | null
+          quantity?: number | null
+          specifications?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_lab_inventory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_content_cache: {
+        Row: {
+          content: Json
+          content_type: string
+          created_at: string | null
+          id: number
+          module_id: string | null
+          paper_id: number
+          persona_id: string
+          source_chunks: string[] | null
+        }
+        Insert: {
+          content: Json
+          content_type: string
+          created_at?: string | null
+          id?: never
+          module_id?: string | null
+          paper_id: number
+          persona_id: string
+          source_chunks?: string[] | null
+        }
+        Update: {
+          content?: Json
+          content_type?: string
+          created_at?: string | null
+          id?: never
+          module_id?: string | null
+          paper_id?: number
+          persona_id?: string
+          source_chunks?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_content_cache_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      papers: {
+        Row: {
+          abstract: string | null
+          authors: Json | null
+          created_at: string | null
+          doi: string | null
+          error_message: string | null
+          file_size: number | null
+          id: number
+          journal: string | null
+          num_pages: number | null
+          publication_date: string | null
+          simulated_impact_scores: Json | null
+          source_type: string | null
+          status: string
+          storage_path: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: Json | null
+          created_at?: string | null
+          doi?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          id?: never
+          journal?: string | null
+          num_pages?: number | null
+          publication_date?: string | null
+          simulated_impact_scores?: Json | null
+          source_type?: string | null
+          status?: string
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          abstract?: string | null
+          authors?: Json | null
+          created_at?: string | null
+          doi?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          id?: never
+          journal?: string | null
+          num_pages?: number | null
+          publication_date?: string | null
+          simulated_impact_scores?: Json | null
+          source_type?: string | null
+          status?: string
+          storage_path?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "papers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          institution: string | null
+          orcid: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          institution?: string | null
+          orcid?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          institution?: string | null
+          orcid?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      structured_papers: {
+        Row: {
+          abstract: string | null
+          call_to_actions: Json
+          claims: Json
+          created_at: string | null
+          equations: Json
+          figures: Json
+          metadata: Json
+          methods: Json
+          negative_results: Json
+          paper_id: number
+          references_list: Json
+          schema_version: string | null
+          scicomm_hooks: Json
+          sections: Json
+          tables_data: Json
+        }
+        Insert: {
+          abstract?: string | null
+          call_to_actions?: Json
+          claims?: Json
+          created_at?: string | null
+          equations?: Json
+          figures?: Json
+          metadata?: Json
+          methods?: Json
+          negative_results?: Json
+          paper_id: number
+          references_list?: Json
+          schema_version?: string | null
+          scicomm_hooks?: Json
+          sections?: Json
+          tables_data?: Json
+        }
+        Update: {
+          abstract?: string | null
+          call_to_actions?: Json
+          claims?: Json
+          created_at?: string | null
+          equations?: Json
+          figures?: Json
+          metadata?: Json
+          methods?: Json
+          negative_results?: Json
+          paper_id?: number
+          references_list?: Json
+          schema_version?: string | null
+          scicomm_hooks?: Json
+          sections?: Json
+          tables_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "structured_papers_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: true
+            referencedRelation: "papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_chunks: {
+        Args: {
+          p_match_count?: number
+          p_match_threshold?: number
+          p_module_id?: string
+          p_paper_id: number
+          p_query_embedding: string
+        }
+        Returns: {
+          chunk_id: string
+          chunk_type: string
+          content: string
+          module_relevance: Json
+          page_numbers: number[]
+          similarity: number
+          source_ids: string[]
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
