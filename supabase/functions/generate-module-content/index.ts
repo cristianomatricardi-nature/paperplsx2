@@ -345,17 +345,32 @@ Deno.serve(async (req) => {
 
     // Fallback: retry without module filter if no chunks matched
     if (!chunks || chunks.length === 0) {
-      console.warn(`[generate-module-content] No module-filtered chunks for ${moduleId}, retrying without filter`);
+      console.warn(`[generate-module-content] No module-filtered chunks for ${moduleId}, retrying without filter at 0.2`);
       const fallback = await supabase.rpc("match_chunks", {
         p_paper_id: paperId,
         p_query_embedding: JSON.stringify(queryEmbedding),
-        p_match_threshold: 0.3,
+        p_match_threshold: 0.2,
         p_match_count: 12,
       });
       if (fallback.error) {
         throw new Error(`match_chunks fallback failed: ${fallback.error.message}`);
       }
       chunks = fallback.data;
+    }
+
+    // Second fallback: very low threshold
+    if (!chunks || chunks.length === 0) {
+      console.warn(`[generate-module-content] Still no chunks at 0.2, retrying at 0.05`);
+      const fallback2 = await supabase.rpc("match_chunks", {
+        p_paper_id: paperId,
+        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_match_threshold: 0.05,
+        p_match_count: 12,
+      });
+      if (fallback2.error) {
+        throw new Error(`match_chunks second fallback failed: ${fallback2.error.message}`);
+      }
+      chunks = fallback2.data;
     }
 
     if (!chunks || chunks.length === 0) {
