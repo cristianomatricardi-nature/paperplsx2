@@ -1,37 +1,49 @@
 
 
-## Move Authors Mode Toggle to Paper Header
+## Shareable Public Paper Link
 
-### What Changes
+### Goal
+Create a public, embeddable URL for any completed paper so authors/publishers can share or embed it on external webpages without requiring login.
 
-1. **Remove** the Authors Mode toggle card from `PaperSidebar.tsx` (lines 188-203).
+### Current State
+- `/paper/:paperId` is wrapped in `ProtectedRoute`, requiring authentication
+- The database RLS policies already allow SELECT on `papers`, `structured_papers`, `chunks`, and `generated_content_cache` for papers with `status = 'completed'` -- so no backend changes are needed
 
-2. **Add** an "Authors Mode" toggle button in `PaperHeader.tsx`, placed next to the "Download PDF" button in the actions row. It will be a simple button (not a switch) -- something like a `Button` with a `Pencil` icon labeled "Authors Mode" that toggles the mode on/off. When active, it gets a filled/highlighted style; when inactive, it looks like the outline Download PDF button.
+### What We'll Do
 
-3. **Pass new props** to `PaperHeader`:
-   - `isOwner: boolean` -- controls visibility of the button
-   - `authorsMode: boolean` -- controls active/inactive styling
-   - `onAuthorsModeChange: (v: boolean) => void` -- toggle callback
+**1. Add a new public route `/paper/:paperId/public`**
+- This route renders a new `PublicPaperViewPage` component -- a read-only, streamlined version of the paper view (no Authors Mode, no sidebar toggle, no "Back to researcher home")
+- Unauthenticated users can access it freely
+- Only shows content if the paper status is `completed`; otherwise shows a "Paper not available" message
 
-4. **Update `PaperViewPage.tsx`** to pass `isOwner`, `authorsMode`, and `onAuthorsModeChange` to `PaperHeader`.
+**2. Create `PublicPaperViewPage.tsx`**
+- Fetches the paper and structured data (same queries as `PaperViewPage`)
+- Renders `PaperHeader` (without owner controls), `PersonalizedSummaryCard`, `ModuleAccordionList`, and `FiguresSection` in a clean, embeddable layout
+- No navigation bar or sidebar -- just the paper content
+- Accepts an optional `?embed=true` query param that removes extra padding/chrome for iframe embedding
 
-### Visual Result
+**3. Add a "Copy Link" / "Share" button in `PaperHeader`**
+- Visible on completed papers
+- Copies the public URL (`/paper/:paperId/public`) to the clipboard
+- Shows a toast confirmation
 
-The actions row in the header will look like:
-
-```
-[Download PDF]  [Authors Mode]          12 viewing now
-```
-
-- "Authors Mode" button only visible to the paper owner
-- When active: filled primary style; when inactive: outline style matching Download PDF
-- Clicking toggles `authorsMode` on/off
+**4. Register the route in `App.tsx`**
+- Add `/paper/:paperId/public` as an unprotected route (no `ProtectedRoute` wrapper)
 
 ### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/paper-view/PaperHeader.tsx` | Add `isOwner`, `authorsMode`, `onAuthorsModeChange` props; render toggle button in actions row |
-| `src/components/paper-view/PaperSidebar.tsx` | Remove the mode toggle card (lines 188-203) |
-| `src/pages/PaperViewPage.tsx` | Pass `isOwner`, `authorsMode`, `setAuthorsMode` to `PaperHeader` |
+| `src/pages/PublicPaperViewPage.tsx` | New file -- read-only public paper view |
+| `src/App.tsx` | Add unprotected route `/paper/:paperId/public` |
+| `src/components/paper-view/PaperHeader.tsx` | Add share/copy-link button for completed papers |
+
+### Embedding Usage
+Publishers can embed the paper using a standard iframe:
+```html
+<iframe src="https://your-app.lovable.app/paper/42/public?embed=true" 
+        width="100%" height="800" frameborder="0"></iframe>
+```
+
+The `?embed=true` parameter will strip outer padding and navigation elements for a clean embedded appearance.
 
