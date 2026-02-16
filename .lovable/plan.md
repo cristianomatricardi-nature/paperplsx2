@@ -1,73 +1,47 @@
 
 
-## Simulate Lab Inventory from Paper Context
+## Fix Figures: Connect Bounding Box Rendering to Figure Cards
 
-### What it does
+### The problem
 
-When entering the Replication Assistant for a paper and the user has no lab inventory, instead of just showing "Go to Digital Lab", we add a **"Simulate a Lab"** button. Clicking it calls a new edge function that:
+Figures exist in the database with captions and metadata, but have no `image_url` and no `bounding_box` data. The `FigureCard` component only checks for `image_url` to display images. Meanwhile, a `FigureRenderer` component already exists that can crop figures from the PDF using bounding boxes -- but it's never used in `FigureCard`.
 
-1. Reads the paper's metadata (field, subfield, title) and methods (tools, reagents, software) from `structured_papers`
-2. Sends this to OpenAI asking it to generate a realistic but **partially overlapping** lab inventory for that research field -- some items match the paper's needs, some don't, creating an interesting gap analysis scenario
-3. Inserts the generated items into `digital_lab_inventory` for the current user
-4. Refreshes the page to show the Replication Assistant comparison
+### What we'll do
 
-### User flow
-
-```text
-Replication Assistant (empty lab)
-  "Set Up Your Digital Lab"
-  [ Go to Digital Lab ]  [ Simulate a Lab ]
-                              |
-                         click ↓
-                    Loading spinner...
-                    "Generating lab for Molecular Biology..."
-                              |
-                         ↓ done
-                    Page reloads with 10-15 items
-                    Gap analysis now visible
-```
+1. **Run figure extraction for paper 13** -- invoke the `run-figure-extraction` edge function to populate bounding boxes via OpenAI
+2. **Update `FigureCard` to use `FigureRenderer`** -- when `bounding_box` exists, render the figure from the PDF instead of showing a placeholder
+3. **Integrate figure extraction into the pipeline** -- add it as a step in `orchestrate-pipeline` so future papers get bounding boxes automatically
 
 ### Technical details
 
-**1. New edge function: `supabase/functions/simulate-lab/index.ts`**
+**1. Update `FigureCard.tsx`**
 
-- Accepts `{ paper_id, user_id }` in the request body
-- Fetches `structured_papers.metadata` and `structured_papers.methods` for that paper
-- Extracts the field/subfield and all tools/reagents/software mentioned in the methods
-- Calls OpenAI (using existing `OPENAI_API_KEY` secret) with a prompt like:
+- Accept a new `storagePath` prop (the paper's PDF storage path)
+- When `figure.image_url` is missing but `figure.bounding_box` exists, render `FigureRenderer` instead of the placeholder
+- Same logic in the expanded modal view
 
-> "You are a lab manager. Given a research paper in the field of {field}, generate a realistic lab inventory of 12-18 items. Include some items that match these paper requirements: {tools list}. Also include items typical for this field that are NOT in the paper. Return JSON array with: item_name, item_type (instrument/reagent/software/consumable), manufacturer, model_number, description."
+**2. Update `FiguresSection.tsx`**
 
-- Inserts all generated items into `digital_lab_inventory` with the user's ID
-- Returns the count of items created
+- Accept and pass down `storagePath` to each `FigureCard`
 
-**2. Update `supabase/config.toml`**
+**3. Update `PaperViewPage.tsx`**
 
-- Add `[functions.simulate-lab]` with `verify_jwt = false`
+- Pass `storagePath` to `FiguresSection`
 
-**3. Update `src/pages/ReplicationAssistantPage.tsx`**
+**4. Add figure extraction to `orchestrate-pipeline`**
 
-- In the "empty lab" card, add a second button: "Simulate a Lab"
-- On click, call `supabase.functions.invoke('simulate-lab', { body: { paper_id, user_id } })`
-- Show a loading state with a message like "Generating lab inventory..."
-- On success, invalidate the `lab-inventory` query to refresh the page
-- On error, show a toast
+- After the structuring step completes, call `run-figure-extraction` so bounding boxes are populated automatically for all new papers
 
-**4. Update `src/lib/api.ts`** (optional)
+**5. Trigger extraction for paper 13**
 
-- Add a `simulateLab(paperId, userId)` helper function
+- Manually invoke `run-figure-extraction` with `{ paper_id: 13 }` to populate the bounding boxes now
 
 ### Files changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/simulate-lab/index.ts` | New edge function -- reads paper context, calls OpenAI, inserts lab items |
-| `supabase/config.toml` | Add `[functions.simulate-lab]` entry |
-| `src/pages/ReplicationAssistantPage.tsx` | Add "Simulate a Lab" button with loading state in the empty-lab card |
-
-### What stays the same
-
-- Digital Lab page (manual CRUD still works)
-- Replication Assistant comparison logic
-- All existing hooks and components
+| `src/components/paper-view/FigureCard.tsx` | Add `storagePath` prop, use `FigureRenderer` when bounding box exists |
+| `src/components/paper-view/FiguresSection.tsx` | Accept and pass `storagePath` prop |
+| `src/pages/PaperViewPage.tsx` | Pass `storagePath` to `FiguresSection` |
+| `supabase/functions/orchestrate-pipeline/index.ts` | Add `run-figure-extraction` call after structuring |
 
