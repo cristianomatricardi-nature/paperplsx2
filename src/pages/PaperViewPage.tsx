@@ -130,6 +130,7 @@ const PaperViewPage = () => {
       <div className={cn('grid min-h-[calc(100vh-3.5rem)]', sidebarOpen ? 'grid-cols-12' : 'flex')}>
         {/* Main content area */}
         <div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
+          <div className="max-w-3xl mx-auto">
           <PaperHeader
             title={title}
             authors={authors}
@@ -166,6 +167,7 @@ const PaperViewPage = () => {
                 <FiguresSection figures={structured.figures} />
               </div>
             )}
+          </div>
         </div>
 
         {/* Sidebar */}
