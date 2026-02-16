@@ -2,21 +2,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
-import { fetchSummary } from '@/lib/api';
 import { MODULE_ORDER_BY_PERSONA } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import PaperHeader from '@/components/paper-view/PaperHeader';
-import PersonaSelector from '@/components/paper-view/PersonaSelector';
+import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
-
-interface SummaryData {
-  summary: string;
-  [key: string]: unknown;
-}
 
 const PaperViewPage = () => {
   const { paperId } = useParams();
@@ -26,7 +20,6 @@ const PaperViewPage = () => {
   // Core data
   const [paper, setPaper] = useState<Record<string, unknown> | null>(null);
   const [structured, setStructured] = useState<StructuredPaper | null>(null);
-  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Persona
@@ -62,14 +55,6 @@ const PaperViewPage = () => {
         setStructured(structuredRes.data as unknown as StructuredPaper);
       }
 
-      // Fetch initial summary
-      try {
-        const summaryData = await fetchSummary(numericId, subPersonaId);
-        setSummary(summaryData as SummaryData);
-      } catch {
-        // Summary may not exist yet
-      }
-
       setLoading(false);
     };
 
@@ -78,20 +63,11 @@ const PaperViewPage = () => {
 
   // Persona change handler
   const handlePersonaChange = useCallback(
-    async (newPersona: SubPersonaId) => {
+    (newPersona: SubPersonaId) => {
       setSubPersonaId(newPersona);
       setModuleOrder(MODULE_ORDER_BY_PERSONA[newPersona]);
-      setSummary(null);
-
-      if (!numericId) return;
-      try {
-        const data = await fetchSummary(numericId, newPersona);
-        setSummary(data as SummaryData);
-      } catch {
-        // will be generated
-      }
     },
-    [numericId],
+    [],
   );
 
   // Derive fields from paper
@@ -136,17 +112,14 @@ const PaperViewPage = () => {
           Back
         </Button>
 
-        <div className="flex items-center gap-3">
-          <PersonaSelector value={subPersonaId} onChange={handlePersonaChange} />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hidden lg:flex"
-            onClick={() => setSidebarOpen((o) => !o)}
-          >
-            {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hidden lg:flex"
+          onClick={() => setSidebarOpen((o) => !o)}
+        >
+          {sidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+        </Button>
       </div>
 
       {/* Main grid */}
@@ -164,22 +137,15 @@ const PaperViewPage = () => {
           {/* Main content area */}
           <div className={sidebarOpen ? 'col-span-12 lg:col-span-8' : 'col-span-12'}>
             {/* Summary card */}
-            <div className="rounded-md border border-border bg-card p-5 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-serif text-lg font-semibold text-foreground">Personalized Summary</h2>
+            {numericId && (
+              <div className="mb-6">
+                <PersonalizedSummaryCard
+                  paperId={numericId}
+                  subPersonaId={subPersonaId}
+                  onPersonaChange={handlePersonaChange}
+                />
               </div>
-              {summary ? (
-                <p className="font-sans text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
-                  {summary.summary}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-4/6" />
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Module slots — placeholder for future prompts */}
             <div className="space-y-4">
