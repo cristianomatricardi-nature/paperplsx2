@@ -1,37 +1,45 @@
 
 
-## Switch `generate-simulated-impact` to OpenAI GPT-4o-mini
+## Fix: Google Sign-In Redirect Issue
 
-Since you already have an `OPENAI_API_KEY` secret configured, the function should use OpenAI directly as originally specified in Prompt 12.
+### Problem
+Google OAuth sign-in completes successfully (confirmed in backend logs), but the AuthPage does not redirect the user to `/researcher-home` after the session is established. The page just stays on `/auth`.
 
-### What Changes
+### Root Cause
+The `AuthPage` component lacks a check for an already-authenticated user. After the Google OAuth flow completes and the session is set, `onAuthStateChange` fires in the `useAuth` hook, but nothing in `AuthPage` reacts to it by navigating away.
 
-**File: `supabase/functions/generate-simulated-impact/index.ts`**
+### Solution
+Add an effect in `AuthPage.tsx` that watches the auth state and redirects to `/researcher-home` when a user session is detected.
 
-1. Replace the Lovable AI Gateway call with a direct OpenAI Chat Completions call:
-   - Endpoint: `https://api.openai.com/v1/chat/completions`
-   - Model: `gpt-4o-mini`
-   - Auth: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`
-2. Remove the `LOVABLE_API_KEY` reference
-3. Keep everything else identical (prompt, parsing, error handling, DB save)
+---
 
-### Technical Detail
+### Technical Details
 
-```text
-OLD:
-  URL:    https://ai.gateway.lovable.dev/v1/chat/completions
-  Key:    LOVABLE_API_KEY
-  Model:  google/gemini-3-flash-preview
+**File: `src/pages/AuthPage.tsx`**
 
-NEW:
-  URL:    https://api.openai.com/v1/chat/completions
-  Key:    OPENAI_API_KEY
-  Model:  gpt-4o-mini
+1. Import and use the `useAuth` hook
+2. Add a `useEffect` that checks if the user is authenticated and redirects to `/researcher-home`
+
+```typescript
+import { useAuth } from '@/hooks/useAuth';
+
+const AuthPage = () => {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/researcher-home', { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // ... rest of component
+};
 ```
 
-The request/response format stays the same since both use the OpenAI Chat Completions schema. Only the URL, key, and model name change.
-
-### Standing Rule for Future Functions
-
-Going forward, all AI-powered edge functions will use OpenAI models via the `OPENAI_API_KEY` secret (already configured) rather than the Lovable AI Gateway, unless you say otherwise.
+This single change ensures that:
+- After Google OAuth returns and the session is set, the user is automatically sent to `/researcher-home`
+- If someone visits `/auth` while already logged in, they are redirected immediately
+- The email/password `handleSignIn` existing `navigate('/researcher-home')` continues working as before
 
