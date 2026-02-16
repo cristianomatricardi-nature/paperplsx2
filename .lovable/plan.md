@@ -1,94 +1,94 @@
 
 
-## Fix Shallow Quantitative Analysis for PhD/Post-doc Persona
+## Better Metrics Visualization for M1 Impact Analysis
 
-### Root Cause
+### The Problem
 
-The problem is **not** in the persona instructions — it's in two places working together:
+The M1 "Impact Analysis" tab renders metrics as tall, full-width stacked cards -- each metric shows VALUE, METRIC, PAGE_REF, COMPARISON as vertical key-value pairs inside bordered containers. This wastes space and makes it hard to scan/compare values at a glance.
 
-1. **MODULE_PROMPTS JSON schemas** provide minimalist examples that the LLM mimics. For example, M2 shows `"statistics": [{ "name": "p-value", "value": "0.001" }]` — just one stat. The LLM takes this as "give one or two stats" rather than exhaustively extracting every number.
+This happens because the tab data is structured as `{ metrics: [...], quantitative_highlights: "..." }` (an object, not a direct array), so the `MetricsTable` detection in `renderBlock` never triggers -- it falls through to `GenericFallback` which does recursive key-value rendering.
 
-2. **The prompt composer** includes the persona's `statisticsDisplay` instruction as a single line in the READER PROFILE header, but never enforces it with a strong directive tied to `numberPolicy`. The LLM treats it as a suggestion, not a mandate.
+### The Solution
 
-The frontend renderers (ClaimCard, MetricsTable) already handle rich data — they auto-render any number of statistics badges and dynamically detect table columns. No frontend changes needed.
+Two changes:
 
-### Changes
+1. **New `MetricsGrid` component** -- Replace the plain table with a compact, interactive grid of metric cards arranged in a 2-column layout. Each card shows:
+   - Metric name (top, small label)
+   - Value (large, prominent)
+   - Comparison context (subtle text below)
+   - Page reference badge
+   - Hover tooltip with full details
+   - Click to highlight/expand
 
-#### 1. Enrich MODULE_PROMPTS schemas (`generate-module-content/index.ts`)
+2. **Fix `renderBlock` in `ModuleContentRenderer`** -- Add logic to detect when M1 tab data is an object with a `metrics` array inside it, and render it using the new `MetricsGrid` plus a narrative block for `quantitative_highlights`.
 
-**M1 (Contribution and Impact)**: Expand the `metrics` array example to show multiple rows with richer fields, and add a `quantitative_highlights` section:
-
-```text
-"metrics": [
-  { "metric": "name", "value": "number/range", "comparison": "vs prior work", "page_ref": 5 },
-  { "metric": "second metric", "value": "number", "comparison": "context", "page_ref": 7 }
-],
-"quantitative_highlights": "Narrative paragraph summarizing ALL key numbers from the paper: sample sizes, effect sizes, performance gains, etc."
-```
-
-**M2 (Claims and Evidence)**: Expand the `statistics` array example and add explicit instruction to extract ALL statistics per claim:
+### Visual Layout
 
 ```text
-"statistics": [
-  { "name": "p-value", "value": "<0.001" },
-  { "name": "effect size (Cohen's d)", "value": "0.82" },
-  { "name": "95% CI", "value": "[0.45, 1.19]" },
-  { "name": "sample size", "value": "n=342" },
-  { "name": "power", "value": "0.95" }
-],
++------------------+  +------------------+
+| Phase noise red. |  | Effect size      |
+|   -10 dBc/Hz     |  |   d=1.25         |
+| vs previous      |  | over benchmarks  |
+| p. 5             |  | p. 6             |
++------------------+  +------------------+
++------------------+  +------------------+
+| Performance gain |  | Sample size      |
+|   15%            |  |   n=30           |
+| vs SOTA          |  | devices tested   |
+| p. 8             |  | p. 3             |
++------------------+  +------------------+
+
+Quantitative Highlights:
+The study reports a phase noise reduction of -10 dBc/Hz...
 ```
 
-Add to the M2 prompt instruction: "Extract EVERY quantitative result reported for each claim — p-values, confidence intervals, effect sizes, sample sizes, power, R-squared, AUC, accuracy, F1, or any other reported metric. Do not summarize numbers into text — list each one explicitly in the statistics array."
+### Interactivity
 
-**M3 (Methods)**: Add a `quantitative_parameters` field to protocol steps for numerical specs (concentrations, temperatures, durations, RPMs, etc.).
+- **Hover**: Each metric card shows a subtle highlight and the comparison context expands
+- **Click**: Expands the card to show full details with a smooth animation
+- **Sort toggle**: A small button to sort metrics by value or by page reference
+- **Color coding**: Values are tinted based on whether the comparison is positive/negative (green for improvements, neutral for descriptive)
 
-#### 2. Add quantitative enforcement to the composer (`prompt-composers.ts`)
+### Technical Details
 
-Add a new conditional section in `composeModulePrompt` based on `numberPolicy`:
+#### File 1: `src/components/paper-view/renderers/MetricsGrid.tsx` (new)
 
-- When `numberPolicy` is `"all_raw"` or `"explained_raw"`: inject a **QUANTITATIVE DEPTH MANDATE** section:
+A new component that receives `MetricRow[]` and renders them as a responsive 2-column grid of compact cards. Each card uses:
+- `Card` from ui/card for consistent styling
+- Tooltip for comparison details on hover
+- Collapsible for click-to-expand behavior
+- Color logic: parse comparison text for positive signals ("improvement", "reduction", "gain", numbers with + or -)
 
-```text
-QUANTITATIVE DEPTH MANDATE:
-Extract and present EVERY quantitative result from the paper context. This includes but is not limited to: p-values, confidence intervals, effect sizes, sample sizes, means, standard deviations, R-squared, AUC, F1 scores, accuracy percentages, fold changes, hazard ratios, odds ratios, correlation coefficients, and any numerical comparisons. Present each as a separate entry in the statistics/metrics arrays — never collapse multiple numbers into prose. If the paper reports a number, it MUST appear in your output. When comparison data exists, include it in tabular format.
+Props: `{ rows: MetricRow[], quantitativeHighlights?: string }`
+
+#### File 2: `src/components/paper-view/ModuleContentRenderer.tsx`
+
+Update `renderBlock` to detect M1 tab data that is an object containing a `metrics` array:
+
+```typescript
+// M1 impact analysis object with metrics array inside
+if (moduleId === 'M1' && typeof data === 'object' && !Array.isArray(data) && data !== null) {
+  const obj = data as Record<string, unknown>;
+  if ('metrics' in obj && Array.isArray(obj.metrics)) {
+    return (
+      <MetricsGrid
+        rows={obj.metrics}
+        quantitativeHighlights={typeof obj.quantitative_highlights === 'string' ? obj.quantitative_highlights : undefined}
+      />
+    );
+  }
+}
 ```
 
-- When `numberPolicy` is `"inferred_only"` or `"decision_ready"`: inject a different directive that says to translate or omit raw statistics.
+This check is added **before** the existing array checks so it catches the nested structure. The existing `MetricsTable` path for direct arrays still works as a fallback.
 
-#### 3. Strengthen phd_postdoc persona instructions (`sub-personas.ts`)
+#### File 3: `src/components/paper-view/renderers/MetricsTable.tsx` (keep as-is)
 
-Update `phd_postdoc` metadata:
-- Change `depthPreference` from `"balanced"` to `"exhaustive"` — they need every detail
-- Update `statisticsDisplay` to be more demanding: "Present ALL reported statistics: p-values, confidence intervals, effect sizes, sample sizes, and any performance metrics. Include detailed comparison tables. Explain what each number means in context. Never omit a number — if the paper reports it, include it."
-- Strengthen `moduleInstructions.M2` to explicitly demand exhaustive statistics extraction and comparison tables
+No changes -- this remains as a fallback for direct metric arrays that may come from other contexts.
 
-#### 4. Update the `phd_postdoc` module instructions
-
-Revise the M1 and M2 instructions to be more explicit about quantitative demands:
-
-**M1**: Add "Include a comprehensive metrics table comparing this paper's quantitative results against prior work. Every number matters — sample sizes, effect magnitudes, statistical thresholds."
-
-**M2**: Add "For each claim, extract EVERY reported statistic into the statistics array as individual entries. Build detailed comparison tables where the paper compares against baselines or prior methods. Present effect sizes, confidence intervals, p-values, sample sizes, and any performance benchmarks as separate labeled entries. A claim card with fewer than 3 statistics entries is likely missing data."
-
-### Files Changed
+### Files Summary
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-module-content/index.ts` | Enrich MODULE_PROMPTS M1, M2, M3 JSON schemas with richer quantitative examples |
-| `supabase/functions/_shared/prompt-composers.ts` | Add QUANTITATIVE DEPTH MANDATE section conditional on numberPolicy |
-| `supabase/functions/_shared/sub-personas.ts` | Update phd_postdoc: depthPreference to exhaustive, stronger statisticsDisplay, stronger M1/M2 moduleInstructions |
-
-### What This Achieves
-
-- The **schema examples** now show the LLM what "rich quantitative output" looks like (5+ stats per claim, multi-row metrics tables)
-- The **numberPolicy-based mandate** forces exhaustive extraction for researcher personas while keeping other personas appropriately concise
-- The **persona instructions** reinforce this at the module level with specific demands ("fewer than 3 statistics = missing data")
-- No frontend changes needed — ClaimCard and MetricsTable already render any amount of data
-
-### Cache Cleanup
-
-After deploying, clear stale cached content:
-
-```sql
-DELETE FROM generated_content_cache WHERE content_type IN ('module', 'summary');
-```
+| `src/components/paper-view/renderers/MetricsGrid.tsx` | New interactive 2-column metric cards component |
+| `src/components/paper-view/ModuleContentRenderer.tsx` | Add M1 object-with-metrics detection before fallback |
