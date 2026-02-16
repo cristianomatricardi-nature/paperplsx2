@@ -49,10 +49,11 @@ const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder, figures = [] 
     if (modules.length === 0) return null;
     return (
       <div className="space-y-3">
-        <h3 className={`font-serif text-sm font-semibold text-foreground border-l-4 pl-3 ${borderClass}`}>
+      <h3 className="font-serif text-sm font-semibold text-foreground flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full ${borderClass === 'border-l-[#3B82F6]' ? 'bg-[#3B82F6]' : 'bg-[#F59E0B]'}`} />
           {title}
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {modules.map((mod) => {
             const cacheKey = `${mod.id}_${subPersonaId}`;
             return (

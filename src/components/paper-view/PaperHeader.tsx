@@ -55,7 +55,7 @@ const PaperHeader = ({
     : null;
 
   return (
-    <header className="border-b border-border pb-6 mb-6">
+    <header className="border-b border-border pb-8 mb-8">
       {/* Title */}
       <h1 className="font-serif text-2xl md:text-3xl lg:text-4xl font-bold text-foreground leading-tight mb-3">
         {title ?? 'Untitled Paper'}

@@ -66,11 +66,11 @@ const ModuleAccordion = ({
     moduleId === 'M3' && RESEARCHER_PERSONAS.includes(subPersonaId);
 
   return (
-    <div className={cn('rounded-md border border-border bg-card overflow-hidden border-l-4', borderColor)}>
+    <div className={cn('rounded-xl border border-border bg-card overflow-hidden border-l-4 shadow-sm', borderColor)}>
       {/* Header / trigger */}
       <button
         onClick={handleToggle}
-        className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-muted/40"
+        className="flex w-full items-center justify-between px-5 py-[18px] text-left transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-3">
           <span className="text-lg">{moduleDefinition.icon}</span>
