@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClaimCard } from './renderers/ClaimCard';
 import { ProtocolStep } from './renderers/ProtocolStep';
 import { MetricsTable } from './renderers/MetricsTable';
+import { MetricsGrid } from './renderers/MetricsGrid';
 import { NegativeResultCard } from './renderers/NegativeResultCard';
 import { ActionCard } from './renderers/ActionCard';
 import { FigurePlaceholder } from './renderers/FigurePlaceholder';
@@ -41,6 +42,19 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[]): Reac
   // String with figure tokens
   if (typeof data === 'string' && /\[FIGURE:/i.test(data)) {
     return <div className="space-y-2">{replaceFigureTokens(data, figures)}</div>;
+  }
+
+  // M1 impact analysis object with metrics array inside
+  if (moduleId === 'M1' && typeof data === 'object' && !Array.isArray(data) && data !== null) {
+    const obj = data as Record<string, unknown>;
+    if ('metrics' in obj && Array.isArray(obj.metrics)) {
+      return (
+        <MetricsGrid
+          rows={obj.metrics}
+          quantitativeHighlights={typeof obj.quantitative_highlights === 'string' ? obj.quantitative_highlights : undefined}
+        />
+      );
+    }
   }
 
   // Array rendering with module-specific cards
