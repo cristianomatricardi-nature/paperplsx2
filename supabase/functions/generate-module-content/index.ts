@@ -1,0 +1,442 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUB_PERSONA_REGISTRY } from "../_shared/sub-personas.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// Module-specific embedding queries
+const MODULE_QUERIES: Record<string, string> = {
+  M1: "main contribution, novelty, impact, significance of this research",
+  M2: "claims, evidence, findings, statistical results, data analysis",
+  M3: "methods, protocols, procedures, tools, reagents, experimental setup",
+  M4: "negative results, failed experiments, limitations, null findings",
+  M5: "future directions, recommendations, next steps, call to action",
+  M6: "plain language summary, public impact, real world applications, analogies",
+};
+
+// Module-specific prompt instructions
+const MODULE_PROMPTS: Record<string, string> = {
+  M1: `Generate the Contribution & Impact module. This module should give the reader a COMPLETE understanding of what this paper contributes to the field, without needing to read any other module.
+
+Include:
+- A brief contextual introduction (2-3 sentences setting the scene)
+- The core contribution statement (what is genuinely new)
+- Impact assessment: how this changes the field
+- Comparison with prior work (what existed before vs. what this adds)
+- Quantitative impact metrics where available
+- References to relevant figures: use [FIGURE: fig_X] placeholders
+- Page citations for every factual claim: (p. X)
+
+Return JSON with this structure:
+{
+  "tabs": {
+    "overview": {
+      "context": "brief field context",
+      "core_contribution": "the main novel contribution",
+      "novelty_statement": "what makes this different from prior work"
+    },
+    "impact_analysis": {
+      "field_impact": "how this changes the field",
+      "broader_impact": "societal/practical implications",
+      "metrics": [{ "metric": "name", "value": "number", "comparison": "vs prior work" }]
+    },
+    "prior_work_comparison": {
+      "before": "what existed before this paper",
+      "after": "what this paper enables",
+      "key_differences": ["difference 1", "difference 2"]
+    }
+  }
+}`,
+
+  M2: `Generate the Claim & Evidence module. This module should present EVERY claim made in the paper with its supporting evidence, allowing the reader to assess the paper's findings in minutes.
+
+Include:
+- Each claim as a separate card with:
+  * The claim statement
+  * Evidence strength badge (strong/moderate/preliminary/speculative)
+  * Supporting statistics and data
+  * Related figures: [FIGURE: fig_X]
+  * Related methods: link to M3
+  * Page reference: (p. X)
+- Cross-references between claims (which claims support or depend on each other)
+
+Return JSON:
+{
+  "tabs": {
+    "claims": [
+      {
+        "id": "claim_1",
+        "statement": "the claim",
+        "strength": "strong",
+        "evidence": "supporting evidence with statistics",
+        "statistics": [{ "name": "p-value", "value": "0.001" }],
+        "figure_refs": ["fig_1"],
+        "method_refs": ["method_1"],
+        "page_refs": [5, 6],
+        "depends_on": ["claim_2"]
+      }
+    ],
+    "evidence_summary": {
+      "total_claims": 5,
+      "strong": 2,
+      "moderate": 2,
+      "preliminary": 1,
+      "overall_assessment": "narrative assessment of evidence quality"
+    }
+  }
+}`,
+
+  M3: `Generate the Method & Protocol module. This module should provide actionable, step-by-step protocols that a researcher could use to REPLICATE the work.
+
+Include:
+- Each method step as a numbered card with:
+  * Step title and detailed description
+  * Required tools (as badge chips)
+  * Required reagents with concentrations (as badge chips)
+  * Required software with versions (as badge chips)
+  * Environmental conditions
+  * Duration estimate
+  * Critical notes and warnings
+  * Page reference: (p. X)
+- A reproducibility assessment score (1-10)
+- A list of potential pitfalls
+
+Return JSON:
+{
+  "tabs": {
+    "protocol_steps": [
+      {
+        "id": "method_1",
+        "step_number": 1,
+        "title": "step title",
+        "description": "detailed description",
+        "tools": ["tool 1"],
+        "reagents": ["reagent 1 (concentration)"],
+        "software": ["software v1.0"],
+        "conditions": ["37°C", "5% CO2"],
+        "duration": "2 hours",
+        "critical_notes": ["warning 1"],
+        "page_refs": [3]
+      }
+    ],
+    "analysis_methods": [
+      {
+        "name": "statistical method",
+        "description": "how it was applied",
+        "software": "tool used",
+        "parameters": { "key": "value" }
+      }
+    ],
+    "reproducibility": {
+      "score": 7,
+      "strengths": ["detailed reagent list"],
+      "gaps": ["missing centrifuge speed"],
+      "pitfalls": ["temperature sensitivity noted on p. 4"]
+    }
+  }
+}`,
+
+  M4: `Generate the Exploratory & Negative Results module. This module surfaces what DIDN'T work or what remains uncertain — information that is typically buried or omitted in standard papers.
+
+Include:
+- Each negative/null result as a card
+- Exploratory findings that need further investigation
+- Limitations acknowledged by the authors
+- Potential dead ends for future researchers to avoid
+
+Return JSON:
+{
+  "tabs": {
+    "negative_results": [
+      {
+        "id": "neg_1",
+        "description": "what was found",
+        "hypothesis_tested": "what was expected",
+        "why_it_matters": "why this is informative",
+        "page_refs": [7]
+      }
+    ],
+    "limitations": ["limitation 1 (p. X)"],
+    "exploratory_findings": ["finding that needs more investigation (p. X)"],
+    "dead_ends_to_avoid": ["approach that did not work and why"]
+  }
+}`,
+
+  M5: `Generate the Call-to-Actions module. This module extracts and organizes every actionable recommendation from the paper, categorized by target audience.
+
+Include:
+- Concrete next steps for researchers
+- Policy recommendations (if any)
+- Industry/commercial opportunities (if any)
+- Funding priorities suggested
+- Collaboration opportunities
+
+Return JSON:
+{
+  "tabs": {
+    "research_actions": [
+      {
+        "action": "specific recommended next step",
+        "urgency": "high|medium|low",
+        "rationale": "why this matters",
+        "page_refs": [8]
+      }
+    ],
+    "policy_actions": [],
+    "industry_actions": [],
+    "funding_priorities": [],
+    "collaboration_opportunities": []
+  }
+}`,
+
+  M6: `Generate the SciComms module. This module provides science communication assets that make the research accessible to non-specialist audiences.
+
+Include:
+- A plain-language summary (max 150 words, no jargon)
+- 2-3 analogies that explain the core concept
+- A 'real-world impact' statement
+- A 'surprising finding' hook
+- A suggested social media post (280 chars)
+- Key talking points for presentations
+- A suggested infographic outline
+
+Return JSON:
+{
+  "tabs": {
+    "plain_language_summary": "accessible summary",
+    "analogies": [
+      { "concept": "what it explains", "analogy": "the analogy", "audience": "target" }
+    ],
+    "real_world_impact": "statement about practical implications",
+    "surprising_finding": "the most unexpected result",
+    "social_media_post": "280-char post",
+    "talking_points": ["point 1", "point 2"],
+    "infographic_outline": {
+      "title": "suggested title",
+      "sections": ["section 1", "section 2"],
+      "key_visual": "description of main visual"
+    }
+  }
+}`,
+};
+
+function buildPersonaBlock(subPersona: typeof SUB_PERSONA_REGISTRY[string]): string {
+  return `READER PROFILE:
+- Role: ${subPersona.label}
+- Pain Point: ${subPersona.painPoint}
+- Quantitative Depth: ${subPersona.quantitativeDepth}
+- Language Style: ${subPersona.languageStyle}
+
+IMPORTANT: Adapt ALL content in this module to this reader's needs:
+- Use the specified language style throughout
+- Include the specified level of quantitative detail
+- Frame insights in terms of what matters to this reader's role
+- Address the reader's pain point where relevant`;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const openaiApiKey = Deno.env.get("OPENAI_API_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  let paperId: number;
+  let moduleId: string;
+  let subPersonaId: string;
+
+  try {
+    const body = await req.json();
+    paperId = body.paper_id;
+    moduleId = body.module_id;
+    subPersonaId = body.sub_persona_id;
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Invalid JSON" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  if (!paperId || !moduleId || !subPersonaId) {
+    return new Response(
+      JSON.stringify({ error: "paper_id, module_id, and sub_persona_id are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // 1. Check cache
+  const { data: cached } = await supabase
+    .from("generated_content_cache")
+    .select("content")
+    .eq("paper_id", paperId)
+    .eq("content_type", "module")
+    .eq("persona_id", subPersonaId)
+    .eq("module_id", moduleId)
+    .maybeSingle();
+
+  if (cached) {
+    console.log(`[generate-module-content] Cache hit: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
+    return new Response(
+      JSON.stringify({ success: true, cached: true, content: cached.content }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // 2. Validate module and persona
+  const moduleQuery = MODULE_QUERIES[moduleId];
+  const modulePrompt = MODULE_PROMPTS[moduleId];
+  if (!moduleQuery || !modulePrompt) {
+    return new Response(
+      JSON.stringify({ error: `Unknown module_id: ${moduleId}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const subPersona = SUB_PERSONA_REGISTRY[subPersonaId];
+  if (!subPersona) {
+    return new Response(
+      JSON.stringify({ error: `Unknown sub_persona_id: ${subPersonaId}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  try {
+    // 3. Embed the module-specific query
+    const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "text-embedding-3-small",
+        input: moduleQuery,
+      }),
+    });
+
+    if (!embeddingResponse.ok) {
+      const errText = await embeddingResponse.text();
+      console.error("[generate-module-content] Embedding error:", embeddingResponse.status, errText);
+      throw new Error(`Embedding API error: ${embeddingResponse.status}`);
+    }
+
+    const embeddingData = await embeddingResponse.json();
+    const queryEmbedding = embeddingData.data[0].embedding;
+
+    // 4. Match chunks with module_relevance filtering
+    const { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
+      p_paper_id: paperId,
+      p_query_embedding: JSON.stringify(queryEmbedding),
+      p_match_threshold: 0.5,
+      p_match_count: 12,
+      p_module_id: moduleId,
+    });
+
+    if (matchError) {
+      console.error("[generate-module-content] match_chunks error:", matchError);
+      throw new Error(`match_chunks failed: ${matchError.message}`);
+    }
+
+    if (!chunks || chunks.length === 0) {
+      throw new Error("No matching chunks found for this paper and module");
+    }
+
+    // 5. Build prompt with persona adaptation layer + module instructions
+    const contextText = chunks
+      .map((c: { page_numbers: number[]; content: string }) =>
+        `[Page ${c.page_numbers.join(",")}] ${c.content}`
+      )
+      .join("\n\n");
+
+    const personaBlock = buildPersonaBlock(subPersona);
+
+    const fullPrompt = `${personaBlock}
+
+PAPER CONTEXT (retrieved from the paper):
+${contextText}
+
+${modulePrompt}`;
+
+    // 6. Call GPT-4o with temperature 0.2
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        temperature: 0.2,
+        messages: [{ role: "user", content: fullPrompt }],
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("[generate-module-content] AI error:", aiResponse.status, errText);
+      throw new Error(`AI error: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const rawContent = aiData.choices?.[0]?.message?.content || "";
+
+    // 7. Parse response
+    let content: Record<string, unknown>;
+    try {
+      const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, rawContent];
+      content = JSON.parse(jsonMatch[1].trim());
+    } catch {
+      console.error("[generate-module-content] Failed to parse AI response:", rawContent);
+      throw new Error("Failed to parse module content from AI response");
+    }
+
+    // 8. Cache the result
+    const sourceChunks = chunks.map((c: { chunk_id: string }) => c.chunk_id);
+
+    const { error: insertError } = await supabase
+      .from("generated_content_cache")
+      .insert({
+        paper_id: paperId,
+        content_type: "module",
+        persona_id: subPersonaId,
+        module_id: moduleId,
+        content: content,
+        source_chunks: sourceChunks,
+      });
+
+    if (insertError) {
+      console.warn("[generate-module-content] Cache insert failed (non-blocking):", insertError);
+    }
+
+    console.log(`[generate-module-content] Generated: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
+
+    return new Response(
+      JSON.stringify({ success: true, cached: false, content }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("[generate-module-content] Generation failed:", err);
+
+    // Fallback: return an error with paper info
+    const { data: paper } = await supabase
+      .from("papers")
+      .select("title")
+      .eq("id", paperId)
+      .single();
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `Module content generation failed for "${paper?.title || "Unknown paper"}"`,
+        details: err instanceof Error ? err.message : String(err),
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
