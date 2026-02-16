@@ -90,11 +90,11 @@ const PaperViewPage = () => {
         <Skeleton className="h-6 w-1/2 mb-3" />
         <Skeleton className="h-6 w-1/3 mb-8" />
         <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-7 space-y-4">
+          <div className="col-span-12 lg:col-span-8 space-y-4">
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
-          <div className="col-span-12 lg:col-span-5 space-y-4">
+          <div className="col-span-12 lg:col-span-4 space-y-4">
             <Skeleton className="h-60 w-full" />
           </div>
         </div>
@@ -129,7 +129,7 @@ const PaperViewPage = () => {
       {/* Main grid */}
       <div className={cn('grid min-h-[calc(100vh-3.5rem)]', sidebarOpen ? 'grid-cols-12' : 'flex')}>
         {/* Main content area */}
-        <div className={sidebarOpen ? 'col-span-12 lg:col-span-7 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
+        <div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
           <div className="max-w-2xl mx-auto">
           <PaperHeader
             title={title}
