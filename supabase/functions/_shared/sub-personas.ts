@@ -1,11 +1,3 @@
-/**
- * SUB_PERSONA_REGISTRY
- *
- * Each top-level persona (expert, student, reviewer, journalist, general)
- * has sub-personas that further specify reader intent and language style.
- * Edge functions import this registry to build persona-tailored prompts.
- */
-
 export interface SubPersona {
   id: string;
   parentPersona: string;
@@ -16,93 +8,60 @@ export interface SubPersona {
 }
 
 export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
-  // ── Expert ──
-  expert_researcher: {
-    id: "expert_researcher",
-    parentPersona: "expert",
-    label: "Domain Researcher",
-    painPoint: "Needs to quickly assess novelty and methodological rigor to decide whether to cite or build upon this work.",
-    quantitativeDepth: "high",
-    languageStyle: "Technical and precise, using domain-specific terminology.",
+  phd_postdoc: {
+    id: "phd_postdoc",
+    parentPersona: "Researcher",
+    label: "PhD Student / Post-doc",
+    painPoint: "I need to understand what has been done before and navigate publishing without feeling overwhelmed.",
+    quantitativeDepth: "Key numbers with plain-language interpretations. Include effect sizes and p-values but explain what they mean.",
+    languageStyle: "Clear, educational, encouraging. Define technical terms on first use.",
   },
-  expert_clinician: {
-    id: "expert_clinician",
-    parentPersona: "expert",
-    label: "Clinical Practitioner",
-    painPoint: "Wants to know if the findings are clinically actionable and how they compare to current practice guidelines.",
-    quantitativeDepth: "medium-high",
-    languageStyle: "Evidence-based clinical language with practical implications.",
+  pi_tenure: {
+    id: "pi_tenure",
+    parentPersona: "Researcher",
+    label: "Tenure-Track Faculty / PI",
+    painPoint: "I need to publish quickly and visibly, lead my team, and secure funding despite system friction.",
+    quantitativeDepth: "All statistics: exact p-values, confidence intervals, effect sizes, raw numbers, sample sizes.",
+    languageStyle: "Expert-level, concise, strategic. Assume full domain knowledge.",
   },
-
-  // ── Student ──
-  student_phd: {
-    id: "student_phd",
-    parentPersona: "student",
-    label: "PhD Student",
-    painPoint: "Needs to understand the paper's contribution to the field and how it relates to their own research.",
-    quantitativeDepth: "medium-high",
-    languageStyle: "Academic but accessible, with clear explanations of complex concepts.",
+  think_tank: {
+    id: "think_tank",
+    parentPersona: "Policy Maker",
+    label: "Think Tank Researcher/Analyst",
+    painPoint: "I need to synthesize vast research into credible policy recommendations faster than the evidence accumulates.",
+    quantitativeDepth: "Population-level impact numbers, cost-benefit ratios, scale of effect. No raw p-values.",
+    languageStyle: "Analytical but accessible. Evidence-focused, policy-oriented framing.",
   },
-  student_undergrad: {
-    id: "student_undergrad",
-    parentPersona: "student",
-    label: "Undergraduate Student",
-    painPoint: "Struggling to parse dense academic writing; needs the core ideas in plain language.",
-    quantitativeDepth: "low-medium",
-    languageStyle: "Simple, clear language with analogies and definitions for jargon.",
+  gov_institution: {
+    id: "gov_institution",
+    parentPersona: "Policy Maker",
+    label: "Governmental Institution Official",
+    painPoint: "I need to make evidence-based decisions under time pressure, but papers are impenetrable.",
+    quantitativeDepth: "Scale, population impact, cost-effectiveness. Decision-ready numbers only.",
+    languageStyle: "Jargon-free, executive-summary style. Short sentences, clear conclusions.",
   },
-
-  // ── Reviewer ──
-  reviewer_peer: {
-    id: "reviewer_peer",
-    parentPersona: "reviewer",
-    label: "Peer Reviewer",
-    painPoint: "Needs to evaluate the paper's claims, methods, and reproducibility quickly and systematically.",
-    quantitativeDepth: "high",
-    languageStyle: "Critical and evaluative, highlighting strengths and weaknesses.",
+  funder_governmental: {
+    id: "funder_governmental",
+    parentPersona: "Funding Agency",
+    label: "Governmental Funder (NSF/ERC/NIH)",
+    painPoint: "I need to demonstrate public ROI but lack tools to track outcomes across thousands of grants.",
+    quantitativeDepth: "Impact metrics, benchmarks, portfolio-level comparisons. ROI-focused numbers.",
+    languageStyle: "Formal, accountability-oriented. Emphasis on measurable outcomes and compliance.",
   },
-  reviewer_editor: {
-    id: "reviewer_editor",
-    parentPersona: "reviewer",
-    label: "Journal Editor",
-    painPoint: "Needs a rapid assessment of scope fit, novelty, and potential impact for editorial decisions.",
-    quantitativeDepth: "medium",
-    languageStyle: "Concise and balanced, focusing on significance and fit.",
+  funder_private: {
+    id: "funder_private",
+    parentPersona: "Funding Agency",
+    label: "Private Funder (Gates/Wellcome)",
+    painPoint: "I need to allocate capital to highest-impact research but cannot compare heterogeneous projects.",
+    quantitativeDepth: "Mission-alignment scores, scalability indicators, comparative benchmarks.",
+    languageStyle: "Strategic, mission-driven. Focus on potential and transferability.",
   },
-
-  // ── Journalist ──
-  journalist_science: {
-    id: "journalist_science",
-    parentPersona: "journalist",
-    label: "Science Journalist",
-    painPoint: "Needs to extract a compelling narrative and newsworthy angle without misrepresenting the science.",
-    quantitativeDepth: "low",
-    languageStyle: "Engaging, narrative-driven, avoids jargon, uses vivid comparisons.",
-  },
-  journalist_policy: {
-    id: "journalist_policy",
-    parentPersona: "journalist",
-    label: "Policy Reporter",
-    painPoint: "Wants to understand the policy implications and real-world impact of the findings.",
-    quantitativeDepth: "low-medium",
-    languageStyle: "Clear and authoritative, connecting findings to policy debates.",
-  },
-
-  // ── General ──
-  general_curious: {
-    id: "general_curious",
-    parentPersona: "general",
-    label: "Curious Reader",
-    painPoint: "Interested in science but lacks domain expertise; wants the 'so what?' in everyday terms.",
-    quantitativeDepth: "low",
-    languageStyle: "Conversational, friendly, uses everyday analogies.",
-  },
-  general_investor: {
-    id: "general_investor",
-    parentPersona: "general",
-    label: "Industry / Investor",
-    painPoint: "Wants to evaluate commercial potential and market applications of the research.",
-    quantitativeDepth: "medium",
-    languageStyle: "Business-oriented, focused on applications, market size, and competitive advantage.",
+  industry_rd: {
+    id: "industry_rd",
+    parentPersona: "Industry R&D",
+    label: "Industry R&D Professional",
+    painPoint: "I struggle to find talent and identify technologies to acquire from academia.",
+    quantitativeDepth: "Performance benchmarks, KPIs, competitive comparisons, TRL levels.",
+    languageStyle: "Business-oriented, ROI-focused. Emphasize commercial applicability and scalability.",
   },
 };
