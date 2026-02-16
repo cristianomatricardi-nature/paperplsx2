@@ -127,19 +127,18 @@ const PaperViewPage = () => {
       </div>
 
       {/* Main grid */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        <PaperHeader
-          title={title}
-          authors={authors}
-          journal={journal}
-          publicationDate={publicationDate}
-          doi={doi}
-          storagePath={storagePath}
-        />
+      <div className={cn('grid min-h-[calc(100vh-3.5rem)]', sidebarOpen ? 'grid-cols-12' : 'flex')}>
+        {/* Main content area */}
+        <div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
+          <PaperHeader
+            title={title}
+            authors={authors}
+            journal={journal}
+            publicationDate={publicationDate}
+            doi={doi}
+            storagePath={storagePath}
+          />
 
-        <div className={cn('grid gap-8', sidebarOpen ? 'grid-cols-12' : 'flex')}>
-          {/* Main content area */}
-          <div className={sidebarOpen ? 'col-span-12 lg:col-span-8' : 'flex-1'}>
             {/* Summary card */}
             {numericId && (
               <div className="mb-6">
@@ -167,19 +166,18 @@ const PaperViewPage = () => {
                 <FiguresSection figures={structured.figures} />
               </div>
             )}
-          </div>
-
-          {/* Sidebar */}
-          {numericId && (
-            <PaperSidebar
-              paperId={numericId}
-              paper={paper}
-              subPersonaId={subPersonaId}
-              isExpanded={sidebarOpen}
-              onToggle={() => setSidebarOpen((o) => !o)}
-            />
-          )}
         </div>
+
+        {/* Sidebar */}
+        {numericId && (
+          <PaperSidebar
+            paperId={numericId}
+            paper={paper}
+            subPersonaId={subPersonaId}
+            isExpanded={sidebarOpen}
+            onToggle={() => setSidebarOpen((o) => !o)}
+          />
+        )}
       </div>
     </div>
   );
