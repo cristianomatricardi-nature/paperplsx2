@@ -53,6 +53,8 @@
     --nature-dark: 0 0% 13%;
     --nature-gray: 0 0% 45%;
     --surface-warm: 40 15% 97%;
+    --deep-blue: 212 52% 24%;
+    --deep-blue-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -100,6 +102,8 @@
     --nature-dark: 0 0% 92%;
     --nature-gray: 0 0% 55%;
     --surface-warm: 0 0% 10%;
+    --deep-blue: 212 52% 34%;
+    --deep-blue-foreground: 0 0% 100%;
   }
 }
 
