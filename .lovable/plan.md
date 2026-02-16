@@ -1,47 +1,62 @@
 
 
-## Fix Figures: Connect Bounding Box Rendering to Figure Cards
+## Fix: Missing Figures and Failed Bounding Box Extraction
 
-### The problem
+### Problem Summary
 
-Figures exist in the database with captions and metadata, but have no `image_url` and no `bounding_box` data. The `FigureCard` component only checks for `image_url` to display images. Meanwhile, a `FigureRenderer` component already exists that can crop figures from the PDF using bounding boxes -- but it's never used in `FigureCard`.
+Two distinct issues on paper 14:
 
-### What we'll do
+1. **Only 2 of 4 figures detected** -- the structuring step uses text-only analysis (GPT-4o with page text). It missed 2 figures that may not have clear textual captions or references.
+2. **Bounding boxes failed** -- the `run-figure-extraction` edge function sent the PDF to OpenAI Responses API, but the model refused: *"I'm unable to extract bounding boxes from PDF figures directly."* Result: 0 of 2 bounding boxes detected, so even the 2 known figures show as placeholders.
 
-1. **Run figure extraction for paper 13** -- invoke the `run-figure-extraction` edge function to populate bounding boxes via OpenAI
-2. **Update `FigureCard` to use `FigureRenderer`** -- when `bounding_box` exists, render the figure from the PDF instead of showing a placeholder
-3. **Integrate figure extraction into the pipeline** -- add it as a step in `orchestrate-pipeline` so future papers get bounding boxes automatically
+### Fix 1: Improve Figure Detection in Structuring Prompt
 
-### Technical details
+**File: `supabase/functions/run-structuring/index.ts`**
 
-**1. Update `FigureCard.tsx`**
+Add stronger instructions to the structuring prompt to ensure ALL figures are captured:
 
-- Accept a new `storagePath` prop (the paper's PDF storage path)
-- When `figure.image_url` is missing but `figure.bounding_box` exists, render `FigureRenderer` instead of the placeholder
-- Same logic in the expanded modal view
+- Add to the RULES section: *"Extract EVERY figure referenced in the paper, including subfigures (e.g., Fig. 2a, 2b). Check every page for figure captions starting with 'Fig.', 'Figure', or similar. A typical paper has 3-8 figures."*
+- This won't fix paper 14 retroactively, but prevents the issue for future papers.
 
-**2. Update `FiguresSection.tsx`**
+### Fix 2: Make Bounding Box Extraction More Robust
 
-- Accept and pass down `storagePath` to each `FigureCard`
+**File: `supabase/functions/run-figure-extraction/index.ts`**
 
-**3. Update `PaperViewPage.tsx`**
+The OpenAI Responses API sometimes refuses to process PDF files. Fix with:
 
-- Pass `storagePath` to `FiguresSection`
+1. **Retry with stronger system prompt** -- prefix the prompt with explicit instructions that the model CAN and SHOULD analyze the provided PDF document
+2. **Add a retry mechanism** -- if the first attempt fails or returns "unable", retry once with a rephrased prompt
+3. **Fallback: full-page rendering** -- if bounding box detection still fails, set a default bounding box of `{x: 0.05, y: 0.05, width: 0.9, height: 0.9}` so the FigureRenderer at least shows the full page where the figure exists, rather than nothing
 
-**4. Add figure extraction to `orchestrate-pipeline`**
+### Fix 3: Re-run Extraction for Paper 14
 
-- After the structuring step completes, call `run-figure-extraction` so bounding boxes are populated automatically for all new papers
+After deploying the improved edge function:
 
-**5. Trigger extraction for paper 13**
+- Manually invoke `run-figure-extraction` for paper 14 to populate bounding boxes
+- Optionally re-run `run-structuring` for paper 14 to capture the missing 2 figures (though this resets all structured data)
 
-- Manually invoke `run-figure-extraction` with `{ paper_id: 13 }` to populate the bounding boxes now
+### Technical Details
 
-### Files changed
+**`run-figure-extraction/index.ts` changes:**
+
+- Update the `buildPrompt` function to include a stronger system-level instruction: *"You are analyzing a PDF document that has been provided to you. Examine each page and locate the figures listed below."*
+- Add retry logic in `extractBoundingBoxes`: if the parsed result is empty and the raw text contains refusal phrases ("unable", "cannot", "can't"), retry with an alternative prompt
+- Add fallback: after all retries, for any figure without a bounding box, assign a full-page default box so the page is at least rendered
+
+**`run-structuring/index.ts` changes:**
+
+- Add to RULES in the prompt: *"Extract ALL figures. Scan every page for 'Fig.', 'Figure', or image captions. Include subfigures. Do NOT skip any visual element."*
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/paper-view/FigureCard.tsx` | Add `storagePath` prop, use `FigureRenderer` when bounding box exists |
-| `src/components/paper-view/FiguresSection.tsx` | Accept and pass `storagePath` prop |
-| `src/pages/PaperViewPage.tsx` | Pass `storagePath` to `FiguresSection` |
-| `supabase/functions/orchestrate-pipeline/index.ts` | Add `run-figure-extraction` call after structuring |
+| `supabase/functions/run-figure-extraction/index.ts` | Stronger prompt, retry logic, full-page fallback |
+| `supabase/functions/run-structuring/index.ts` | Add explicit figure extraction rules to prompt |
+
+### What stays the same
+
+- `FigureCard.tsx`, `FiguresSection.tsx`, `FigureRenderer.tsx` -- no UI changes needed
+- Database schema -- no changes
+- Pipeline orchestration -- no changes
 
