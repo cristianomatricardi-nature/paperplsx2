@@ -41,8 +41,12 @@ IMPORTANT: The "metrics" array must include EVERY quantitative result reported i
 Return JSON with this structure:
 {
   "tabs": {
+    "introduction": {
+      "context_bridge": "2-3 sentences: what problem does this paper address and why it matters to the field",
+      "module_focus": "1-2 sentences: this module analyzes the paper's core contribution, quantitative impact, and comparison with prior work",
+      "cross_references": "Brief pointers: for detailed evidence assessment see the Claims module; for step-by-step methods see the Methods module"
+    },
     "overview": {
-      "context": "2-3 sentences of research context and motivation from the introduction",
       "core_contribution": "the main novel contribution",
       "novelty_statement": "what makes this different from prior work"
     },
@@ -89,6 +93,11 @@ CRITICAL: Extract EVERY quantitative result reported for each claim — p-values
 Return JSON:
 {
   "tabs": {
+    "introduction": {
+      "context_bridge": "2-3 sentences: what is this research about and what question does it try to answer",
+      "module_focus": "1-2 sentences: this module evaluates every claim in the paper and grades the strength of its supporting evidence",
+      "cross_references": "Brief pointers: for the full methodology see the Methods module; for broader impact see the Contribution module"
+    },
     "claims": [
       {
         "id": "claim_1",
@@ -143,6 +152,11 @@ STRUCTURE — produce a narrative with three layers:
 Return JSON:
 {
   "tabs": {
+    "introduction": {
+      "context_bridge": "2-3 sentences: what problem is being solved and why, what is the research question",
+      "module_focus": "1-2 sentences: this module provides step-by-step protocols and methods for replicating this work",
+      "cross_references": "Brief pointers: for key results validating these methods see the Claims module; for broader context see the Contribution module"
+    },
     "protocol_steps": [
       {
         "id": "method_1",
@@ -197,6 +211,11 @@ STRUCTURE — produce a narrative with three layers:
 Return JSON:
 {
   "tabs": {
+    "introduction": {
+      "context_bridge": "2-3 sentences: what was the research trying to achieve and what were the expectations",
+      "module_focus": "1-2 sentences: this module covers what didn't work, null findings, limitations, and dead ends to avoid",
+      "cross_references": "Brief pointers: for the full methods see the Methods module; for positive results see the Claims module"
+    },
     "negative_results": [
       {
         "id": "neg_1",
@@ -230,6 +249,11 @@ STRUCTURE — produce a narrative with three layers:
 Return JSON:
 {
   "tabs": {
+    "introduction": {
+      "context_bridge": "2-3 sentences: what did this paper find and why does it matter",
+      "module_focus": "1-2 sentences: this module provides concrete next steps, recommendations, and opportunities arising from this research",
+      "cross_references": "Brief pointers: for the full evidence see the Claims module; for limitations to consider see the Negative Results module"
+    },
     "research_actions": [
       {
         "action": "specific recommended next step",
@@ -265,7 +289,12 @@ STRUCTURE — produce a narrative with three layers:
 Return JSON:
 {
   "tabs": {
-    "plain_language_summary": "accessible summary starting with 2-3 sentences of broad context",
+    "introduction": {
+      "context_bridge": "2-3 sentences: what is the big-picture problem and why should the public care",
+      "module_focus": "1-2 sentences: this module translates the research into plain language, analogies, and communication tools",
+      "cross_references": "Brief pointers: for detailed evidence see the Claims module; for the full methodology see the Methods module"
+    },
+    "plain_language_summary": "accessible summary",
     "analogies": [
       { "concept": "what it explains", "analogy": "the analogy", "audience": "target" }
     ],

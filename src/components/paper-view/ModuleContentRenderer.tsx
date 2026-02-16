@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { ModuleId } from '@/types/modules';
 import type { Figure } from '@/types/structured-paper';
 import { MODULE_REGISTRY } from '@/types/modules';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClaimCard } from './renderers/ClaimCard';
 import { ProtocolStep } from './renderers/ProtocolStep';
 import { MetricsTable } from './renderers/MetricsTable';
@@ -10,10 +11,10 @@ import { NegativeResultCard } from './renderers/NegativeResultCard';
 import { ActionCard } from './renderers/ActionCard';
 import { FigurePlaceholder } from './renderers/FigurePlaceholder';
 import { GenericFallback } from './renderers/GenericFallback';
-import { ModuleSectionHeader } from './renderers/ModuleSectionHeader';
 import { OverviewBlock } from './renderers/OverviewBlock';
 import { EvidenceSummaryCard } from './renderers/EvidenceSummaryCard';
 import { ReproducibilityCard } from './renderers/ReproducibilityCard';
+import { IntroductionTab } from './renderers/IntroductionTab';
 import {
   Carousel,
   CarouselContent,
@@ -31,42 +32,6 @@ interface ModuleContentRendererProps {
 
 const humanizeKey = (key: string) =>
   key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-
-/** Section intro sentences keyed by "moduleId:sectionKey" */
-const SECTION_DESCRIPTIONS: Record<string, string> = {
-  'M1:overview': 'What this paper contributes and why it matters.',
-  'M1:impact_analysis': 'Quantitative results and their significance.',
-  'M1:prior_work_comparison': 'How this advances beyond previous research.',
-  'M2:claims': 'Each claim extracted from the paper with its supporting evidence.',
-  'M2:evidence_summary': 'Overall assessment of the evidence quality.',
-  'M3:protocol_steps': 'Step-by-step procedures for replicating this work.',
-  'M3:analysis_methods': 'Statistical and analytical approaches used.',
-  'M3:reproducibility': 'Assessment of how reproducible this work is.',
-  'M4:negative_results': 'What was tested but did not work as expected.',
-  'M4:limitations': 'Acknowledged limitations and caveats.',
-  'M5:research_actions': 'Concrete next steps recommended by the paper.',
-  'M6:plain_language_summary': 'The research explained without jargon.',
-};
-
-function getAccentColor(moduleId: ModuleId): string {
-  const mod = MODULE_REGISTRY.find((m) => m.id === moduleId);
-  return mod?.color ?? '#3B82F6';
-}
-
-/**
- * Replace [FIGURE: fig_X] tokens in a string with FigurePlaceholder components.
- */
-function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[] {
-  const parts = text.split(/\[FIGURE:\s*(fig_\w+)\]/gi);
-  return parts.map((part, i) => {
-    if (i % 2 === 1) {
-      const fig = figures.find((f) => f.id === part);
-      if (fig) return <FigurePlaceholder key={i} figure={fig} />;
-      return <span key={i} className="text-xs text-muted-foreground italic">[Figure: {part}]</span>;
-    }
-    return part ? <span key={i}>{part}</span> : null;
-  });
-}
 
 /** Check if data matches the M1 overview shape */
 function isOverviewData(data: unknown): data is Record<string, unknown> {
@@ -87,6 +52,21 @@ function isReproducibilityData(data: unknown): data is Record<string, unknown> {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return false;
   const obj = data as Record<string, unknown>;
   return 'score' in obj && ('strengths' in obj || 'gaps' in obj);
+}
+
+/**
+ * Replace [FIGURE: fig_X] tokens in a string with FigurePlaceholder components.
+ */
+function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[] {
+  const parts = text.split(/\[FIGURE:\s*(fig_\w+)\]/gi);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      const fig = figures.find((f) => f.id === part);
+      if (fig) return <FigurePlaceholder key={i} figure={fig} />;
+      return <span key={i} className="text-xs text-muted-foreground italic">[Figure: {part}]</span>;
+    }
+    return part ? <span key={i}>{part}</span> : null;
+  });
 }
 
 /** Render a single content block based on moduleId heuristics */
@@ -188,42 +168,59 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
 
 const ModuleContentRenderer = ({ content, moduleId, figures = [], paperId }: ModuleContentRendererProps) => {
   const contentObj = content as Record<string, unknown> | null;
-  const accentColor = getAccentColor(moduleId);
 
   // Extract sections from tabs structure
-  const sections = useMemo(() => {
-    if (!contentObj || typeof contentObj !== 'object') return null;
+  const { introduction, contentSections } = useMemo(() => {
+    if (!contentObj || typeof contentObj !== 'object') return { introduction: null, contentSections: null };
+    
+    let tabs: Record<string, unknown> | null = null;
     if ('tabs' in contentObj && typeof contentObj.tabs === 'object' && contentObj.tabs !== null) {
-      return contentObj.tabs as Record<string, unknown>;
+      tabs = contentObj.tabs as Record<string, unknown>;
     }
-    return null;
+    if (!tabs) return { introduction: null, contentSections: null };
+
+    const { introduction: intro, ...rest } = tabs;
+    return {
+      introduction: intro as { context_bridge?: string; module_focus?: string; cross_references?: string } | null,
+      contentSections: Object.keys(rest).length > 0 ? rest : null,
+    };
   }, [contentObj]);
 
-  // Sectioned narrative layout (replaces tabs)
-  if (sections) {
-    const sectionKeys = Object.keys(sections);
-    if (sectionKeys.length === 0) return null;
+  // Tabbed layout
+  if (introduction || contentSections) {
+    const sectionKeys = contentSections ? Object.keys(contentSections) : [];
 
     return (
-      <div className="space-y-8">
-        {sectionKeys.map((key) => {
-          const descKey = `${moduleId}:${key}`;
-          const description = SECTION_DESCRIPTIONS[descKey];
-          const block = renderBlock(sections[key], moduleId, figures, paperId, key);
-          if (!block) return null;
+      <Tabs defaultValue="introduction" className="w-full">
+        <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-muted/50">
+          {introduction && (
+            <TabsTrigger value="introduction" className="text-xs">
+              Introduction
+            </TabsTrigger>
+          )}
+          {sectionKeys.map((key) => (
+            <TabsTrigger key={key} value={key} className="text-xs">
+              {humanizeKey(key)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
+        {introduction && (
+          <TabsContent value="introduction">
+            <IntroductionTab data={introduction} />
+          </TabsContent>
+        )}
+
+        {sectionKeys.map((key) => {
+          const block = renderBlock(contentSections![key], moduleId, figures, paperId, key);
+          if (!block) return null;
           return (
-            <div key={key} className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
-              <ModuleSectionHeader
-                title={humanizeKey(key)}
-                description={description}
-                accentColor={accentColor}
-              />
+            <TabsContent key={key} value={key}>
               {block}
-            </div>
+            </TabsContent>
           );
         })}
-      </div>
+      </Tabs>
     );
   }
 
