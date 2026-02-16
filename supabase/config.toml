@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.run-figure-extraction]
 verify_jwt = false
+
+[functions.generate-simulated-impact]
+verify_jwt = false
