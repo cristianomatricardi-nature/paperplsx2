@@ -1,66 +1,44 @@
 
 
-## Two-Step Upload with Real-Time Pipeline Progress
+## Fix the End-to-End Pipeline
 
-### What changes
+There are 4 issues preventing the pipeline from completing and the progress from showing:
 
-**1. UploadSection gets a two-step flow with progress tracking**
+### Issue 1: Embedding Dimension Mismatch (Pipeline Crashes)
 
-When you select a PDF, instead of immediately uploading it, you'll see:
-- A **file preview card** showing the PDF name, size, and an "X" to remove it
-- A red **"Generate Paper++"** button to trigger the pipeline
-- Once triggered, a **real-time progress tracker** replaces the button, showing each pipeline step with a filling progress bar and red-themed icons
+The `run-chunking-and-embedding` function uses OpenAI's `text-embedding-3-large` model which produces 3072-dimensional vectors, but the database `chunks.embedding` column only accepts 1536 dimensions. This causes every paper to fail at the chunking step.
 
-**2. Pipeline steps displayed with progress bars**
+**Fix:** Change the model in `supabase/functions/run-chunking-and-embedding/index.ts` line 216 from `text-embedding-3-large` to `text-embedding-3-small` (which outputs 1536 dimensions, matching the DB column).
 
-The steps shown will match the actual backend pipeline:
-1. Uploading (local upload to storage)
-2. Parsing (text extraction from PDF)
-3. Structuring (AI structural analysis)
-4. Embedding (semantic chunking)
-5. Figures (figure extraction)
-6. Completed
+### Issue 2: Real-time Updates Not Working (Progress Bars Frozen)
 
-Each step will have:
-- A red-themed icon (FileText, Brain, Database, Image, CheckCircle)
-- A label
-- A filling progress bar that turns red when active/completed
-- A checkmark when done, spinner when in progress
+The `papers` table is not added to the `supabase_realtime` publication. The `useRealtimePaper` hook subscribes to changes but never receives any updates, so the UI appears stuck at "Parsing" even though the backend is progressing.
 
-### Files to create/edit
+**Fix:** Run a database migration:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.papers;
+```
 
-**`src/components/researcher-home/UploadSection.tsx`** -- Major rework:
-- Add `selectedFile` state to stage the PDF before upload
-- Add `paperId` state to track the created paper after upload
-- When file is selected: show preview card + "Generate Paper++" button (red styling)
-- When button is clicked: call `uploadPaper`, get `paper_id`, switch to progress view
-- Use `useRealtimePaper` hook to subscribe to status changes for the created paper
-- Render a `PipelineProgressBar` component showing each step with filling bars
-- When pipeline completes or fails, show appropriate feedback and reset
+### Issue 3: Summary and Module Generation Are Not Part of the Pipeline
 
-**`src/components/researcher-home/PipelineProgressBar.tsx`** -- New component:
-- Accepts `status` (current pipeline status) and `errorMessage`
-- Renders a vertical list of pipeline steps, each with:
-  - A red-themed Lucide icon (e.g., `FileText` for parsing, `Brain` for structuring, `Layers` for embedding, `ImageIcon` for figures, `CheckCircle2` for completed)
-  - Step label text
-  - A horizontal progress bar (using the existing `Progress` component or a custom one)
-  - States: pending (gray), active (red with animation), completed (red filled with check), failed (red-destructive)
-- Progress bar fills to 100% for completed steps, animates/pulses for the active step, stays empty for pending steps
-- Status text at the bottom showing current action
+`generate-summary` and `generate-module-content` are designed as **on-demand** functions -- they are called from the frontend when a user opens a paper and selects a persona/module. They are NOT invoked during the `orchestrate-pipeline` sequence. This is actually by design (they need a persona selection), but means the pipeline status "completed" only means the data is ready for on-demand generation.
 
-### Visual Design
+No change needed here -- this is the correct architecture. Summaries and modules are generated lazily when a user views the paper.
 
-- **"Generate Paper++" button**: Red background (`bg-primary`), white text, with a `Sparkles` or `Zap` icon
-- **Progress bars**: Red fill color matching the primary/brand color
-- **Step icons**: Red-tinted Lucide icons
-- **File preview card**: Clean card with PDF icon, filename, size, and a subtle border
-- **Completed state**: Green checkmark or a "View Paper++" link button
+### Issue 4: Simulated Impact Never Runs
 
-### Technical Details
+Because chunking fails (Issue 1), the pipeline never reaches the `generate-simulated-impact` step. Fixing Issue 1 will automatically fix this.
 
-- The `uploadPaper` function already returns `{ paper_id }` from the backend
-- The `useRealtimePaper` hook already subscribes to real-time status updates for a given paper ID
-- Pipeline statuses flow: `uploaded` -> `parsing` -> `structuring` -> `chunking` -> `completed` (or `failed`)
-- The progress tracker will use these real-time status updates to animate the bars
-- After completion, a "View Paper++" button will link to `/paper/{paperId}`
-- A "Reset" or "Upload Another" option will clear the state back to the drop zone
+---
+
+### Summary of Changes
+
+| File | Change |
+|------|--------|
+| `supabase/functions/run-chunking-and-embedding/index.ts` | Change embedding model from `text-embedding-3-large` to `text-embedding-3-small` |
+| Database migration | `ALTER PUBLICATION supabase_realtime ADD TABLE public.papers;` |
+
+After these two fixes:
+- The pipeline will complete end-to-end: parse -> structure -> chunk + figures -> simulated impact -> completed
+- The progress bars will update in real-time as each step finishes
+- Once completed, viewing the paper will trigger on-demand summary and module generation
