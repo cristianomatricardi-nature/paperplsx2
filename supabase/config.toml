@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.doi-resolver]
 verify_jwt = false
+
+[functions.orchestrate-pipeline]
+verify_jwt = false
