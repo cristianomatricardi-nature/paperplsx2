@@ -49,7 +49,7 @@ const ModuleAccordionList = ({ paperId, subPersonaId, moduleOrder, figures = [] 
     if (modules.length === 0) return null;
     return (
       <div className="space-y-3">
-      <h3 className="font-serif text-sm font-semibold text-foreground flex items-center gap-2">
+      <h3 className="font-sans text-sm font-semibold text-foreground flex items-center gap-2">
           <span className={`h-2.5 w-2.5 rounded-full ${borderClass === 'border-l-[#3B82F6]' ? 'bg-[#3B82F6]' : 'bg-[#F59E0B]'}`} />
           {title}
         </h3>
