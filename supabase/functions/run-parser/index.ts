@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.4.168/build/pdf.mjs";
+import { getDocument } from "https://esm.sh/pdfjs-serverless@0.3.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const arrayBuffer = await fileData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    const loadingTask = pdfjsLib.getDocument({
+    const loadingTask = getDocument({
       data: uint8Array,
       useSystemFonts: true,
       disableFontFace: true,
