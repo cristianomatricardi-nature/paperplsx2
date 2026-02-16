@@ -11,8 +11,16 @@ interface StepData {
   page_refs?: number[];
 }
 
+const toArray = (val: unknown): string[] =>
+  Array.isArray(val) ? val : typeof val === 'string' ? [val] : [];
+
 export function ProtocolStep({ step, index }: { step: StepData; index: number }) {
-  const pages = step.page_numbers ?? step.page_refs ?? [];
+  const pages = toArray(step.page_numbers ?? step.page_refs).map(Number).filter(Boolean);
+  const tools = toArray(step.tools);
+  const reagents = toArray(step.reagents);
+  const software = toArray(step.software);
+  const conditions = toArray(step.conditions);
+  const criticalNotes = toArray(step.critical_notes);
 
   return (
     <div className="flex gap-3">
@@ -30,27 +38,27 @@ export function ProtocolStep({ step, index }: { step: StepData; index: number })
 
         {/* Chip rows */}
         <div className="flex flex-wrap gap-1.5">
-          {step.tools?.map((t, i) => (
-            <span key={`tool-${i}`} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+          {tools.map((t, i) => (
+            <span key={`tool-${i}`} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
               🔧 {t}
             </span>
           ))}
-          {step.reagents?.map((r, i) => (
-            <span key={`reagent-${i}`} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+          {reagents.map((r, i) => (
+            <span key={`reagent-${i}`} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
               🧪 {r}
             </span>
           ))}
-          {step.software?.map((s, i) => (
-            <span key={`sw-${i}`} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+          {software.map((s, i) => (
+            <span key={`sw-${i}`} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
               💻 {s}
             </span>
           ))}
         </div>
 
         {/* Conditions */}
-        {step.conditions && step.conditions.length > 0 && (
+        {conditions.length > 0 && (
           <p className="text-xs italic text-muted-foreground">
-            {step.conditions.join(' · ')}
+            {conditions.join(' · ')}
           </p>
         )}
 
@@ -62,10 +70,10 @@ export function ProtocolStep({ step, index }: { step: StepData; index: number })
         )}
 
         {/* Critical notes */}
-        {step.critical_notes && step.critical_notes.length > 0 && (
-          <div className="rounded-md bg-yellow-50 border border-yellow-200 p-2.5 space-y-1">
-            {step.critical_notes.map((note, i) => (
-              <p key={i} className="text-xs text-yellow-800">⚠️ {note}</p>
+        {criticalNotes.length > 0 && (
+          <div className="rounded-md bg-muted border border-border p-2.5 space-y-1">
+            {criticalNotes.map((note, i) => (
+              <p key={i} className="text-xs text-muted-foreground">⚠️ {note}</p>
             ))}
           </div>
         )}
