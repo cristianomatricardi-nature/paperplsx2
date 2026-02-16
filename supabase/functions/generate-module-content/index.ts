@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUB_PERSONA_REGISTRY } from "../_shared/sub-personas.ts";
+import { composeModulePrompt } from "../_shared/prompt-composers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -223,19 +224,7 @@ Return JSON:
 }`,
 };
 
-function buildPersonaBlock(subPersona: typeof SUB_PERSONA_REGISTRY[string]): string {
-  return `READER PROFILE:
-- Role: ${subPersona.label}
-- Pain Point: ${subPersona.painPoint}
-- Quantitative Depth: ${subPersona.quantitativeDepth}
-- Language Style: ${subPersona.languageStyle}
-
-IMPORTANT: Adapt ALL content in this module to this reader's needs:
-- Use the specified language style throughout
-- Include the specified level of quantitative detail
-- Frame insights in terms of what matters to this reader's role
-- Address the reader's pain point where relevant`;
-}
+// buildPersonaBlock removed — replaced by composeModulePrompt from prompt-composers.ts
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -384,14 +373,7 @@ Deno.serve(async (req) => {
       )
       .join("\n\n");
 
-    const personaBlock = buildPersonaBlock(subPersona);
-
-    const fullPrompt = `${personaBlock}
-
-PAPER CONTEXT (retrieved from the paper):
-${contextText}
-
-${modulePrompt}`;
+    const fullPrompt = composeModulePrompt(subPersona, moduleId, contextText, modulePrompt);
 
     // 6. Call GPT-4o with temperature 0.2
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
