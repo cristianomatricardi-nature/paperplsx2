@@ -329,8 +329,8 @@ Deno.serve(async (req) => {
     const embeddingData = await embeddingResponse.json();
     const queryEmbedding = embeddingData.data[0].embedding;
 
-    // 4. Match chunks with module_relevance filtering
-    const { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
+    // 4. Match chunks with module_relevance filtering, fallback to unfiltered
+    let { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
       p_paper_id: paperId,
       p_query_embedding: JSON.stringify(queryEmbedding),
       p_match_threshold: 0.5,
@@ -341,6 +341,21 @@ Deno.serve(async (req) => {
     if (matchError) {
       console.error("[generate-module-content] match_chunks error:", matchError);
       throw new Error(`match_chunks failed: ${matchError.message}`);
+    }
+
+    // Fallback: retry without module filter if no chunks matched
+    if (!chunks || chunks.length === 0) {
+      console.warn(`[generate-module-content] No module-filtered chunks for ${moduleId}, retrying without filter`);
+      const fallback = await supabase.rpc("match_chunks", {
+        p_paper_id: paperId,
+        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_match_threshold: 0.3,
+        p_match_count: 12,
+      });
+      if (fallback.error) {
+        throw new Error(`match_chunks fallback failed: ${fallback.error.message}`);
+      }
+      chunks = fallback.data;
     }
 
     if (!chunks || chunks.length === 0) {
