@@ -16,6 +16,129 @@ interface Figure {
   bounding_box?: { x: number; y: number; width: number; height: number };
 }
 
+interface BoundingBoxResult {
+  figure_id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Convert Uint8Array to base64 without stack overflow (chunked). */
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
+    for (let j = 0; j < slice.length; j++) {
+      binary += String.fromCharCode(slice[j]);
+    }
+  }
+  return btoa(binary);
+}
+
+/** Build the prompt listing all figure captions for bounding box detection. */
+function buildPrompt(figures: Figure[]): string {
+  const listing = figures
+    .map((f, i) => `${i + 1}. figure_id="${f.id}" (page ${f.page_number}): "${f.caption}"`)
+    .join("\n");
+
+  return `You are analysing a scientific paper PDF. Below is a list of figures found in the paper.
+
+For EACH figure, return the bounding box of the figure image (excluding the caption text) as fractional coordinates (0-1) relative to the page dimensions.
+
+Figures:
+${listing}
+
+Return a JSON array (no markdown, no extra text) with one object per figure:
+[
+  { "figure_id": "fig_1", "x": 0.1, "y": 0.2, "width": 0.8, "height": 0.4 },
+  ...
+]
+
+Rules:
+- x,y = top-left corner as fraction of page width/height
+- width,height = size as fraction of page width/height
+- All values between 0 and 1
+- If you cannot locate a figure, omit it from the array
+- Return ONLY the JSON array`;
+}
+
+/** Call OpenAI Responses API with inline PDF and return parsed bounding boxes. */
+async function extractBoundingBoxes(
+  openaiKey: string,
+  pdfBase64: string,
+  figures: Figure[],
+): Promise<Map<string, { x: number; y: number; width: number; height: number }>> {
+  const result = new Map<string, { x: number; y: number; width: number; height: number }>();
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: buildPrompt(figures) },
+            {
+              type: "input_file",
+              file_data: `data:application/pdf;base64,${pdfBase64}`,
+              filename: "paper.pdf",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("OpenAI Responses API error:", response.status, errText);
+    return result;
+  }
+
+  const data = await response.json();
+
+  // Responses API: output_text is a convenience field with the text content
+  const rawText: string = data.output_text
+    ?? data.output?.[0]?.content?.[0]?.text
+    ?? "";
+
+  try {
+    // Strip possible markdown fences
+    const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+    const parsed: BoundingBoxResult[] = JSON.parse(jsonStr);
+
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (
+          item.figure_id &&
+          typeof item.x === "number" &&
+          typeof item.y === "number" &&
+          typeof item.width === "number" &&
+          typeof item.height === "number"
+        ) {
+          result.set(item.figure_id, {
+            x: Math.max(0, Math.min(1, item.x)),
+            y: Math.max(0, Math.min(1, item.y)),
+            width: Math.max(0, Math.min(1, item.width)),
+            height: Math.max(0, Math.min(1, item.height)),
+          });
+        }
+      }
+    }
+  } catch (parseErr) {
+    console.warn("Failed to parse bounding boxes JSON:", parseErr, "Raw:", rawText.slice(0, 500));
+  }
+
+  return result;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,235 +155,109 @@ Deno.serve(async (req) => {
     if (!paper_id) {
       return new Response(
         JSON.stringify({ error: "paper_id is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 1. Fetch structured_papers record for figures array
-    const { data: structuredPaper, error: spError } = await supabase
+    // 1. Fetch figures from structured_papers
+    const { data: sp, error: spErr } = await supabase
       .from("structured_papers")
       .select("figures")
       .eq("paper_id", paper_id)
       .single();
 
-    if (spError || !structuredPaper) {
+    if (spErr || !sp) {
       return new Response(
-        JSON.stringify({ error: "Structured paper not found", details: spError?.message }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Structured paper not found", details: spErr?.message }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const figures: Figure[] = structuredPaper.figures as Figure[] || [];
+    const figures: Figure[] = (sp.figures as Figure[]) || [];
 
     if (figures.length === 0) {
       return new Response(
         JSON.stringify({ success: true, figures_extracted: 0, message: "No figures to extract" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 2. Fetch paper record for storage_path
-    const { data: paper, error: paperError } = await supabase
+    // 2. Fetch storage_path
+    const { data: paper, error: paperErr } = await supabase
       .from("papers")
       .select("storage_path")
       .eq("id", paper_id)
       .single();
 
-    if (paperError || !paper?.storage_path) {
+    if (paperErr || !paper?.storage_path) {
       return new Response(
-        JSON.stringify({ error: "Paper or storage path not found", details: paperError?.message }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Paper or storage path not found", details: paperErr?.message }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 3. Download the PDF from storage
-    const { data: pdfData, error: downloadError } = await supabase.storage
+    // 3. Download PDF
+    const { data: pdfData, error: dlErr } = await supabase.storage
       .from("research-papers")
       .download(paper.storage_path);
 
-    if (downloadError || !pdfData) {
+    if (dlErr || !pdfData) {
       return new Response(
-        JSON.stringify({ error: "Failed to download PDF", details: downloadError?.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Failed to download PDF", details: dlErr?.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Note: Deno edge functions do not support canvas/PDF rendering natively.
-    // We use the fallback approach described in the prompt:
-    // - Upload the full PDF to OpenAI and use GPT-4o vision to identify bounding boxes
-    // - Store bounding box coordinates in figure metadata for client-side cropping
-    // - If OpenAI is unavailable, store figures with page references only
+    // 4. Extract bounding boxes via OpenAI Responses API
+    let boundingBoxes = new Map<string, { x: number; y: number; width: number; height: number }>();
 
-    const updatedFigures = [...figures];
-    let figuresExtracted = 0;
-
-    if (!openaiKey) {
-      console.warn("OPENAI_API_KEY not set — storing figure page references without bounding boxes");
-      // Even without OpenAI, update figures with storage path references
-      for (let i = 0; i < updatedFigures.length; i++) {
-        const fig = updatedFigures[i];
-        updatedFigures[i] = {
-          ...fig,
-          image_url: null as any,
-          bounding_box: null as any,
-        };
-      }
-    } else {
-      // Convert PDF to base64 for OpenAI vision API
+    if (openaiKey) {
       const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
-      const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+      const pdfBase64 = uint8ToBase64(pdfBytes);
+      console.log(`PDF encoded: ${pdfBytes.length} bytes -> ${pdfBase64.length} base64 chars`);
 
-      // Group figures by page to minimize API calls
-      const figuresByPage = new Map<number, { index: number; figure: Figure }[]>();
-      for (let i = 0; i < figures.length; i++) {
-        const fig = figures[i];
-        const page = fig.page_number || 1;
-        if (!figuresByPage.has(page)) {
-          figuresByPage.set(page, []);
-        }
-        figuresByPage.get(page)!.push({ index: i, figure: fig });
-      }
-
-      // Process each page's figures
-      for (const [pageNum, pageFigures] of figuresByPage.entries()) {
-        for (const { index, figure } of pageFigures) {
-          try {
-            // Call GPT-4o Vision to get bounding box
-            const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${openaiKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "gpt-4o",
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: `Look at page ${pageNum} of this scientific paper PDF. Find the figure with this caption: '${figure.caption}'.
-
-Return a JSON object with the bounding box of JUST the figure (not the caption):
-{ "x": top-left x as fraction of page width (0-1),
-  "y": top-left y as fraction of page height (0-1),
-  "width": width as fraction of page width (0-1),
-  "height": height as fraction of page height (0-1) }
-
-Return ONLY the JSON object, no other text.`,
-                      },
-                      {
-                        type: "image_url",
-                        image_url: {
-                          url: `data:application/pdf;base64,${pdfBase64}`,
-                        },
-                      },
-                    ],
-                  },
-                ],
-                max_tokens: 200,
-                temperature: 0,
-              }),
-            });
-
-            if (visionResponse.ok) {
-              const visionData = await visionResponse.json();
-              const content = visionData.choices?.[0]?.message?.content?.trim() || "";
-
-              // Parse bounding box from response
-              let boundingBox: { x: number; y: number; width: number; height: number } | null = null;
-              try {
-                // Extract JSON from response (handle markdown code blocks)
-                const jsonMatch = content.match(/\{[\s\S]*?\}/);
-                if (jsonMatch) {
-                  const parsed = JSON.parse(jsonMatch[0]);
-                  if (
-                    typeof parsed.x === "number" &&
-                    typeof parsed.y === "number" &&
-                    typeof parsed.width === "number" &&
-                    typeof parsed.height === "number"
-                  ) {
-                    boundingBox = {
-                      x: Math.max(0, Math.min(1, parsed.x)),
-                      y: Math.max(0, Math.min(1, parsed.y)),
-                      width: Math.max(0, Math.min(1, parsed.width)),
-                      height: Math.max(0, Math.min(1, parsed.height)),
-                    };
-                  }
-                }
-              } catch (parseErr) {
-                console.warn(`Failed to parse bounding box for figure ${figure.id}:`, parseErr);
-              }
-
-              // Store the figure path in storage for the full page reference
-              const figureStoragePath = `${paper_id}/${figure.id}.png`;
-
-              updatedFigures[index] = {
-                ...figure,
-                bounding_box: boundingBox || undefined,
-                image_url: figureStoragePath,
-              };
-              figuresExtracted++;
-
-              console.log(
-                `Figure ${figure.id}: bounding box ${boundingBox ? "detected" : "not detected"}`
-              );
-            } else {
-              const errText = await visionResponse.text();
-              console.error(`OpenAI vision error for figure ${figure.id}:`, visionResponse.status, errText);
-              // Fallback: store with page reference only
-              updatedFigures[index] = {
-                ...figure,
-                image_url: `${paper_id}/${figure.id}.png`,
-                bounding_box: undefined,
-              };
-              figuresExtracted++;
-            }
-
-            // Small delay between API calls to avoid rate limits
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (figError) {
-            console.error(`Error processing figure ${figure.id}:`, figError);
-            // Fallback: keep figure as-is with page reference
-            updatedFigures[index] = {
-              ...figure,
-              image_url: `${paper_id}/${figure.id}.png`,
-            };
-            figuresExtracted++;
-          }
-        }
-      }
+      boundingBoxes = await extractBoundingBoxes(openaiKey, pdfBase64, figures);
+      console.log(`Bounding boxes detected: ${boundingBoxes.size}/${figures.length}`);
+    } else {
+      console.warn("OPENAI_API_KEY not set — skipping bounding box detection");
     }
 
-    // 6. Update structured_papers with the updated figures array
-    const { error: updateError } = await supabase
+    // 5. Update figures with bounding boxes
+    const updatedFigures = figures.map((fig) => {
+      const bb = boundingBoxes.get(fig.id);
+      return {
+        ...fig,
+        bounding_box: bb ?? undefined,
+      };
+    });
+
+    // 6. Save to structured_papers
+    const { error: updateErr } = await supabase
       .from("structured_papers")
       .update({ figures: updatedFigures })
       .eq("paper_id", paper_id);
 
-    if (updateError) {
-      console.error("Failed to update figures:", updateError);
+    if (updateErr) {
+      console.error("Failed to update figures:", updateErr);
       return new Response(
-        JSON.stringify({ error: "Failed to update figure metadata", details: updateError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Failed to update figure metadata", details: updateErr.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 7. Return result
     return new Response(
       JSON.stringify({
         success: true,
-        figures_extracted: figuresExtracted,
-        note: "Bounding boxes stored in figure metadata. Deno does not support canvas — client-side cropping recommended.",
+        figures_extracted: boundingBoxes.size,
+        total_figures: figures.length,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
