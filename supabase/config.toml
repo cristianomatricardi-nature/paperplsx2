@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.run-parser]
 verify_jwt = false
+
+[functions.run-structuring]
+verify_jwt = false
