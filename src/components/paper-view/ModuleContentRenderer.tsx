@@ -14,6 +14,13 @@ import { ModuleSectionHeader } from './renderers/ModuleSectionHeader';
 import { OverviewBlock } from './renderers/OverviewBlock';
 import { EvidenceSummaryCard } from './renderers/EvidenceSummaryCard';
 import { ReproducibilityCard } from './renderers/ReproducibilityCard';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from '@/components/ui/carousel';
 
 interface ModuleContentRendererProps {
   content: unknown;
@@ -126,8 +133,23 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
 
     if (moduleId === 'M2' && typeof first === 'object' && first !== null && ('statement' in first || 'strength' in first)) {
       return (
-        <div className="space-y-3">
-          {data.map((claim, i) => <ClaimCard key={i} claim={claim} />)}
+        <div className="px-2">
+          <Carousel opts={{ align: 'start', loop: false }} className="w-full">
+            <CarouselContent className="-ml-3">
+              {data.map((claim, i) => (
+                <CarouselItem key={i} className="pl-3 basis-full md:basis-1/2">
+                  <ClaimCard claim={claim} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="-left-3 md:-left-5" />
+            <CarouselNext className="-right-3 md:-right-5" />
+          </Carousel>
+          <div className="text-center mt-2">
+            <span className="text-xs text-muted-foreground">
+              {data.length} claims — swipe or use arrows to browse
+            </span>
+          </div>
         </div>
       );
     }

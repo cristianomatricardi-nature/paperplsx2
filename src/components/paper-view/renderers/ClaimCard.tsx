@@ -32,7 +32,7 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
   const methodRefs = claim.method_refs ?? claim.related_method_ids ?? [];
 
   return (
-    <div className={cn('rounded-md border border-border bg-card p-4 border-l-4 space-y-2', styles.border)}>
+    <div className={cn('rounded-md border border-border bg-card p-4 border-l-4 space-y-2 h-full flex flex-col', styles.border)}>
       <div className="flex items-center gap-2">
         <Badge className={cn('text-[10px] font-medium border-0 capitalize', styles.badge)}>
           {strength}
@@ -42,7 +42,7 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
       <p className="text-sm font-semibold text-foreground">{claim.statement}</p>
 
       {evidence && (
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed flex-1">
           {renderWithPageRefs(evidence)}
         </p>
       )}

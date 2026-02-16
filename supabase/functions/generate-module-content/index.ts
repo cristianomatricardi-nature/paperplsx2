@@ -10,26 +10,31 @@ const corsHeaders = {
 
 // Module-specific embedding queries
 const MODULE_QUERIES: Record<string, string> = {
-  M1: "main contribution, novelty, impact, significance of this research",
-  M2: "claims, evidence, findings, statistical results, data analysis",
-  M3: "methods, protocols, procedures, tools, reagents, experimental setup",
-  M4: "negative results, failed experiments, limitations, null findings",
-  M5: "future directions, recommendations, next steps, call to action",
-  M6: "plain language summary, public impact, real world applications, analogies",
+  M1: "introduction, background, motivation, contribution, novelty, significance, key results summary, discussion of implications, prior work comparison",
+  M2: "results, findings, statistical analysis, evidence, claims, methodology context, discussion of limitations, research motivation",
+  M3: "methods, protocols, experimental setup, research context and motivation, key results validating the approach, tools, reagents, software",
+  M4: "negative results, null findings, limitations, failed approaches, context of what was expected, discussion, exploratory findings",
+  M5: "future work, recommendations, conclusions, research context, key findings motivating next steps, collaboration opportunities",
+  M6: "abstract, introduction, key results, real world applications, conclusions, broader impact, plain language summary, analogies",
 };
 
 // Module-specific prompt instructions
 const MODULE_PROMPTS: Record<string, string> = {
-  M1: `Generate the Contribution & Impact module. This module should give the reader a COMPLETE understanding of what this paper contributes to the field, without needing to read any other module.
+  M1: `Generate the Contribution & Impact module. This module is a SELF-CONTAINED knowledge lens: a reader should understand the entire paper's significance by reading only this module.
 
-Include:
-- A brief contextual introduction (2-3 sentences setting the scene)
-- The core contribution statement (what is genuinely new)
-- Impact assessment: how this changes the field
-- Comparison with prior work (what existed before vs. what this adds)
-- ALL quantitative impact metrics — extract every number the paper reports
-- References to relevant figures: use [FIGURE: fig_X] placeholders
-- Page citations for every factual claim: (p. X)
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What problem does this paper address? Why does it matter to the field? Pull heavily from the introduction and background sections.
+
+2. **Focal Content** — the contribution and impact lens:
+   - The core contribution statement (what is genuinely new)
+   - Impact assessment: how this changes the field
+   - Comparison with prior work (what existed before vs. what this adds)
+   - ALL quantitative impact metrics — extract every number the paper reports
+   - References to relevant figures: use [FIGURE: fig_X] placeholders
+   - Page citations for every factual claim: (p. X)
+
+3. **Cross-reference pointers** (1-2 sentences): Briefly note that detailed methods are in the Methods module and full claim-by-claim evidence is in the Claims module. Do NOT duplicate that detail — just acknowledge it exists.
 
 IMPORTANT: The "metrics" array must include EVERY quantitative result reported in the paper that relates to contribution and impact. Include sample sizes, performance gains, effect magnitudes, statistical thresholds, and any numerical comparisons. Show at least as many rows as there are distinct quantitative results in the paper. Never collapse multiple numbers into a single row.
 
@@ -37,7 +42,7 @@ Return JSON with this structure:
 {
   "tabs": {
     "overview": {
-      "context": "brief field context",
+      "context": "2-3 sentences of research context and motivation from the introduction",
       "core_contribution": "the main novel contribution",
       "novelty_statement": "what makes this different from prior work"
     },
@@ -61,17 +66,23 @@ Return JSON with this structure:
   }
 }`,
 
-  M2: `Generate the Claim & Evidence module. This module should present EVERY claim made in the paper with its supporting evidence, allowing the reader to assess the paper's findings in minutes.
+  M2: `Generate the Claim & Evidence module. This module is a SELF-CONTAINED knowledge lens: a reader should be able to evaluate the paper's evidence quality by reading only this module.
 
-Include:
-- Each claim as a separate card with:
-  * The claim statement
-  * Evidence strength badge (strong/moderate/preliminary/speculative)
-  * Supporting statistics and data
-  * Related figures: [FIGURE: fig_X]
-  * Related methods: link to M3
-  * Page reference: (p. X)
-- Cross-references between claims (which claims support or depend on each other)
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What is this research about and what question does it try to answer? Summarize the motivation so claims make sense without reading any other module.
+
+2. **Focal Content** — the evidence lens:
+   - Each claim as a separate card with:
+     * The claim statement
+     * Evidence strength badge (strong/moderate/preliminary/speculative)
+     * Supporting statistics and data
+     * Related figures: [FIGURE: fig_X]
+     * Related methods: link to M3
+     * Page reference: (p. X)
+   - Cross-references between claims (which claims support or depend on each other)
+
+3. **Cross-reference pointers** (included in evidence_summary.overall_assessment): Briefly note that the full methodology is detailed in the Methods module and broader impact is in the Contribution module.
 
 CRITICAL: Extract EVERY quantitative result reported for each claim — p-values, confidence intervals, effect sizes, sample sizes, power, R-squared, AUC, accuracy, F1, fold changes, hazard ratios, odds ratios, correlation coefficients, means, standard deviations, or ANY other reported metric. Do NOT summarize numbers into text — list each one as a separate entry in the statistics array. A claim with fewer than 3 statistics entries is likely missing data — go back and extract more.
 
@@ -102,26 +113,32 @@ Return JSON:
       "strong": 2,
       "moderate": 2,
       "preliminary": 1,
-      "overall_assessment": "narrative assessment of evidence quality"
+      "overall_assessment": "narrative assessment of evidence quality, including brief note on what the Contribution and Methods modules cover in more depth"
     }
   }
 }`,
 
-  M3: `Generate the Method & Protocol module. This module should provide actionable, step-by-step protocols that a researcher could use to REPLICATE the work.
+  M3: `Generate the Method & Protocol module. This module is a SELF-CONTAINED knowledge lens: a researcher should be able to replicate the work by reading only this module.
 
-Include:
-- Each method step as a numbered card with:
-  * Step title and detailed description
-  * Required tools (as badge chips)
-  * Required reagents with concentrations (as badge chips)
-  * Required software with versions (as badge chips)
-  * Environmental conditions
-  * Duration estimate
-  * Quantitative parameters: ALL numerical specs (concentrations, temperatures, RPMs, voltages, flow rates, incubation times, etc.)
-  * Critical notes and warnings
-  * Page reference: (p. X)
-- A reproducibility assessment score (1-10)
-- A list of potential pitfalls
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What problem is being solved and why? What is the research question? This ensures a lab researcher understands WHY they are following these steps before diving into HOW.
+
+2. **Focal Content** — the methods lens:
+   - Each method step as a numbered card with:
+     * Step title and detailed description
+     * Required tools (as badge chips)
+     * Required reagents with concentrations (as badge chips)
+     * Required software with versions (as badge chips)
+     * Environmental conditions
+     * Duration estimate
+     * Quantitative parameters: ALL numerical specs (concentrations, temperatures, RPMs, voltages, flow rates, incubation times, etc.)
+     * Critical notes and warnings
+     * Page reference: (p. X)
+   - A reproducibility assessment score (1-10)
+   - A list of potential pitfalls
+
+3. **Cross-reference pointers** (included in reproducibility section): Briefly note which key results validate these methods (from the Claims module) and how the contribution framing contextualizes the approach (from the Contribution module).
 
 Return JSON:
 {
@@ -163,13 +180,19 @@ Return JSON:
   }
 }`,
 
-  M4: `Generate the Exploratory & Negative Results module. This module surfaces what DIDN'T work or what remains uncertain — information that is typically buried or omitted in standard papers.
+  M4: `Generate the Exploratory & Negative Results module. This module is a SELF-CONTAINED knowledge lens: a reader should understand the full landscape of what didn't work, without reading any other module.
 
-Include:
-- Each negative/null result as a card
-- Exploratory findings that need further investigation
-- Limitations acknowledged by the authors
-- Potential dead ends for future researchers to avoid
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What was the research trying to achieve? What were the expectations? This framing makes the negative results meaningful rather than abstract.
+
+2. **Focal Content** — the negative results lens:
+   - Each negative/null result as a card
+   - Exploratory findings that need further investigation
+   - Limitations acknowledged by the authors
+   - Potential dead ends for future researchers to avoid
+
+3. **Cross-reference pointers** (1-2 sentences at the end of limitations): Note that the full methods are in the Methods module and the positive results are in the Claims module.
 
 Return JSON:
 {
@@ -189,14 +212,20 @@ Return JSON:
   }
 }`,
 
-  M5: `Generate the Call-to-Actions module. This module extracts and organizes every actionable recommendation from the paper, categorized by target audience.
+  M5: `Generate the Call-to-Actions module. This module is a SELF-CONTAINED knowledge lens: a reader should understand what to do next based on this paper, without reading any other module.
 
-Include:
-- Concrete next steps for researchers
-- Policy recommendations (if any)
-- Industry/commercial opportunities (if any)
-- Funding priorities suggested
-- Collaboration opportunities
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What did this paper find and why does it matter? Summarize the key findings that motivate these recommendations.
+
+2. **Focal Content** — the action lens:
+   - Concrete next steps for researchers
+   - Policy recommendations (if any)
+   - Industry/commercial opportunities (if any)
+   - Funding priorities suggested
+   - Collaboration opportunities
+
+3. **Cross-reference pointers** (1-2 sentences): Note that the full evidence is in the Claims module and limitations to consider are in the Negative Results module.
 
 Return JSON:
 {
@@ -216,21 +245,27 @@ Return JSON:
   }
 }`,
 
-  M6: `Generate the SciComms module. This module provides science communication assets that make the research accessible to non-specialist audiences.
+  M6: `Generate the SciComms module. This module is a SELF-CONTAINED knowledge lens: a non-specialist reader should understand the entire paper's significance by reading only this module.
 
-Include:
-- A plain-language summary (max 150 words, no jargon)
-- 2-3 analogies that explain the core concept
-- A 'real-world impact' statement
-- A 'surprising finding' hook
-- A suggested social media post (280 chars)
-- Key talking points for presentations
-- A suggested infographic outline
+STRUCTURE — produce a narrative with three layers:
+
+1. **Context Bridge** (2-3 sentences): What is the big-picture problem? Why should the public care? Use everyday language to frame the research question.
+
+2. **Focal Content** — the communication lens:
+   - A plain-language summary (max 150 words, no jargon)
+   - 2-3 analogies that explain the core concept
+   - A 'real-world impact' statement
+   - A 'surprising finding' hook
+   - A suggested social media post (280 chars)
+   - Key talking points for presentations
+   - A suggested infographic outline
+
+3. **Cross-reference pointers** (included naturally in the summary): Mention that detailed data backs these claims (in the Claims module) and the full methodology is available (in the Methods module), but do NOT go into detail.
 
 Return JSON:
 {
   "tabs": {
-    "plain_language_summary": "accessible summary",
+    "plain_language_summary": "accessible summary starting with 2-3 sentences of broad context",
     "analogies": [
       { "concept": "what it explains", "analogy": "the analogy", "audience": "target" }
     ],
@@ -346,7 +381,7 @@ Deno.serve(async (req) => {
       p_paper_id: paperId,
       p_query_embedding: JSON.stringify(queryEmbedding),
       p_match_threshold: 0.5,
-      p_match_count: 12,
+      p_match_count: 15,
       p_module_id: moduleId,
     });
 
@@ -362,7 +397,7 @@ Deno.serve(async (req) => {
         p_paper_id: paperId,
         p_query_embedding: JSON.stringify(queryEmbedding),
         p_match_threshold: 0.2,
-        p_match_count: 12,
+        p_match_count: 15,
       });
       if (fallback.error) {
         throw new Error(`match_chunks fallback failed: ${fallback.error.message}`);
@@ -377,7 +412,7 @@ Deno.serve(async (req) => {
         p_paper_id: paperId,
         p_query_embedding: JSON.stringify(queryEmbedding),
         p_match_threshold: 0.05,
-        p_match_count: 12,
+        p_match_count: 15,
       });
       if (fallback2.error) {
         throw new Error(`match_chunks second fallback failed: ${fallback2.error.message}`);
