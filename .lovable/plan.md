@@ -1,28 +1,22 @@
 
 
-## Narrow the Content Area
+## PaperHeader Visual Refinements
 
-### Change
+### Changes in `src/components/paper-view/PaperHeader.tsx`
 
-**File: `src/pages/PaperViewPage.tsx`**
+**1. Remove author avatar circles (lines 100-107)**
+Delete the colored circular initials (`<span className="flex h-6 w-6 ...">`) next to each author name. Keep only the text name.
 
-Add a `max-w-3xl` constraint to the left content column's inner content so the text doesn't stretch the full 8-column width. This keeps the reading area comfortable and centered within the left column.
+**2. Journal name as plain text (lines 71-75)**
+Replace the `<Badge variant="outline">` wrapping the journal name with a plain `<span>` styled like the date (muted, small text).
 
-On line 132, wrap the content inside the left column div with an additional inner container:
+**3. DOI link color to black (line 84)**
+Change `text-[hsl(var(--deep-blue))]` to `text-foreground` on the DOI link so it renders in black.
 
-```tsx
-<div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
-  <div className="max-w-3xl mx-auto">
-    <PaperHeader ... />
-    {/* Summary, Modules, Figures -- all inside this narrower wrapper */}
-  </div>
-</div>
-```
+| Line(s) | What changes |
+|----------|-------------|
+| 71-75 | `Badge` becomes `<span className="text-sm font-sans text-muted-foreground">` |
+| 84 | DOI link color from deep-blue to `text-foreground` |
+| 100-107 | Remove the round avatar `<span>` element entirely |
 
-This constrains the reading content to ~768px max width and centers it within the left column, matching the narrower, more focused layout from the reference.
-
-| File | Change |
-|------|--------|
-| `PaperViewPage.tsx` | Add `max-w-3xl mx-auto` inner wrapper around all left-column content |
-
-Single line-level change, no logic modifications.
+No logic changes, className and element swaps only.
