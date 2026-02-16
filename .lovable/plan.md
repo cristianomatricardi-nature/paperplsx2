@@ -1,76 +1,132 @@
 
 
-## Metric Click-to-Explain with RAG Source Overlay
+## Restructuring Module Content: From Lists to Self-Contained Knowledge Lenses
 
-### What it does
+### The Problem
 
-When you click a metric card in the M1 Impact Analysis grid, a small overlay card pops up showing:
-- The manuscript passages where that number comes from (retrieved via RAG)
-- Page numbers linking back to the source
-- A loading spinner while fetching
+Right now, when you open a module, you see raw tabs ("Overview", "Impact Analysis", "Prior Work Comparison") with flat lists of data inside. It reads like a database dump, not like a coherent narrative. Each module should feel like opening a mini-article about the paper, viewed through that module's specific lens.
 
-This gives you instant traceability from any metric back to the original text.
+### The Solution: Narrative Sections with Visual Hierarchy
 
-### How it works
+Instead of tabs (which fragment content and hide information behind clicks), each module will render as a **single scrollable page** with clearly separated narrative sections, each with a headline, a brief intro sentence, and then the structured content beneath it.
 
 ```text
-User clicks metric card
-        |
-        v
-Edge function "explain-metric"
-  1. Embeds: "metric_name value comparison"
-  2. Calls match_chunks(paper_id, embedding)
-  3. Returns top 3-4 relevant passages with page numbers
-        |
-        v
-Popover overlay shows passages
++----------------------------------------------+
+| M1: Contribution & Impact Statement          |
++----------------------------------------------+
+| CONTEXT & SIGNIFICANCE                        |
+| Brief intro paragraph setting the scene...    |
+|                                               |
+| "What makes this paper novel..."              |
+|                                               |
++----------------------------------------------+
+| KEY METRICS                                   |
+| Brief sentence: "The paper reports the        |
+| following quantitative results:"              |
+|                                               |
+|  [metric grid cards as today]                 |
+|                                               |
++----------------------------------------------+
+| QUANTITATIVE HIGHLIGHTS                       |
+| Narrative paragraph summarizing numbers...    |
+|                                               |
++----------------------------------------------+
+| HOW THIS CHANGES THE FIELD                    |
+| Before vs After comparison...                 |
+|                                               |
++----------------------------------------------+
 ```
 
-### Changes
+### Architecture of the Change
 
-**1. New edge function: `supabase/functions/explain-metric/index.ts`**
+**No backend changes needed.** The existing JSON structure from the edge function already has the right data (e.g., M1 returns `tabs.overview`, `tabs.impact_analysis`, `tabs.prior_work_comparison`). The problem is purely in the frontend renderer which blindly maps tab keys to flat content panels.
 
-- Accepts `{ paper_id, query }` where query is a string like "Phase noise reduction -10 dBc/Hz"
-- Embeds the query using the same OpenAI embedding model already used elsewhere
-- Calls the existing `match_chunks` RPC with a low threshold (0.3) and limit of 4
-- Returns the matching chunk content and page numbers -- no LLM call needed, just retrieval
+### What changes
 
-**2. New API function in `src/lib/api.ts`**
+**1. Replace the `Tabs` component with a sectioned layout in `ModuleContentRenderer.tsx`**
 
-- `explainMetric(paperId: number, query: string)` that invokes the new edge function
+Instead of:
+```text
+Tabs > TabsList > TabsTrigger (per key)
+     > TabsContent (per key) > renderBlock()
+```
 
-**3. Update `MetricsGrid.tsx` -- replace Collapsible with Popover**
+We render:
+```text
+div.space-y-6 > for each section:
+  SectionHeader (title + optional intro)
+  renderBlock() (existing specialized renderers)
+```
 
-- Each MetricCard gets a `paperId` prop (passed down from MetricsGrid)
-- On click, instead of expanding inline, a Popover opens anchored to the card
-- The popover triggers a fetch to `explain-metric` with a query built from the metric name + value + comparison
-- Shows a small loading skeleton, then renders 2-4 source passages with page badges
-- Layout: compact overlay card (~300px wide) with:
-  - Header: "Source in manuscript"
-  - Each passage as a quoted block with page reference badge
-  - Similarity score shown as a subtle indicator
+Each section gets a `SectionHeader` component with:
+- A thin left accent border (matching the module's tier color)
+- A humanized title (e.g., "impact_analysis" becomes "Impact Analysis")
+- Module-specific intro sentences defined in a static map
 
-**4. Update `ModuleContentRenderer.tsx`**
+**2. New component: `ModuleSectionHeader`**
 
-- Pass `paperId` through to MetricsGrid so it can make the RAG call
+A small presentational component:
+- Renders a heading with a colored left border
+- Optionally shows a brief description line below the heading
+- Consistent typography: `text-lg font-semibold` for the title, `text-sm text-muted-foreground` for the description
 
-**5. Update `ModuleAccordion.tsx`**
+**3. Module section descriptions map**
 
-- Pass `paperId` to ModuleContentRenderer
+A static lookup in `ModuleContentRenderer.tsx` that provides contextual intro sentences for known section keys. For example:
 
-### Technical details
+| Module | Section Key | Intro |
+|--------|-------------|-------|
+| M1 | overview | "What this paper contributes and why it matters." |
+| M1 | impact_analysis | "Quantitative results and their significance." |
+| M1 | prior_work_comparison | "How this advances beyond previous research." |
+| M2 | claims | "Each claim extracted from the paper with its supporting evidence." |
+| M2 | evidence_summary | "Overall assessment of the evidence quality." |
+| M3 | protocol_steps | "Step-by-step procedures for replicating this work." |
+| M3 | analysis_methods | "Statistical and analytical approaches used." |
+| M3 | reproducibility | "Assessment of how reproducible this work is." |
+| M4 | negative_results | "What was tested but did not work as expected." |
+| M4 | limitations | "Acknowledged limitations and caveats." |
+| M5 | research_actions | "Concrete next steps recommended by the paper." |
+| M6 | plain_language_summary | "The research explained without jargon." |
 
-The explain-metric edge function is lightweight -- it only does embedding + vector search (no LLM generation), so it should respond in under 1 second. It reuses the existing `match_chunks` database function and OpenAI embedding infrastructure.
+Any unknown key falls back to the humanized key name with no intro.
 
-The Popover replaces the current Collapsible expand behavior. The tooltip on hover is kept for quick comparison preview; the click now opens the richer source overlay.
+**4. Flatten nested "overview" objects for M1**
 
-### Files summary
+The M1 `overview` tab returns an object like `{ context, core_contribution, novelty_statement }`. Currently GenericFallback renders this as labeled key-value pairs. We will add a dedicated `OverviewBlock` renderer that presents these three fields as a cohesive intro paragraph/card with:
+- `context` as a lead-in paragraph
+- `core_contribution` as a highlighted statement (slightly larger text or card)
+- `novelty_statement` as an italic follow-up
+
+**5. Evidence Summary card for M2**
+
+The M2 `evidence_summary` object (`{ total_claims, strong, moderate, preliminary, overall_assessment }`) currently renders as generic key-value. We will add a small `EvidenceSummaryCard` component showing:
+- A horizontal bar or badge row: "5 claims: 2 strong, 2 moderate, 1 preliminary"
+- The `overall_assessment` as a paragraph below
+
+**6. Reproducibility card for M3**
+
+The M3 `reproducibility` object (`{ score, strengths, gaps, pitfalls }`) will get a dedicated `ReproducibilityCard`:
+- Score displayed as a progress bar or large number out of 10
+- Strengths/gaps/pitfalls as labeled bullet lists
+
+### Files to create/modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/explain-metric/index.ts` | New edge function: embed query, match chunks, return passages |
-| `src/lib/api.ts` | New `explainMetric()` function |
-| `src/components/paper-view/renderers/MetricsGrid.tsx` | Replace Collapsible with Popover, fetch sources on click |
-| `src/components/paper-view/ModuleContentRenderer.tsx` | Pass paperId to MetricsGrid |
-| `src/components/paper-view/ModuleAccordion.tsx` | Pass paperId to ModuleContentRenderer |
+| `src/components/paper-view/ModuleContentRenderer.tsx` | Replace Tabs layout with sectioned layout; add section descriptions map |
+| `src/components/paper-view/renderers/ModuleSectionHeader.tsx` | New: section heading with accent border and intro text |
+| `src/components/paper-view/renderers/OverviewBlock.tsx` | New: M1 overview renderer (context + contribution + novelty) |
+| `src/components/paper-view/renderers/EvidenceSummaryCard.tsx` | New: M2 evidence summary with badge counts |
+| `src/components/paper-view/renderers/ReproducibilityCard.tsx` | New: M3 reproducibility score and assessment |
 
+### What stays the same
+
+- All existing specialized renderers (ClaimCard, ProtocolStep, MetricsGrid, ActionCard, NegativeResultCard) remain unchanged
+- The edge function prompts and JSON structure remain unchanged
+- The RAG-powered metric click-to-explain popover stays as-is
+- The accordion open/close behavior stays the same
+
+### Result
+
+Opening any module will feel like reading a short, structured article -- not browsing a data table. Each section flows into the next with clear headings and contextual introductions, while still using the rich specialized cards for claims, metrics, and protocols.
