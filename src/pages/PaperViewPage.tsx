@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
 import { MODULE_ORDER_BY_PERSONA } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import PaperSidebar from '@/components/paper-view/PaperSidebar';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
@@ -134,9 +136,9 @@ const PaperViewPage = () => {
           storagePath={storagePath}
         />
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className={cn('grid gap-6', sidebarOpen ? 'grid-cols-12' : 'flex')}>
           {/* Main content area */}
-          <div className={sidebarOpen ? 'col-span-12 lg:col-span-8' : 'col-span-12'}>
+          <div className={sidebarOpen ? 'col-span-12 lg:col-span-8' : 'flex-1'}>
             {/* Summary card */}
             {numericId && (
               <div className="mb-6">
@@ -160,42 +162,14 @@ const PaperViewPage = () => {
           </div>
 
           {/* Sidebar */}
-          {sidebarOpen && (
-            <aside className="col-span-12 lg:col-span-4">
-              <div className="sticky top-14 space-y-4">
-                {/* Table of Contents placeholder */}
-                <div className="rounded-md border border-border bg-card p-4">
-                  <h3 className="font-serif text-sm font-semibold text-foreground mb-3">Table of Contents</h3>
-                  {structured?.sections?.length ? (
-                    <ul className="space-y-1.5">
-                      {structured.sections.map((sec, i) => (
-                        <li key={i} className="font-sans text-sm text-muted-foreground hover:text-foreground cursor-pointer">
-                          {sec.heading}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="font-sans text-xs text-muted-foreground">Sections will appear once processing completes.</p>
-                  )}
-                </div>
-
-                {/* Figures placeholder */}
-                <div className="rounded-md border border-border bg-card p-4">
-                  <h3 className="font-serif text-sm font-semibold text-foreground mb-3">Figures</h3>
-                  {structured?.figures?.length ? (
-                    <ul className="space-y-1.5">
-                      {structured.figures.map((fig, i) => (
-                        <li key={i} className="font-sans text-xs text-muted-foreground">
-                          {fig.caption?.slice(0, 60)}…
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="font-sans text-xs text-muted-foreground">No figures extracted yet.</p>
-                  )}
-                </div>
-              </div>
-            </aside>
+          {numericId && (
+            <PaperSidebar
+              paperId={numericId}
+              paper={paper}
+              subPersonaId={subPersonaId}
+              isExpanded={sidebarOpen}
+              onToggle={() => setSidebarOpen((o) => !o)}
+            />
           )}
         </div>
       </div>
