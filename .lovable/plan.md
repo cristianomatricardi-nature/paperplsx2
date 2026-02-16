@@ -1,88 +1,61 @@
 
 
-## Visual Redesign: Paper++ View
+## Layout Ratio Fix and Icon Removal
 
-Comparing the current UI with the reference screenshot, the following design changes are needed to achieve the softer, more spacious, card-based layout.
-
----
-
-### 1. Increase Global Border Radius
-
-**File: `src/index.css`**
-
-Change `--radius` from `0.25rem` to `0.75rem`. This affects all shadcn components (cards, buttons, inputs, badges, etc.) making everything more rounded throughout the app.
+### Problem
+The paper view content stretches edge-to-edge across the full screen width, making it hard to read on wide monitors. The reference design shows content constrained to a comfortable max-width centered on the page. Additionally, emoji icons next to module titles and sidebar section titles need to be removed.
 
 ---
 
-### 2. Redesign the Sidebar as Separate Cards
-
-**File: `src/components/paper-view/PaperSidebar.tsx`**
-
-Currently the sidebar is one tall stacked panel with internal borders. The reference shows each section (Article/Authors toggle, Strategic Insights, Community Engagement, Multidimensional Assessment) as its own standalone rounded card with shadow and spacing between them.
-
-- Replace the single `border bg-secondary/30` wrapper with a `space-y-4` container
-- Wrap each collapsible section (insights, community, assessment) and the mode toggle in its own `rounded-xl border bg-card shadow-sm` card
-- Move the Article/Authors mode toggle to the top as its own small card
-- Remove the "Collapse" bar at the top; keep collapse behavior via the existing top-bar button
-- Add subtle descriptions under each card title (e.g., "AI-powered insights" under Strategic Insights) matching the reference
-
----
-
-### 3. Softer Module Accordion Cards
-
-**File: `src/components/paper-view/ModuleAccordion.tsx`**
-
-- Change `rounded-md` to `rounded-xl` for softer corners
-- Add `shadow-sm` for subtle elevation matching the reference
-- Increase vertical padding slightly in the trigger area
-
----
-
-### 4. Softer Personalized Summary Card
-
-**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
-
-- The Card already inherits the global radius, but explicitly ensure it renders with rounded-xl styling and a subtle shadow
-
----
-
-### 5. Module Section Headers Spacing
-
-**File: `src/components/paper-view/ModuleAccordionList.tsx`**
-
-- Increase gap between module cards from `space-y-2` to `space-y-3`
-- Add a colored dot before section titles ("Core Research", "Satellite Modules") matching the reference style, instead of the current border-left approach
-
----
-
-### 6. Paper Header Refinements
-
-**File: `src/components/paper-view/PaperHeader.tsx`**
-
-- Wrap author count in a rounded pill/button shape (the reference shows "7 Authors" in a rounded outlined chip)
-- Increase bottom margin for better breathing room
-
----
-
-### 7. Page-Level Spacing
+### 1. Constrain Page Width
 
 **File: `src/pages/PaperViewPage.tsx`**
 
-- Increase gap between grid columns from `gap-6` to `gap-8`
-- Increase vertical padding for more whitespace
+Wrap the main content area (`px-4 md:px-8 py-8` div, line 130) with a `max-w-7xl mx-auto` container so the content stays centered and doesn't stretch beyond ~1280px on wide screens.
 
 ---
 
-### Technical Details
+### 2. Remove Emoji Icons from Module Accordion Headers
 
-All changes are CSS/className-level adjustments -- no logic changes, no new dependencies. The global `--radius` bump in `index.css` is the highest-impact single change, instantly rounding all shadcn primitives. Component-specific tweaks then fine-tune shadows, spacing, and card separation to match the reference aesthetic.
+**File: `src/components/paper-view/ModuleAccordion.tsx`**
 
-Files to modify:
-- `src/index.css` (1 line: radius value)
-- `src/components/paper-view/PaperSidebar.tsx` (restructure into separate cards)
-- `src/components/paper-view/ModuleAccordion.tsx` (rounded-xl, shadow)
-- `src/components/paper-view/PersonalizedSummaryCard.tsx` (rounded-xl)
-- `src/components/paper-view/ModuleAccordionList.tsx` (spacing, dot headers)
-- `src/components/paper-view/PaperHeader.tsx` (author chip styling)
-- `src/pages/PaperViewPage.tsx` (spacing tweaks)
+Remove the icon span on line 76:
+```tsx
+// Remove this line:
+<span className="text-lg">{moduleDefinition.icon}</span>
+```
+
+Also remove the "Core" / "Satellite" badge (line 80-82) to clean up the header further -- keeping just the module title text.
+
+---
+
+### 3. Remove Emoji Icons from Sidebar Section Headers
+
+**File: `src/components/paper-view/PaperSidebar.tsx`**
+
+Remove the emoji spans from each collapsible trigger:
+- Line 164: Remove `<span>💡</span>`
+- Line 187: Remove `<span>👥</span>`  
+- Line 219: Remove `<span>📊</span>`
+
+---
+
+### 4. Remove Emoji from Personalized Summary Card Header
+
+**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
+
+Remove the persona emoji span on line 85 (the long ternary producing graduation cap, microscope, etc.).
+
+---
+
+### Summary of Changes
+
+| File | Change |
+|------|--------|
+| `PaperViewPage.tsx` | Add `max-w-7xl mx-auto` wrapper |
+| `ModuleAccordion.tsx` | Remove icon span and badge from header |
+| `PaperSidebar.tsx` | Remove 3 emoji spans from section triggers |
+| `PersonalizedSummaryCard.tsx` | Remove persona emoji from title |
+
+All changes are className/JSX-level -- no logic changes.
 
