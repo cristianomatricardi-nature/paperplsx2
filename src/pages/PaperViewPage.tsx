@@ -158,6 +158,7 @@ const PaperViewPage = () => {
             isOwner={isOwner}
             authorsMode={authorsMode}
             onAuthorsModeChange={setAuthorsMode}
+            paperId={numericId}
           />
 
             {/* Summary card */}

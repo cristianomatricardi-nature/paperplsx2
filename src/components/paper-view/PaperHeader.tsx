@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil, Link2 } from 'lucide-react';
 import { downloadPaperPDF } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import type { Author } from '@/types/database';
@@ -17,6 +17,7 @@ interface PaperHeaderProps {
   isOwner?: boolean;
   authorsMode?: boolean;
   onAuthorsModeChange?: (v: boolean) => void;
+  paperId?: number | null;
 }
 
 const PaperHeader = ({
@@ -30,6 +31,7 @@ const PaperHeader = ({
   isOwner = false,
   authorsMode = false,
   onAuthorsModeChange,
+  paperId,
 }: PaperHeaderProps) => {
   const { toast } = useToast();
   const [showAllAuthors, setShowAllAuthors] = useState(false);
@@ -143,6 +145,22 @@ const PaperHeader = ({
           >
             <Pencil className="h-4 w-4" />
             Authors Mode
+          </Button>
+        )}
+
+        {paperId && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-sans gap-1.5 border-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue))]/10"
+            onClick={() => {
+              const url = `${window.location.origin}/paper/${paperId}/public`;
+              navigator.clipboard.writeText(url);
+              toast({ title: 'Link copied', description: 'Public paper link copied to clipboard.' });
+            }}
+          >
+            <Link2 className="h-4 w-4" />
+            Copy Link
           </Button>
         )}
 
