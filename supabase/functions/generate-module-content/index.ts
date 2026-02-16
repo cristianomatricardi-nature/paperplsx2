@@ -27,9 +27,11 @@ Include:
 - The core contribution statement (what is genuinely new)
 - Impact assessment: how this changes the field
 - Comparison with prior work (what existed before vs. what this adds)
-- Quantitative impact metrics where available
+- ALL quantitative impact metrics — extract every number the paper reports
 - References to relevant figures: use [FIGURE: fig_X] placeholders
 - Page citations for every factual claim: (p. X)
+
+IMPORTANT: The "metrics" array must include EVERY quantitative result reported in the paper that relates to contribution and impact. Include sample sizes, performance gains, effect magnitudes, statistical thresholds, and any numerical comparisons. Show at least as many rows as there are distinct quantitative results in the paper. Never collapse multiple numbers into a single row.
 
 Return JSON with this structure:
 {
@@ -42,7 +44,14 @@ Return JSON with this structure:
     "impact_analysis": {
       "field_impact": "how this changes the field",
       "broader_impact": "societal/practical implications",
-      "metrics": [{ "metric": "name", "value": "number", "comparison": "vs prior work" }]
+      "metrics": [
+        { "metric": "primary outcome measure", "value": "exact number/range", "comparison": "vs prior work / baseline", "page_ref": 5 },
+        { "metric": "sample size", "value": "n=X", "comparison": "context", "page_ref": 3 },
+        { "metric": "effect size", "value": "d=X.XX or OR=X.XX", "comparison": "vs benchmark", "page_ref": 6 },
+        { "metric": "performance gain", "value": "X% improvement", "comparison": "over previous SOTA", "page_ref": 8 },
+        { "metric": "statistical significance", "value": "p<X.XXX", "comparison": "threshold used", "page_ref": 5 }
+      ],
+      "quantitative_highlights": "Narrative paragraph summarizing ALL key numbers from the paper: sample sizes, effect sizes, performance gains, confidence intervals, and any numerical comparisons with prior work."
     },
     "prior_work_comparison": {
       "before": "what existed before this paper",
@@ -64,6 +73,8 @@ Include:
   * Page reference: (p. X)
 - Cross-references between claims (which claims support or depend on each other)
 
+CRITICAL: Extract EVERY quantitative result reported for each claim — p-values, confidence intervals, effect sizes, sample sizes, power, R-squared, AUC, accuracy, F1, fold changes, hazard ratios, odds ratios, correlation coefficients, means, standard deviations, or ANY other reported metric. Do NOT summarize numbers into text — list each one as a separate entry in the statistics array. A claim with fewer than 3 statistics entries is likely missing data — go back and extract more.
+
 Return JSON:
 {
   "tabs": {
@@ -73,7 +84,13 @@ Return JSON:
         "statement": "the claim",
         "strength": "strong",
         "evidence": "supporting evidence with statistics",
-        "statistics": [{ "name": "p-value", "value": "0.001" }],
+        "statistics": [
+          { "name": "p-value", "value": "<0.001" },
+          { "name": "effect size (Cohen's d)", "value": "0.82" },
+          { "name": "95% CI", "value": "[0.45, 1.19]" },
+          { "name": "sample size", "value": "n=342" },
+          { "name": "power", "value": "0.95" }
+        ],
         "figure_refs": ["fig_1"],
         "method_refs": ["method_1"],
         "page_refs": [5, 6],
@@ -100,6 +117,7 @@ Include:
   * Required software with versions (as badge chips)
   * Environmental conditions
   * Duration estimate
+  * Quantitative parameters: ALL numerical specs (concentrations, temperatures, RPMs, voltages, flow rates, incubation times, etc.)
   * Critical notes and warnings
   * Page reference: (p. X)
 - A reproducibility assessment score (1-10)
@@ -119,6 +137,11 @@ Return JSON:
         "software": ["software v1.0"],
         "conditions": ["37°C", "5% CO2"],
         "duration": "2 hours",
+        "quantitative_parameters": [
+          { "parameter": "centrifuge speed", "value": "14,000 RPM", "page_ref": 4 },
+          { "parameter": "incubation temperature", "value": "37°C ± 0.5°C", "page_ref": 4 },
+          { "parameter": "concentration", "value": "10 µM", "page_ref": 3 }
+        ],
         "critical_notes": ["warning 1"],
         "page_refs": [3]
       }

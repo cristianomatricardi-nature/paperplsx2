@@ -21,13 +21,22 @@ export function composeModulePrompt(
 - Detail level: ${persona.depthPreference}
 - Compare against: ${persona.comparativeFraming}`);
 
-  // 2. Module-Specific Adaptation
+  // 2. Quantitative Depth Mandate (conditional on numberPolicy)
+  if (persona.numberPolicy === "all_raw" || persona.numberPolicy === "explained_raw") {
+    sections.push(`QUANTITATIVE DEPTH MANDATE:
+Extract and present EVERY quantitative result from the paper context. This includes but is not limited to: p-values, confidence intervals, effect sizes, sample sizes, means, standard deviations, R-squared, AUC, F1 scores, accuracy percentages, fold changes, hazard ratios, odds ratios, correlation coefficients, and any numerical comparisons. Present each as a separate entry in the statistics/metrics arrays — never collapse multiple numbers into prose. If the paper reports a number, it MUST appear in your output. When comparison data exists, include it in tabular format. A claim or impact section with fewer than 3 quantitative entries is likely missing data — go back and extract more.`);
+  } else if (persona.numberPolicy === "inferred_only" || persona.numberPolicy === "decision_ready") {
+    sections.push(`QUANTITATIVE PRESENTATION:
+Translate raw statistics into practical significance for this reader. Instead of p-values, use confidence language (high/medium/low confidence). Instead of effect sizes, describe the magnitude in real-world terms. Only include numbers that are decision-relevant. If you infer population-level numbers, clearly mark them as AI-estimated.`);
+  }
+
+  // 3. Module-Specific Adaptation
   const moduleInstruction = persona.moduleInstructions[moduleId];
   if (moduleInstruction) {
     sections.push(`MODULE-SPECIFIC ADAPTATION:\n${moduleInstruction}`);
   }
 
-  // 3. Educational Extras
+  // 4. Educational Extras
   if (persona.educationalExtras) {
     sections.push(`EDUCATIONAL RESOURCES:\nSuggest relevant textbooks, tutorials, review papers, or protocol databases where applicable. Include links to foundational reading that would help a newcomer understand the context.`);
   }
