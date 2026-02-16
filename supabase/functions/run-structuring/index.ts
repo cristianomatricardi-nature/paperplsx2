@@ -126,6 +126,7 @@ OUTPUT: A JSON object with the following structure. Extract ACTUAL CONTENT, not 
 }
 
 RULES:
+- Extract EVERY figure referenced in the paper, including subfigures (e.g., Fig. 2a, 2b). Scan EVERY page for figure captions starting with 'Fig.', 'Figure', or similar patterns. A typical paper has 3-8 figures. Do NOT skip any visual element.
 - Extract ALL claims, not just the main one. A typical paper has 3-10 claims.
 - Extract ALL method steps in sufficient detail for replication.
 - For negative_results: look in Discussion and Limitations sections. If none are explicitly stated, infer from hedging language or non-significant results.
