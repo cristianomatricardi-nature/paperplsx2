@@ -1,41 +1,48 @@
 
 
-## Fix: Persona ID Mismatch Between Frontend and Backend
+## Fix: Add Fallback to generate-summary (Same Pattern as generate-module-content)
 
-### Root Cause
+### Problem
 
-The error `"Unknown sub_persona_id: phd_postdoc"` reveals the core problem: **the frontend and backend use completely different persona ID systems**.
+The `generate-summary` function uses a similarity threshold of 0.5 with no fallback. Paper 8 has 11 chunks with valid embeddings, but none score above 0.5 similarity for the generic summary query. The function throws "No matching chunks found" and falls back to the abstract instead of generating a real personalized summary.
 
-**Frontend** (`src/types/modules.ts`) sends these IDs:
-- `phd_postdoc`, `pi_tenure`, `think_tank`, `gov_institution`, `funder_governmental`, `funder_private`, `industry_rd`
+The `generate-module-content` function was already fixed with this fallback pattern, but the same fix was never applied to `generate-summary`.
 
-**Backend** (`supabase/functions/_shared/sub-personas.ts`) expects these IDs:
-- `expert_researcher`, `expert_clinician`, `student_phd`, `student_undergrad`, `reviewer_peer`, `reviewer_editor`, `journalist_science`, `journalist_policy`, `general_curious`, `general_investor`
+### Fix
 
-There is zero overlap. Every call from the frontend to `generate-summary` or `generate-module-content` fails immediately with a 400 error because the persona ID is not found in the backend registry.
+**File: `supabase/functions/generate-summary/index.ts`** (lines 92-107)
 
-### The Fix
+Add a fallback retry with a lower threshold (0.3) when the initial query returns no chunks — identical to the pattern already used in `generate-module-content`:
 
-Rewrite `supabase/functions/_shared/sub-personas.ts` to use the same 7 persona IDs as the frontend, carrying over the same labels, pain points, quantitative depth, and language style from the frontend registry.
+```
+// Current code (no fallback):
+const { data: chunks, error } = await supabase.rpc("match_chunks", {
+  p_paper_id: paperId,
+  p_query_embedding: JSON.stringify(queryEmbedding),
+  p_match_threshold: 0.5,
+  p_match_count: 12,
+});
+if (!chunks || chunks.length === 0) {
+  throw new Error("No matching chunks found");
+}
 
-### Changes
+// Fixed code (with fallback):
+let { data: chunks, error } = await supabase.rpc("match_chunks", { ... threshold: 0.5 });
 
-**File: `supabase/functions/_shared/sub-personas.ts`**
+if (!chunks || chunks.length === 0) {
+  // Retry with relaxed threshold
+  const fallback = await supabase.rpc("match_chunks", {
+    p_paper_id: paperId,
+    p_query_embedding: JSON.stringify(queryEmbedding),
+    p_match_threshold: 0.2,
+    p_match_count: 12,
+  });
+  chunks = fallback.data;
+}
+```
 
-Replace the entire registry with entries matching the frontend IDs:
+After editing, redeploy both `generate-summary` and `generate-module-content`.
 
-| Backend Key (new) | Label | Parent |
-|---|---|---|
-| `phd_postdoc` | PhD Student / Post-doc | Researcher |
-| `pi_tenure` | Tenure-Track Faculty / PI | Researcher |
-| `think_tank` | Think Tank Researcher/Analyst | Policy Maker |
-| `gov_institution` | Governmental Institution Official | Policy Maker |
-| `funder_governmental` | Governmental Funder (NSF/ERC/NIH) | Funding Agency |
-| `funder_private` | Private Funder (Gates/Wellcome) | Funding Agency |
-| `industry_rd` | Industry R&D Professional | Industry R&D |
+### No other files change
 
-Each entry will use the `painPoint`, `quantitativeDepth`, and `languageStyle` values already defined in the frontend's `SUB_PERSONA_REGISTRY`.
-
-**No other files need changes** -- both `generate-summary` and `generate-module-content` already look up personas via `SUB_PERSONA_REGISTRY[subPersonaId]`, so fixing the keys in the shared file is the only change needed.
-
-After this fix, the personalized summary card and all module accordions will work when you view a paper.
+The frontend code and the `generate-module-content` function already have the correct logic. This is a one-file fix.
