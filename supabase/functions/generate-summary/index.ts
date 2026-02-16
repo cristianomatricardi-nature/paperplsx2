@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUB_PERSONA_REGISTRY } from "../_shared/sub-personas.ts";
+import { composeSummaryPrompt } from "../_shared/prompt-composers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -128,33 +129,7 @@ Deno.serve(async (req) => {
       )
       .join("\n\n");
 
-    const prompt = `You are generating a personalized summary of a scientific paper for a specific reader.
-
-READER PROFILE:
-- Role: ${subPersona.label}
-- Pain Point: ${subPersona.painPoint}
-- Quantitative Depth: ${subPersona.quantitativeDepth}
-- Language Style: ${subPersona.languageStyle}
-
-PAPER CONTEXT (retrieved from the paper):
-${contextText}
-
-TASK: Generate a "Key Insights" summary with exactly 4 bullet points. Each bullet point must:
-1. Be tailored to what THIS reader cares about most
-2. Include a page reference in parentheses, e.g., (p. 5)
-3. Be concise (max 30 words per bullet)
-4. Use the language style specified above
-
-Also generate:
-- A relevance_score (1-5 stars) indicating how relevant this paper is to the reader's role
-- A one-sentence "why_this_matters" statement for this reader
-
-Return JSON:
-{
-  "summary_points": ["point 1 (p. X)", "point 2 (p. Y)", "point 3 (p. Z)", "point 4 (p. W)"],
-  "relevance_score": 4,
-  "why_this_matters": "sentence"
-}`;
+    const prompt = composeSummaryPrompt(subPersona, contextText);
 
     // 6. Call GPT-4o-mini
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
