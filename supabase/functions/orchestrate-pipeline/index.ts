@@ -54,21 +54,47 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Helper to invoke an edge function and wait for result
-  async function invokeFunction(fnName: string, payload: Record<string, unknown>): Promise<void> {
-    const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
+  // Fire-and-forget: dispatch an edge function without waiting for response body
+  function fireFunction(fnName: string, payload: Record<string, unknown>): void {
+    fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${serviceRoleKey}`,
       },
       body: JSON.stringify(payload),
+    }).catch((err) => {
+      console.warn(`[pipeline] Fire ${fnName} dispatch error (non-fatal):`, err);
     });
+  }
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      throw new Error(`${fnName} failed (${res.status}): ${errBody}`);
+  // Poll a condition function until it returns true, or timeout
+  async function pollForCondition(
+    description: string,
+    checkFn: () => Promise<boolean>,
+    timeoutMs: number,
+    intervalMs = 5000,
+  ): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      // Check if paper failed (another function errored)
+      const { data: p } = await supabase
+        .from("papers")
+        .select("status")
+        .eq("id", paperId)
+        .single();
+      if (p?.status === "failed") {
+        throw new Error(`Paper marked as failed during: ${description}`);
+      }
+
+      const done = await checkFn();
+      if (done) {
+        console.log(`[pipeline] Paper ${paperId}: ${description} — condition met`);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, intervalMs));
     }
+    throw new Error(`Timeout waiting for: ${description} (${timeoutMs / 1000}s)`);
   }
 
   async function updateStatus(status: string, errorMessage?: string) {
@@ -85,34 +111,79 @@ Deno.serve(async (req) => {
       // Step 1: Parse
       console.log(`[pipeline] Paper ${paperId}: Starting parsing`);
       await updateStatus("parsing");
-      await invokeFunction("run-parser", { paper_id: paperId });
+      fireFunction("run-parser", { paper_id: paperId });
+
+      // Poll: run-parser updates papers.num_pages when done
+      await pollForCondition(
+        "parsing complete (num_pages set)",
+        async () => {
+          const { data } = await supabase
+            .from("papers")
+            .select("num_pages")
+            .eq("id", paperId)
+            .single();
+          return data?.num_pages != null;
+        },
+        300_000, // 5 min
+      );
 
       // Step 2: Structure
       console.log(`[pipeline] Paper ${paperId}: Starting structuring`);
       await updateStatus("structuring");
-      await invokeFunction("run-structuring", { paper_id: paperId });
+      fireFunction("run-structuring", { paper_id: paperId });
+
+      // Poll: run-structuring upserts structured_papers with sections
+      await pollForCondition(
+        "structuring complete (structured_papers.sections populated)",
+        async () => {
+          const { data } = await supabase
+            .from("structured_papers")
+            .select("sections")
+            .eq("paper_id", paperId)
+            .maybeSingle();
+          if (!data) return false;
+          const sections = data.sections as unknown[];
+          return Array.isArray(sections) && sections.length > 0;
+        },
+        300_000, // 5 min
+      );
 
       // Step 3: Parallel — chunking + figure extraction
       console.log(`[pipeline] Paper ${paperId}: Starting chunking & figure extraction`);
       await updateStatus("chunking");
+      fireFunction("run-chunking-and-embedding", { paper_id: paperId });
+      fireFunction("run-figure-extraction", { paper_id: paperId });
 
-      const [chunkingResult, figureResult] = await Promise.allSettled([
-        invokeFunction("run-chunking-and-embedding", { paper_id: paperId }),
-        invokeFunction("run-figure-extraction", { paper_id: paperId }),
-      ]);
-
-      // Chunking is blocking; figure extraction is non-blocking
-      if (chunkingResult.status === "rejected") {
-        throw new Error(`Chunking failed: ${chunkingResult.reason}`);
-      }
-
-      if (figureResult.status === "rejected") {
-        console.warn(`[pipeline] Paper ${paperId}: Figure extraction failed (non-blocking): ${figureResult.reason}`);
-      }
+      // Poll: chunking inserts rows into chunks table (blocking)
+      await pollForCondition(
+        "chunking complete (chunks exist)",
+        async () => {
+          const { count } = await supabase
+            .from("chunks")
+            .select("id", { count: "exact", head: true })
+            .eq("paper_id", paperId);
+          return (count ?? 0) > 0;
+        },
+        300_000, // 5 min
+      );
 
       // Step 4: Simulated Impact
       console.log(`[pipeline] Paper ${paperId}: Generating simulated impact scores`);
-      await invokeFunction("generate-simulated-impact", { paper_id: paperId });
+      fireFunction("generate-simulated-impact", { paper_id: paperId });
+
+      // Poll: generate-simulated-impact sets papers.simulated_impact_scores
+      await pollForCondition(
+        "simulated impact scores generated",
+        async () => {
+          const { data } = await supabase
+            .from("papers")
+            .select("simulated_impact_scores")
+            .eq("id", paperId)
+            .single();
+          return data?.simulated_impact_scores != null;
+        },
+        120_000, // 2 min
+      );
 
       // Step 5: Finalize
       console.log(`[pipeline] Paper ${paperId}: Pipeline completed`);
@@ -127,7 +198,6 @@ Deno.serve(async (req) => {
   if (typeof (globalThis as any).EdgeRuntime !== "undefined" && (globalThis as any).EdgeRuntime.waitUntil) {
     (globalThis as any).EdgeRuntime.waitUntil(pipelinePromise);
   } else {
-    // Fallback: don't await, let it run in background
     pipelinePromise.catch((e) => console.error(`[pipeline] Unhandled error for paper ${paperId}:`, e));
   }
 
