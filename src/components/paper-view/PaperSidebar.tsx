@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, MessageSquare, Users, FlaskConical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FlaskConical, GitFork } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ReplicationCart, type ReplicationCartItem } from './ReplicationCart';
+import { AnalyticalPipelineCart } from './AnalyticalPipelineCart';
 import {
   Radar,
   RadarChart,
@@ -46,15 +47,13 @@ interface PaperSidebarProps {
   onAuthorScoresChange?: (scores: Record<string, number>) => void;
   cartItems?: ReplicationCartItem[];
   onCartUpdate?: (items: ReplicationCartItem[]) => void;
+  pipelineCartItems?: ReplicationCartItem[];
+  onPipelineCartUpdate?: (items: ReplicationCartItem[]) => void;
 }
 
 /* ---------- constants ---------- */
 
 
-const COMMUNITY_PLACEHOLDERS = [
-  'Ask the community...',
-  'Find collaborators...',
-];
 
 const DIMENSIONS: { key: keyof Omit<ImpactScores, 'reasoning'>; label: string; short: string }[] = [
   { key: 'conceptual_influence', label: 'Conceptual Influence', short: 'Concept' },
@@ -65,7 +64,7 @@ const DIMENSIONS: { key: keyof Omit<ImpactScores, 'reasoning'>; label: string; s
   { key: 'replication_readiness', label: 'Replication Readiness', short: 'Replication' },
 ];
 
-type SectionKey = 'replication' | 'community' | 'assessment';
+type SectionKey = 'replication' | 'pipeline' | 'assessment';
 
 /* ---------- animated placeholder hook ---------- */
 
@@ -93,16 +92,16 @@ const PaperSidebar = ({
   onAuthorScoresChange,
   cartItems = [],
   onCartUpdate,
+  pipelineCartItems = [],
+  onPipelineCartUpdate,
 }: PaperSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     replication: true,
-    community: false,
+    pipeline: false,
     assessment: true,
   });
   const [savingScores, setSavingScores] = useState(false);
-
-  const communityPlaceholder = useAnimatedPlaceholder(COMMUNITY_PLACEHOLDERS, 4000);
 
   const toggleSection = useCallback((key: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -161,11 +160,11 @@ const PaperSidebar = ({
         </button>
 
         <button
-          onClick={() => handleCollapsedTabClick('community')}
+          onClick={() => handleCollapsedTabClick('pipeline')}
           className="flex items-center justify-center"
         >
           <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
-            Community
+            Pipeline
           </span>
         </button>
 
@@ -223,34 +222,39 @@ const PaperSidebar = ({
           </Collapsible>
         </div>
 
-        {/* ── 2. Community Engagement card ── */}
+        {/* ── 2. Analytical Pipeline card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
-          <Collapsible open={openSections.community} onOpenChange={() => toggleSection('community')}>
+          <Collapsible open={openSections.pipeline} onOpenChange={() => toggleSection('pipeline')}>
             <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
               <div className="text-center">
-                <span>Community Engagement</span>
-                <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Discussion & networking</p>
+                <span>Analytical Pipeline</span>
+                <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Fork & compare decisions</p>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="px-4 pb-4 space-y-3">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs font-sans flex-1">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Discussion
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs font-sans flex-1">
-                  <Users className="h-3.5 w-3.5" />
-                  Network
-                </Button>
-              </div>
-              <Input
-                placeholder={communityPlaceholder}
-                className="text-sm font-sans transition-all"
-                readOnly
-              />
-              <p className="text-xs font-sans text-muted-foreground italic">
-                Coming soon
+              <p className="text-xs font-sans text-muted-foreground">
+                Drop a claim or method to decompose its analytical decisions.
               </p>
+              {onPipelineCartUpdate && (
+                <AnalyticalPipelineCart
+                  paperId={paperId}
+                  items={pipelineCartItems}
+                  onUpdateItems={onPipelineCartUpdate}
+                />
+              )}
+              <Button
+                className="w-full gap-2 text-xs"
+                size="sm"
+                onClick={() => {
+                  if (pipelineCartItems.length > 0) {
+                    sessionStorage.setItem(`analysis-cart-${paperId}`, JSON.stringify(pipelineCartItems));
+                  }
+                  navigate(`/analysis/${paperId}`);
+                }}
+              >
+                <GitFork className="h-3.5 w-3.5" />
+                Open Analytical Pipeline
+              </Button>
             </CollapsibleContent>
           </Collapsible>
         </div>
