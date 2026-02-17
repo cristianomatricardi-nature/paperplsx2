@@ -13,6 +13,7 @@ import FiguresSection from '@/components/paper-view/FiguresSection';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
+import AiAgentConsole from '@/components/paper-view/AiAgentConsole';
 import PersonaSelectionStep from '@/components/researcher-home/PersonaSelectionStep';
 import { toast } from 'sonner';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
@@ -213,36 +214,47 @@ const PaperViewPage = () => {
             paperId={numericId}
           />
 
-            {/* Summary card */}
-            {numericId && (
-              <div className="mb-6">
-                <PersonalizedSummaryCard
-                  paperId={numericId}
-                  subPersonaId={subPersonaId}
-                  onPersonaChange={handlePersonaChange}
-                  allowedPersonas={allowedPersonas}
-                />
-              </div>
-            )}
-
-            {/* Module accordion list */}
-            {numericId && (
-              <ModuleAccordionList
+            {numericId && subPersonaId === 'ai_agent' ? (
+              <AiAgentConsole
                 paperId={numericId}
                 subPersonaId={subPersonaId}
-                moduleOrder={moduleOrder}
-                figures={structured?.figures}
-                authorsMode={authorsMode}
-                authorEnrichments={authorEnrichments}
-                onEnrichmentsUpdate={setAuthorEnrichments}
+                onPersonaChange={handlePersonaChange}
+                allowedPersonas={allowedPersonas}
               />
-            )}
+            ) : (
+              <>
+                {/* Summary card */}
+                {numericId && (
+                  <div className="mb-6">
+                    <PersonalizedSummaryCard
+                      paperId={numericId}
+                      subPersonaId={subPersonaId}
+                      onPersonaChange={handlePersonaChange}
+                      allowedPersonas={allowedPersonas}
+                    />
+                  </div>
+                )}
 
-            {/* Figures section */}
-            {structured?.figures && structured.figures.length > 0 && (
-              <div className="mt-6">
-                <FiguresSection figures={structured.figures} storagePath={storagePath} />
-              </div>
+                {/* Module accordion list */}
+                {numericId && (
+                  <ModuleAccordionList
+                    paperId={numericId}
+                    subPersonaId={subPersonaId}
+                    moduleOrder={moduleOrder}
+                    figures={structured?.figures}
+                    authorsMode={authorsMode}
+                    authorEnrichments={authorEnrichments}
+                    onEnrichmentsUpdate={setAuthorEnrichments}
+                  />
+                )}
+
+                {/* Figures section */}
+                {structured?.figures && structured.figures.length > 0 && (
+                  <div className="mt-6">
+                    <FiguresSection figures={structured.figures} storagePath={storagePath} />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
