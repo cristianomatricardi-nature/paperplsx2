@@ -1,46 +1,72 @@
 
 
-## Fix Persona Selection Not Appearing + Dropdown Filtering
+## AI Agent: Dedicated API Console UI
 
-### Problem
+When the user switches to the "AI Agent" persona, replace the entire paper content area (summary card, modules, figures) with a dedicated API console interface. The sidebar and header remain, but the main content becomes an API type selector with three SpringerNature-branded endpoints.
 
-Two related issues:
+### What Changes
 
-1. **Persona selection never shows**: The `PersonaSelectionStep` only renders inside `UploadSection` during a fresh upload when the pipeline finishes in real-time. For papers already in the library (shown via `PaperCard`), clicking "View Paper++" navigates directly to the paper view -- no persona selection step ever appears.
+**New component: `src/components/paper-view/AiAgentConsole.tsx`**
+- Replaces the summary card + modules + figures when `subPersonaId === 'ai_agent'`
+- Shows three API cards in a clean vertical stack:
 
-2. **Only PhD/Postdoc in dropdown**: All existing papers have `selected_personas` defaulting to `["phd_postdoc"]`, so the persona dropdown on the paper view correctly shows only that one option. But since users never got to choose personas, this feels broken.
+  1. **SpringerNature Proof API** -- "Returns the exact evidence behind a claim so an agent can answer with verifiable support, not guesswork."
+  2. **SpringerNature Repro API** -- "Returns a runnable recipe for a specific result so an agent can reproduce and automatically verify it."
+  3. **SpringerNature Consensus API** -- "Returns the current standing of a claim across studies so an agent stays aware of conflicts, replications, and updates."
 
-### Solution
+- Each card shows:
+  - API name and description
+  - A code block with an example curl command pre-filled with the paper ID and the user's endpoint URL
+  - A "Copy" button for the curl example
+  - A "Manage API Keys" link/button that navigates to `/api-keys`
 
-Add a persona selection gate on the `PaperViewPage` itself. When a user opens a completed paper that still has the default single persona, show the persona selection UI before showing the paper content. This handles both fresh uploads and existing papers.
+- At the top, keep the `PersonaSelector` dropdown so the user can switch back to a human persona
+- Include a brief header: "Machine-Readable API Access" with a subtitle explaining this view provides structured endpoints for programmatic consumption
 
-### Changes
+**Edit: `src/pages/PaperViewPage.tsx`**
+- In the main content area, add a conditional check: if `subPersonaId === 'ai_agent'`, render `<AiAgentConsole>` instead of `PersonalizedSummaryCard` + `ModuleAccordionList` + `FiguresSection`
+- The top bar, header, and sidebar remain unchanged
 
-**File: `src/pages/PaperViewPage.tsx`**
-- After loading the paper, check if `selected_personas` is still the default (`["phd_postdoc"]` with length 1) and no module content has been generated yet
-- If so, show the `PersonaSelectionStep` component as a full-page overlay/card instead of the paper content
-- On confirm, save the selected personas to DB, update local state, and show the paper
+### Layout
 
-**File: `src/components/researcher-home/PaperCard.tsx`**
-- No changes needed -- "View Paper++" navigates to paper view where the gate will catch unselected papers
-
-**File: `src/pages/PaperViewPage.tsx` (persona dropdown)**
-- When `allowedPersonas` is undefined or empty, show all personas (remove the filter so the dropdown is not artificially restricted)
-- Only filter when `selected_personas` contains more than one entry (meaning the user actively chose)
+```text
++-----------------------------------------------+
+| [Back]                        [Sidebar toggle] |
++-----------------------------------------------+
+| Paper Title / Authors / Header                 |
+|                                                |
+| [Persona Selector: AI Agent v]                 |
+|                                                |
+| --- Machine-Readable API Access ---            |
+| Structured endpoints for programmatic use      |
+|                                                |
+| +-------------------------------------------+  |
+| | SpringerNature Proof API                  |  |
+| | Returns the exact evidence behind a claim |  |
+| | so an agent can answer with verifiable    |  |
+| | support, not guesswork.                   |  |
+| |                                           |  |
+| | curl "https://...?paper_id=20&api=proof"  |  |
+| |                           [Copy] [Keys]   |  |
+| +-------------------------------------------+  |
+|                                                |
+| +-------------------------------------------+  |
+| | SpringerNature Repro API                  |  |
+| | ...                                       |  |
+| +-------------------------------------------+  |
+|                                                |
+| +-------------------------------------------+  |
+| | SpringerNature Consensus API              |  |
+| | ...                                       |  |
+| +-------------------------------------------+  |
++-----------------------------------------------+
+```
 
 ### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/pages/PaperViewPage.tsx` | Add persona selection gate: if paper has default personas and user is owner, show `PersonaSelectionStep` before paper content. After selection, save to DB and proceed. |
+| `src/components/paper-view/AiAgentConsole.tsx` | New -- three API cards with descriptions, curl examples, copy buttons, and link to API keys page |
+| `src/pages/PaperViewPage.tsx` | Conditional render: show `AiAgentConsole` when persona is `ai_agent`, otherwise show normal summary + modules + figures |
 
-The gate logic:
-- Show selection when: `isOwner && paper.selected_personas` is the untouched default `["phd_postdoc"]`
-- Add a `personasConfirmed` state flag so the gate only shows once per session
-- After confirming, update DB row + local `allowedPersonas` state and render the paper normally
-
-This approach means:
-- Existing papers get the persona selection on first open
-- Fresh uploads still get it in the upload flow (no regression)
-- The dropdown then correctly shows all chosen personas
-
+No database changes, no edge function changes. This is purely a frontend UI swap based on the selected persona.
