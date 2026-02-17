@@ -1,108 +1,175 @@
-## Replication Cart in Paper++ Sidebar + Draggable Module Cards
+
+
+## Analytical Pipeline: Fork and Compare Tool
 
 ### Overview
 
-Add a  drop zone in the Paper++ right sidebar inside the Replication Assistant card. Make all content cards inside every module draggable -- protocol flow cards, claim cards, action cards, negative result cards, metrics rows, and evidence cards. Also draggambe the enitre module Dragging any card into the cart adds it (along with its associated method/data) to the replication plan, which persists when navigating to the Replication Assistant page.
+Replace the "Community Engagement" sidebar card with an "Analytical Pipeline" card containing a drag-and-drop zone (identical pattern to Replication Cart). Dropped items are persisted via sessionStorage and carried to a new dedicated page at `/analysis/:paperId` where users can explore the paper's analytical decisions as a step-by-step pipeline, map variables to their own dataset, and run "what-if" sensitivity explorations.
 
 ### What Changes
 
-**1. New Component: `src/components/paper-view/ReplicationCart.tsx**`
+**1. Sidebar: Replace Community Engagement with Analytical Pipeline**
 
-- A collapsible card in the sidebar showing a drop zone with "Drop module cards here to plan your replication"
-- Accepts dragged items from any module via HTML5 drag-and-drop
-- Each dropped item shows: source module badge (M1-M6), item title/label, and a remove button
-- Displays a count of items and a "Open Replication Assistant" button that passes the cart items via React state/URL params
-- Uses the same `MethodStep` type for protocol steps; wraps non-method items (claims, actions, etc.) in a lightweight `ReplicationCartItem` type containing `{ sourceModule, type, title, data }`
+File: `src/components/paper-view/PaperSidebar.tsx`
 
-**2. Edit: `src/components/paper-view/PaperSidebar.tsx**`
+- Remove the entire "Community Engagement" collapsible card (lines 226-256)
+- Replace with a new "Analytical Pipeline" card containing:
+  - A new `AnalyticalPipelineCart` drop zone component (same pattern as `ReplicationCart`)
+  - Brief description: "Drop a claim or method to decompose its analytical decisions"
+  - "Open Analytical Pipeline" button that persists cart to sessionStorage and navigates to `/analysis/:paperId`
+- Update the collapsed sidebar label from "Community" to "Pipeline"
+- Update the `SectionKey` type from `'community'` to `'pipeline'`
 
-- Import and render `ReplicationCart` as a new collapsible section between the Replication Assistant card and Community Engagement card
-- Pass cart state down (lifted to PaperViewPage or managed locally with state)
+**2. New Component: `src/components/paper-view/AnalyticalPipelineCart.tsx`**
 
-**3. Edit: `src/pages/PaperViewPage.tsx**`
+- Nearly identical structure to `ReplicationCart.tsx` but with different icon (GitFork or Workflow), label ("Pipeline Cart"), and placeholder text ("Drop claims, methods, or figures to decompose their analytical pipeline")
+- Same drag-and-drop handling, same `ReplicationCartItem` type reuse
+- Different color theming (indigo/purple tones to distinguish from Replication's green/teal)
 
-- Add `replicationCart` state (`ReplicationCartItem[]`) at page level
-- Pass cart state + updater to both `PaperSidebar` and `ModuleAccordionList` (so cards know to be draggable)
+**3. New Page: `src/pages/AnalyticalPipelinePage.tsx`**
 
-**4. Make All Module Cards Draggable**
+Route: `/analysis/:paperId`
 
-Each card type gets a `draggable` attribute and `onDragStart` handler that serializes its data into `application/json` with a `{ sourceModule, type, ... }` envelope:
+Layout (top to bottom):
+- **Header**: Back button, title "Analytical Pipeline", paper name, action buttons (Export, AI Decompose)
+- **Pipeline Flow Panel**: Vertical step-by-step view rendered from AI decomposition
+- **Variable Mapping Panel**: Two-column table for aligning paper variables to user's own
+- **What-If Sandbox**: Toggle cards for each decision point showing AI-generated sensitivity commentary
 
+On mount:
+- Read cart items from `sessionStorage` key `analysis-cart-${paperId}`
+- Auto-trigger AI decomposition if items present
 
-| Card Component                         | Module | Drag Data Type     |
-| -------------------------------------- | ------ | ------------------ |
-| `ProtocolFlowView.tsx` (FlowCard)      | M3     | `method_step`      |
-| `ClaimCard.tsx`                        | M2     | `claim`            |
-| `ActionCard.tsx`                       | M5     | `action`           |
-| `NegativeResultCard.tsx`               | M4     | `negative_result`  |
-| `MetricsGrid.tsx` / `MetricsTable.tsx` | M1     | `metric`           |
-| `EvidenceSummaryCard.tsx`              | M2     | `evidence_summary` |
-| `ReproducibilityCard.tsx`              | M3     | `reproducibility`  |
+**4. New Edge Function: `supabase/functions/decompose-pipeline/index.ts`**
 
+Input: Array of dropped items (claims, methods, figures with their data)
 
-Each card wraps its outermost `div` with:
+Processing: Calls Lovable AI (gemini-2.5-flash) with a structured prompt to:
+- Extract the analytical pipeline as ordered steps (data source, cleaning/exclusions, variable definitions, transformations, statistical model, outputs)
+- For each step, identify the author's choice and 2-3 alternative approaches
+- Extract all variables mentioned with their roles (independent, dependent, covariate, confounder)
+- Generate sensitivity notes for each decision point ("If you changed X to Y, expect...")
 
+Output JSON structure:
+```text
+{
+  pipeline_steps: [
+    {
+      id, stage (data|cleaning|transform|model|output),
+      title, description,
+      author_choice, alternatives: string[],
+      variables_involved: string[],
+      sensitivity_note: string
+    }
+  ],
+  variables: [
+    { name, role, description, paper_definition }
+  ],
+  overall_summary: string
+}
 ```
-draggable
-onDragStart={(e) => {
-  e.dataTransfer.setData('application/json', JSON.stringify({
-    sourceModule: 'M2',
-    type: 'claim',
-    title: claim.statement,
-    data: claim
-  }));
-  e.dataTransfer.effectAllowed = 'copy';
-}}
+
+**5. Pipeline Visualization Components**
+
+New directory: `src/components/analytical-pipeline/`
+
+- `PipelineFlowView.tsx`: Vertical flow of connected cards showing data to output, with colored stage indicators and connector lines between steps
+- `DecisionPointCard.tsx`: Individual pipeline step card showing author's choice highlighted, alternatives as muted options, and a toggle to "switch" choices for what-if analysis
+- `VariableMappingTable.tsx`: Two-column editable table -- left column shows paper variables (pre-filled from AI), right column has inputs for user's variable names. Includes role badges (IV, DV, covariate)
+- `SensitivityPanel.tsx`: When a user toggles a decision point, shows AI-generated commentary about expected impact on results. Uses a collapsible card with before/after framing
+
+**6. Route Registration**
+
+File: `src/App.tsx`
+
+- Add route: `<Route path="/analysis/:paperId" element={<ProtectedRoute><AnalyticalPipelinePage /></ProtectedRoute>} />`
+
+**7. State in PaperViewPage**
+
+File: `src/pages/PaperViewPage.tsx`
+
+- Add `pipelineCartItems` state (separate from `cartItems` for replication)
+- Pass to `PaperSidebar` as new props `pipelineCartItems` and `onPipelineCartUpdate`
+
+### Page Layout
+
+```text
++--------------------------------------------------+
+| <- Back   Analytical Pipeline   [Export] [AI Run] |
+| Paper: "Waveguide analysis..."                    |
++--------------------------------------------------+
+|                                                    |
+|  PIPELINE FLOW                                     |
+|  +------------+                                    |
+|  | DATA       | Raw proteomics dataset (n=342)     |
+|  | source     | Choice: public GEO repository      |
+|  +-----+------+                                    |
+|        |                                           |
+|  +-----v------+                                    |
+|  | CLEANING   | Exclude samples with >20% missing  |
+|  |            | [x] Author's choice  [ ] Alt: 10%  |
+|  +-----+------+                                    |
+|        |                                           |
+|  +-----v------+                                    |
+|  | TRANSFORM  | Log2 normalization                  |
+|  |            | [x] Log2  [ ] Quantile  [ ] VSN    |
+|  +-----+------+                                    |
+|        |                                           |
+|  +-----v------+                                    |
+|  | MODEL      | Logistic regression + covariates   |
+|  |            | Covariates: age, sex, BMI           |
+|  +-----+------+                                    |
+|        |                                           |
+|  +-----v------+                                    |
+|  | OUTPUT     | OR = 2.3, p < 0.01                 |
+|  +------------+                                    |
+|                                                    |
+|  VARIABLE MAPPING                                  |
+|  Paper Variable    | Your Variable                 |
+|  BMI               | [body_mass_index         ]    |
+|  age               | [participant_age         ]    |
+|  protein_X         | [biomarker_alpha         ]    |
+|                                                    |
+|  WHAT-IF SANDBOX                                   |
+|  > Remove covariate "BMI"                          |
+|    "Removing BMI as a covariate would likely       |
+|     increase the effect size by ~15% as BMI        |
+|     partially mediates the relationship..."        |
+|                                                    |
++--------------------------------------------------+
 ```
 
-A subtle drag handle icon (GripVertical) appears on hover for each card to indicate draggability.
-
-**5. Edit: `src/components/paper-view/ModuleContentRenderer.tsx**`
-
-- Pass `moduleId` down to each rendered card component so they know their source module for the drag envelope
-
-**6. Integration with Replication Assistant**
-
-- When clicking "Open Replication Assistant" from the cart, navigate to `/replication/:paperId` with the cart items stored in a lightweight context or sessionStorage
-- The `ReplicationAssistantPage` reads these items on mount and pre-populates the `ExperimentPlanner` with any method steps from the cart, and displays non-method items as contextual reference cards above the planner
-
-### Layout in Sidebar
+### Sidebar Layout After Change
 
 ```text
 +----------------------------------+
 | Replication Assistant            |
-+
-| Replication Cart (2 items)       |
-| +------------------------------+ |
-| | M3 | Substrate Preparation [x]| |
-| | M2 | Claim: waveguide... [x]  | |
-| +------------------------------+ |
-| Drop module cards here...        |
+| [Replication Cart drop zone]     |
 | [Open Replication Assistant]     |
 +----------------------------------+
-| Community Engagement             |
+| Analytical Pipeline              |
+| [Pipeline Cart drop zone]        |
+| [Open Analytical Pipeline]       |
 +----------------------------------+
 | Multidimensional Assessment      |
+| [Radar chart + scores]           |
 +----------------------------------+
 ```
 
-### Technical Details
+### Technical Summary
 
+| File | Action |
+|------|--------|
+| `src/components/paper-view/PaperSidebar.tsx` | Replace Community Engagement with Analytical Pipeline card |
+| `src/components/paper-view/AnalyticalPipelineCart.tsx` | New -- drop zone component for pipeline items |
+| `src/pages/AnalyticalPipelinePage.tsx` | New -- full pipeline analysis page |
+| `src/pages/PaperViewPage.tsx` | Add pipelineCartItems state, pass to sidebar |
+| `src/App.tsx` | Add `/analysis/:paperId` route |
+| `supabase/functions/decompose-pipeline/index.ts` | New -- AI decomposition edge function |
+| `src/components/analytical-pipeline/PipelineFlowView.tsx` | New -- vertical pipeline visualization |
+| `src/components/analytical-pipeline/DecisionPointCard.tsx` | New -- individual step card with toggles |
+| `src/components/analytical-pipeline/VariableMappingTable.tsx` | New -- variable alignment table |
+| `src/components/analytical-pipeline/SensitivityPanel.tsx` | New -- what-if commentary display |
 
-| File                                                          | Action                                             |
-| ------------------------------------------------------------- | -------------------------------------------------- |
-| `src/components/paper-view/ReplicationCart.tsx`               | New -- drop zone + cart item list in sidebar       |
-| `src/components/paper-view/PaperSidebar.tsx`                  | Add ReplicationCart section                        |
-| `src/pages/PaperViewPage.tsx`                                 | Lift cart state, pass to sidebar                   |
-| `src/components/paper-view/renderers/ProtocolFlowView.tsx`    | Add draggable to FlowCard                          |
-| `src/components/paper-view/renderers/ClaimCard.tsx`           | Add draggable                                      |
-| `src/components/paper-view/renderers/ActionCard.tsx`          | Add draggable                                      |
-| `src/components/paper-view/renderers/NegativeResultCard.tsx`  | Add draggable                                      |
-| `src/components/paper-view/renderers/MetricsGrid.tsx`         | Add draggable to metric cards                      |
-| `src/components/paper-view/renderers/EvidenceSummaryCard.tsx` | Add draggable                                      |
-| `src/components/paper-view/renderers/ReproducibilityCard.tsx` | Add draggable                                      |
-| `src/components/paper-view/ModuleContentRenderer.tsx`         | Pass moduleId to card components for drag envelope |
-| `src/pages/ReplicationAssistantPage.tsx`                      | Read cart items from sessionStorage on mount       |
+No database changes required. One new edge function using Lovable AI (no API key needed).
 
-
-No database changes required. No new edge functions. This is a frontend-only drag-and-drop integration.
