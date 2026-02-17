@@ -17,9 +17,10 @@ interface PersonalizedSummaryCardProps {
   paperId: number;
   subPersonaId: SubPersonaId;
   onPersonaChange: (id: SubPersonaId) => void;
+  allowedPersonas?: SubPersonaId[];
 }
 
-const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: PersonalizedSummaryCardProps) => {
+const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allowedPersonas }: PersonalizedSummaryCardProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [content, setContent] = useState<SummaryContent | null>(null);
@@ -84,7 +85,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange }: Per
         <h2 className="font-sans text-xl font-semibold text-foreground">
           Key Insights for {persona?.shortLabel ?? 'You'}
         </h2>
-        <PersonaSelector value={subPersonaId} onChange={onPersonaChange} />
+        <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
       </div>
 
       <div className="px-5 pb-5 space-y-4">

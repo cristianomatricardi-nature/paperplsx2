@@ -29,6 +29,7 @@ const PublicPaperViewPage = () => {
   const [subPersonaId, setSubPersonaId] = useState<SubPersonaId>('phd_postdoc');
   const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(MODULE_ORDER_BY_PERSONA['phd_postdoc']);
   const [sidebarOpen, setSidebarOpen] = useState(!isEmbed);
+  const [allowedPersonas, setAllowedPersonas] = useState<SubPersonaId[] | undefined>(undefined);
 
   useEffect(() => {
     if (!numericId) return;
@@ -47,6 +48,14 @@ const PublicPaperViewPage = () => {
       }
 
       setPaper(paperRes.data as Record<string, unknown>);
+      const sp = (paperRes.data as any).selected_personas as SubPersonaId[] | null;
+      if (sp && sp.length > 0) {
+        setAllowedPersonas(sp);
+        if (!sp.includes(subPersonaId)) {
+          setSubPersonaId(sp[0]);
+          setModuleOrder(MODULE_ORDER_BY_PERSONA[sp[0]]);
+        }
+      }
       if (structuredRes.data) {
         setStructured(structuredRes.data as unknown as StructuredPaper);
       }
@@ -124,6 +133,7 @@ const PublicPaperViewPage = () => {
                 paperId={numericId}
                 subPersonaId={subPersonaId}
                 onPersonaChange={handlePersonaChange}
+                allowedPersonas={allowedPersonas}
               />
             </div>
           )}
