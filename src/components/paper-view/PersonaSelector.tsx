@@ -16,7 +16,7 @@ interface PersonaSelectorProps {
   allowedPersonas?: SubPersonaId[];
 }
 
-const PARENT_ORDER = ['Researcher', 'Policy Maker', 'Funding Agency', 'Industry R&D'];
+const PARENT_ORDER = ['Researcher', 'Policy Maker', 'Funding Agency', 'Industry R&D', 'AI Agent'];
 
 const grouped = PARENT_ORDER.map((parent) => ({
   parent,

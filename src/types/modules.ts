@@ -120,4 +120,15 @@ export const SUB_PERSONA_REGISTRY: SubPersonaDefinition[] = [
     languageStyle: 'Business-oriented, ROI-focused. Emphasize commercial applicability and scalability.',
     moduleOrder: ['M2', 'M3', 'M1', 'M5', 'M4', 'M6'],
   },
+  {
+    id: 'ai_agent',
+    parentPersona: 'AI Agent',
+    label: 'AI Agent (Machine-Readable)',
+    shortLabel: 'AI Agent',
+    painPoint: 'I need structured, raw data without prose for downstream programmatic consumption.',
+    numberPolicy: 'all_raw',
+    statisticsDisplay: 'All raw numbers in structured JSON. No prose embellishments.',
+    languageStyle: 'Terse, structured, machine-optimized. Pure data extraction.',
+    moduleOrder: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
+  },
 ];
