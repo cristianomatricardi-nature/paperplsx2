@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { X, FlaskConical, GripVertical, Package } from 'lucide-react';
+import { X, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export interface ReplicationCartItem {
@@ -29,7 +27,6 @@ const MODULE_COLORS: Record<string, string> = {
 };
 
 export function ReplicationCart({ paperId, items, onUpdateItems }: ReplicationCartProps) {
-  const navigate = useNavigate();
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -52,7 +49,6 @@ export function ReplicationCart({ paperId, items, onUpdateItems }: ReplicationCa
       if (!parsed.sourceModule || !parsed.type || !parsed.title) return;
       const id = `${parsed.sourceModule}-${parsed.type}-${Date.now()}`;
       const newItem: ReplicationCartItem = { id, ...parsed };
-      // Avoid exact duplicates by title+type+module
       const exists = items.some(
         (i) => i.sourceModule === parsed.sourceModule && i.type === parsed.type && i.title === parsed.title
       );
@@ -60,19 +56,13 @@ export function ReplicationCart({ paperId, items, onUpdateItems }: ReplicationCa
         onUpdateItems([...items, newItem]);
       }
     } catch {
-      // ignore bad data
+      // ignore
     }
   }, [items, onUpdateItems]);
 
   const removeItem = useCallback((id: string) => {
     onUpdateItems(items.filter((i) => i.id !== id));
   }, [items, onUpdateItems]);
-
-  const handleOpenAssistant = useCallback(() => {
-    // Store cart items in sessionStorage for the Replication Assistant to read
-    sessionStorage.setItem(`replication-cart-${paperId}`, JSON.stringify(items));
-    navigate(`/replication/${paperId}`);
-  }, [items, paperId, navigate]);
 
   return (
     <div
@@ -133,17 +123,6 @@ export function ReplicationCart({ paperId, items, onUpdateItems }: ReplicationCa
         </p>
       )}
 
-      {/* Action button */}
-      {items.length > 0 && (
-        <Button
-          size="sm"
-          className="w-full gap-1.5 text-xs"
-          onClick={handleOpenAssistant}
-        >
-          <FlaskConical className="h-3 w-3" />
-          Open Replication Assistant
-        </Button>
-      )}
     </div>
   );
 }

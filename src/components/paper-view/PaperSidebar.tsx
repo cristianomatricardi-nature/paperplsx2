@@ -199,10 +199,22 @@ const PaperSidebar = ({
               <p className="text-xs font-sans text-muted-foreground">
                 Compare this paper's methods against your lab inventory and identify gaps for replication.
               </p>
+              {onCartUpdate && (
+                <ReplicationCart
+                  paperId={paperId}
+                  items={cartItems}
+                  onUpdateItems={onCartUpdate}
+                />
+              )}
               <Button
                 className="w-full gap-2 text-xs"
                 size="sm"
-                onClick={() => navigate(`/replication/${paperId}`)}
+                onClick={() => {
+                  if (cartItems.length > 0) {
+                    sessionStorage.setItem(`replication-cart-${paperId}`, JSON.stringify(cartItems));
+                  }
+                  navigate(`/replication/${paperId}`);
+                }}
               >
                 <FlaskConical className="h-3.5 w-3.5" />
                 Open Replication Assistant
@@ -210,15 +222,6 @@ const PaperSidebar = ({
             </CollapsibleContent>
           </Collapsible>
         </div>
-
-        {/* ── 1b. Replication Cart ── */}
-        {onCartUpdate && (
-          <ReplicationCart
-            paperId={paperId}
-            items={cartItems}
-            onUpdateItems={onCartUpdate}
-          />
-        )}
 
         {/* ── 2. Community Engagement card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
