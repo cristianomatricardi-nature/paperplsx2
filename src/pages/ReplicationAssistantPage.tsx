@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FlaskConical, Download, Beaker, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,27 @@ const ReplicationAssistantPage = () => {
   const [simulating, setSimulating] = useState(false);
   const [agenticOpen, setAgenticOpen] = useState(false);
   const loading = loadingMethods || loadingLab;
+
+  // Load cart items from sessionStorage (passed from Paper++ ReplicationCart)
+  useEffect(() => {
+    if (!numericId) return;
+    const key = `replication-cart-${numericId}`;
+    const raw = sessionStorage.getItem(key);
+    if (raw) {
+      try {
+        const cartItems = JSON.parse(raw) as Array<{ type: string; data: unknown }>;
+        const methodSteps = cartItems
+          .filter((item) => item.type === 'method_step' && item.data)
+          .map((item) => item.data as MethodStep);
+        if (methodSteps.length > 0) {
+          setPlannedSteps(methodSteps);
+        }
+        sessionStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+    }
+  }, [numericId]);
 
   const handleSimulateLab = async () => {
     if (!numericId || !user?.id) return;

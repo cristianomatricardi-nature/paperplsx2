@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ReplicationCart, type ReplicationCartItem } from './ReplicationCart';
 import {
   Radar,
   RadarChart,
@@ -43,6 +44,8 @@ interface PaperSidebarProps {
   onAuthorsModeChange?: (v: boolean) => void;
   authorScores?: Record<string, number> | null;
   onAuthorScoresChange?: (scores: Record<string, number>) => void;
+  cartItems?: ReplicationCartItem[];
+  onCartUpdate?: (items: ReplicationCartItem[]) => void;
 }
 
 /* ---------- constants ---------- */
@@ -88,6 +91,8 @@ const PaperSidebar = ({
   onAuthorsModeChange,
   authorScores = null,
   onAuthorScoresChange,
+  cartItems = [],
+  onCartUpdate,
 }: PaperSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
@@ -205,6 +210,15 @@ const PaperSidebar = ({
             </CollapsibleContent>
           </Collapsible>
         </div>
+
+        {/* ── 1b. Replication Cart ── */}
+        {onCartUpdate && (
+          <ReplicationCart
+            paperId={paperId}
+            items={cartItems}
+            onUpdateItems={onCartUpdate}
+          />
+        )}
 
         {/* ── 2. Community Engagement card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">

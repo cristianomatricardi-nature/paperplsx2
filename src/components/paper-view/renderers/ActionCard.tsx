@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge';
+import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ActionData {
@@ -17,14 +18,27 @@ const URGENCY_DOT: Record<string, string> = {
   low: 'bg-green-500',
 };
 
-export function ActionCard({ action }: { action: ActionData }) {
+export function ActionCard({ action, moduleId }: { action: ActionData; moduleId?: string }) {
   const urgency = action.urgency ?? 'medium';
   const dotColor = URGENCY_DOT[urgency] ?? URGENCY_DOT.medium;
   const pages = action.page_numbers ?? action.page_refs ?? [];
 
   return (
-    <div className="rounded-md border border-border bg-card p-4 space-y-2">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId ?? 'M5',
+          type: 'action',
+          title: action.action ?? 'Action',
+          data: action,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className="rounded-md border border-border bg-card p-4 space-y-2 group/drag cursor-grab active:cursor-grabbing"
+    >
       <div className="flex items-center gap-2">
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/0 group-hover/drag:text-muted-foreground/60 transition-colors shrink-0" />
         <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', dotColor)} />
         <p className="text-sm font-semibold text-foreground">{action.action}</p>
       </div>

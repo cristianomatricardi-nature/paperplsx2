@@ -86,12 +86,12 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
 
   // M2 evidence summary
   if (moduleId === 'M2' && sectionKey === 'evidence_summary' && isEvidenceSummary(data)) {
-    return <EvidenceSummaryCard data={data as any} />;
+    return <EvidenceSummaryCard data={data as any} moduleId={moduleId} />;
   }
 
   // M3 reproducibility
   if (moduleId === 'M3' && sectionKey === 'reproducibility' && isReproducibilityData(data)) {
-    return <ReproducibilityCard data={data as any} />;
+    return <ReproducibilityCard data={data as any} moduleId={moduleId} />;
   }
 
   // M1 impact analysis object with metrics array inside
@@ -119,7 +119,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
             <CarouselContent className="-ml-3">
               {data.map((claim, i) => (
                 <CarouselItem key={i} className="pl-3 basis-full md:basis-1/2">
-                  <ClaimCard claim={claim} />
+                  <ClaimCard claim={claim} moduleId={moduleId} />
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -136,7 +136,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
     }
 
     if (moduleId === 'M3' && typeof first === 'object' && first !== null && ('title' in first || 'description' in first)) {
-      return <ProtocolFlowView steps={data} paperId={paperId} />;
+      return <ProtocolFlowView steps={data} paperId={paperId} moduleId={moduleId} />;
     }
 
     if (moduleId === 'M1' && typeof first === 'object' && first !== null && ('metric' in first || 'value' in first)) {
@@ -146,7 +146,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
     if (moduleId === 'M4' && typeof first === 'object' && first !== null) {
       return (
         <div className="space-y-3">
-          {data.map((r, i) => <NegativeResultCard key={i} result={r} />)}
+          {data.map((r, i) => <NegativeResultCard key={i} result={r} moduleId={moduleId} />)}
         </div>
       );
     }
@@ -154,7 +154,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
     if (moduleId === 'M5' && typeof first === 'object' && first !== null && ('action' in first || 'urgency' in first)) {
       return (
         <div className="space-y-3">
-          {data.map((a, i) => <ActionCard key={i} action={a} />)}
+          {data.map((a, i) => <ActionCard key={i} action={a} moduleId={moduleId} />)}
         </div>
       );
     }

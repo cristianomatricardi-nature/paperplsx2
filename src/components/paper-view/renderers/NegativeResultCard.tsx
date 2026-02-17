@@ -8,14 +8,26 @@ interface NegativeResultData {
   page_refs?: number[];
 }
 
-export function NegativeResultCard({ result }: { result: NegativeResultData }) {
+export function NegativeResultCard({ result, moduleId }: { result: NegativeResultData; moduleId?: string }) {
   const tested = result.hypothesis_tested ?? result.what_was_tested ?? '';
   const happened = result.description ?? result.what_happened ?? '';
   const matters = result.why_it_matters ?? '';
   const pages = result.page_numbers ?? result.page_refs ?? [];
 
   return (
-    <div className="rounded-md border border-border bg-card p-4 border-l-4 border-l-destructive/60 space-y-2">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId ?? 'M4',
+          type: 'negative_result',
+          title: tested || happened || 'Negative Result',
+          data: result,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className="rounded-md border border-border bg-card p-4 border-l-4 border-l-destructive/60 space-y-2 cursor-grab active:cursor-grabbing"
+    >
       {tested && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What was tested</p>
