@@ -176,6 +176,29 @@ const ReplicationAssistantPage = () => {
             </div>
             <p className="text-sm text-muted-foreground truncate">{paperTitle}</p>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
+              <Link to="/digital-lab">Update My Lab</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="gap-1.5"
+              disabled={activeSteps.length === 0}
+            >
+              <Download className="h-4 w-4" /> <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setAgenticOpen(true)}
+              className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20 animate-pulse hover:animate-none"
+              disabled={activeSteps.length === 0}
+            >
+              <BrainCircuit className="h-4 w-4" />
+              AI Agentic Planning
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -231,28 +254,6 @@ const ReplicationAssistantPage = () => {
             ) : null}
           </main>
         </div>
-      )}
-
-      {/* Action Bar */}
-      {(activeSteps.length > 0 || plannedSteps.length > 0) && !loading && (
-        <footer className="sticky bottom-0 border-t border-border bg-card px-4 py-3 sm:px-6">
-          <div className="mx-auto max-w-7xl flex justify-end gap-3">
-            <Button variant="outline" asChild>
-              <Link to="/digital-lab">Update My Lab</Link>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setAgenticOpen(true)}
-              className="gap-1.5"
-            >
-              <BrainCircuit className="h-4 w-4" />
-              AI Agentic Planning
-            </Button>
-            <Button onClick={handleExport} className="gap-1.5">
-              <Download className="h-4 w-4" /> Export Checklist
-            </Button>
-          </div>
-        </footer>
       )}
 
       {/* Agentic Planning Dialog */}
