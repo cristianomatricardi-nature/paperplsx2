@@ -13,6 +13,8 @@ import FiguresSection from '@/components/paper-view/FiguresSection';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
+import PersonaSelectionStep from '@/components/researcher-home/PersonaSelectionStep';
+import { toast } from 'sonner';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
@@ -43,6 +45,8 @@ const PaperViewPage = () => {
   const [subPersonaId, setSubPersonaId] = useState<SubPersonaId>('phd_postdoc');
   const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(MODULE_ORDER_BY_PERSONA['phd_postdoc']);
   const [allowedPersonas, setAllowedPersonas] = useState<SubPersonaId[] | undefined>(undefined);
+  const [personasConfirmed, setPersonasConfirmed] = useState(false);
+  const [savingPersonas, setSavingPersonas] = useState(false);
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -100,6 +104,31 @@ const PaperViewPage = () => {
     [],
   );
 
+  // Check if persona selection gate should show
+  const selectedPersonas = (paper?.selected_personas as SubPersonaId[] | null) ?? ['phd_postdoc'];
+  const isDefaultPersonas = selectedPersonas.length === 1 && selectedPersonas[0] === 'phd_postdoc';
+  const needsPersonaSelection = isOwner && isDefaultPersonas && !personasConfirmed && !loading;
+
+  // Handle persona confirmation from the gate
+  const handlePersonasConfirm = useCallback(async (chosen: SubPersonaId[]) => {
+    if (!numericId) return;
+    setSavingPersonas(true);
+    const { error } = await supabase
+      .from('papers')
+      .update({ selected_personas: chosen as unknown as any })
+      .eq('id', numericId);
+    setSavingPersonas(false);
+    if (error) {
+      toast.error('Failed to save persona selection');
+      return;
+    }
+    setPaper((prev) => prev ? { ...prev, selected_personas: chosen } : prev);
+    setAllowedPersonas(chosen);
+    setSubPersonaId(chosen[0]);
+    setModuleOrder(MODULE_ORDER_BY_PERSONA[chosen[0]]);
+    setPersonasConfirmed(true);
+  }, [numericId]);
+
   // Derive fields from paper
   const title = (paper?.title as string) ?? null;
   const authors = (paper?.authors as Author[] | null) ?? null;
@@ -123,6 +152,20 @@ const PaperViewPage = () => {
           <div className="col-span-12 lg:col-span-4 space-y-4">
             <Skeleton className="h-60 w-full" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsPersonaSelection) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-lg">
+          <h2 className="text-lg font-semibold font-sans text-foreground mb-1">
+            {title ?? 'Your Paper'}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-6">Choose which reading perspectives to generate before viewing.</p>
+          <PersonaSelectionStep onConfirm={handlePersonasConfirm} loading={savingPersonas} />
         </div>
       </div>
     );
