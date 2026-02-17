@@ -98,7 +98,7 @@ const PaperSidebar = ({
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     replication: true,
-    pipeline: false,
+    pipeline: true,
     assessment: true,
   });
   const [savingScores, setSavingScores] = useState(false);

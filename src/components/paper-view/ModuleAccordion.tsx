@@ -6,7 +6,7 @@ import type { Figure } from '@/types/structured-paper';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronDown, FlaskConical, Pencil, Save, X } from 'lucide-react';
+import { ChevronDown, FlaskConical, GripVertical, Pencil, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -124,13 +124,26 @@ const ModuleAccordion = ({
     moduleId === 'M3' && RESEARCHER_PERSONAS.includes(subPersonaId);
 
   return (
-    <div className={cn('rounded-xl border border-border bg-card overflow-hidden border-l-4 shadow-sm', borderColor)}>
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId,
+          type: 'module',
+          title: moduleDefinition.title,
+          data: cachedContent ?? null,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className={cn('rounded-xl border border-border bg-card overflow-hidden border-l-4 shadow-sm cursor-grab active:cursor-grabbing', borderColor)}
+    >
       {/* Header / trigger */}
       <button
         onClick={handleToggle}
         className="flex w-full items-center justify-between px-5 py-[18px] text-left transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-3">
+          <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0" />
           <span className="font-sans text-base font-semibold text-foreground">
             {moduleDefinition.title}
           </span>
