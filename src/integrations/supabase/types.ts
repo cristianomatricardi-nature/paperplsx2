@@ -149,6 +149,36 @@ export type Database = {
           },
         ]
       }
+      paper_api_keys: {
+        Row: {
+          api_key_hash: string
+          api_key_prefix: string
+          created_at: string
+          id: string
+          label: string
+          last_used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          api_key_hash: string
+          api_key_prefix: string
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          api_key_hash?: string
+          api_key_prefix?: string
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       papers: {
         Row: {
           abstract: string | null
@@ -162,6 +192,7 @@ export type Database = {
           journal: string | null
           num_pages: number | null
           publication_date: string | null
+          selected_personas: Json
           simulated_impact_scores: Json | null
           source_type: string | null
           status: string
@@ -182,6 +213,7 @@ export type Database = {
           journal?: string | null
           num_pages?: number | null
           publication_date?: string | null
+          selected_personas?: Json
           simulated_impact_scores?: Json | null
           source_type?: string | null
           status?: string
@@ -202,6 +234,7 @@ export type Database = {
           journal?: string | null
           num_pages?: number | null
           publication_date?: string | null
+          selected_personas?: Json
           simulated_impact_scores?: Json | null
           source_type?: string | null
           status?: string

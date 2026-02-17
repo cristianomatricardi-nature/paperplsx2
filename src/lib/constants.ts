@@ -32,6 +32,7 @@ export const MODULE_ORDER_BY_PERSONA: Record<SubPersonaId, ModuleId[]> = {
   funder_governmental: ['M1', 'M2', 'M5', 'M3', 'M4', 'M6'],
   funder_private: ['M1', 'M5', 'M2', 'M3', 'M4', 'M6'],
   industry_rd: ['M2', 'M3', 'M1', 'M5', 'M4', 'M6'],
+  ai_agent: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
 };
 
 export const PERSONA_CONTENT_MODALITIES: Record<string, string[]> = {

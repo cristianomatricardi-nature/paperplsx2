@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.simulate-lab]
 verify_jwt = false
+
+[functions.paper-api]
+verify_jwt = false

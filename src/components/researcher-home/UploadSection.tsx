@@ -8,7 +8,10 @@ import { FileUp, Link, FileText, X, Sparkles, Eye } from 'lucide-react';
 import { uploadPaper, resolveDOI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
+import { supabase } from '@/integrations/supabase/client';
 import PipelineProgressBar from './PipelineProgressBar';
+import PersonaSelectionStep from './PersonaSelectionStep';
+import type { SubPersonaId } from '@/types/modules';
 
 interface UploadSectionProps {
   userId: string;
@@ -221,18 +224,23 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
 
                 {/* Completed / Failed actions */}
                 {isPipelineDone && (
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => navigate(`/paper/${paperId}`)}
-                      className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Paper++
-                    </Button>
-                    <Button variant="outline" onClick={handleReset}>
-                      Upload Another
-                    </Button>
-                  </div>
+                  <PersonaSelectionStep
+                    loading={uploading}
+                    onConfirm={async (personas: SubPersonaId[]) => {
+                      setUploading(true);
+                      try {
+                        await supabase
+                          .from('papers')
+                          .update({ selected_personas: personas as unknown as any })
+                          .eq('id', paperId!);
+                        navigate(`/paper/${paperId}`);
+                      } catch {
+                        toast({ title: 'Error saving personas', variant: 'destructive' });
+                      } finally {
+                        setUploading(false);
+                      }
+                    }}
+                  />
                 )}
 
                 {isPipelineFailed && (

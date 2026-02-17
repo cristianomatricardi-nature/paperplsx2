@@ -27,7 +27,8 @@ export type SubPersonaId =
   | 'gov_institution'
   | 'funder_governmental'
   | 'funder_private'
-  | 'industry_rd';
+  | 'industry_rd'
+  | 'ai_agent';
 
 export interface SubPersonaDefinition {
   id: SubPersonaId;

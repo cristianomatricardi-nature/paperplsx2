@@ -11,6 +11,7 @@ import ReplicationAssistantPage from "./pages/ReplicationAssistantPage";
 import DigitalLabPage from "./pages/DigitalLabPage";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import PublicPaperViewPage from "./pages/PublicPaperViewPage";
+import ApiKeysPage from "./pages/ApiKeysPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/paper/:paperId" element={<ProtectedRoute><PaperViewPage /></ProtectedRoute>} />
           <Route path="/replication/:paperId" element={<ProtectedRoute><ReplicationAssistantPage /></ProtectedRoute>} />
           <Route path="/digital-lab" element={<ProtectedRoute><DigitalLabPage /></ProtectedRoute>} />
+          <Route path="/api-keys" element={<ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
           <Route path="/paper/:paperId/public" element={<PublicPaperViewPage />} />
           <Route path="/profile/:userId" element={<PublicProfilePage />} />
           <Route path="*" element={<NotFound />} />
