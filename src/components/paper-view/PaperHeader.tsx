@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil, Link2 } from 'lucide-react';
+import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil, Link2, Info } from 'lucide-react';
 import { downloadPaperPDF } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import type { Author } from '@/types/database';
 
 interface PaperHeaderProps {
@@ -62,7 +63,10 @@ const PaperHeader = ({
     : null;
 
   return (
-    <header className="border-b border-border pb-8 mb-8">
+    <header className={cn(
+      "border-b border-border pb-8 mb-8 transition-all duration-200",
+      authorsMode && "border-l-[3px] border-l-primary bg-muted/30 pl-5 rounded-sm"
+    )}>
       {/* Meta line */}
       <div className="flex flex-wrap items-center gap-2 mb-3 text-sm font-sans text-muted-foreground">
         <span className="font-medium text-foreground">Article</span>
@@ -169,6 +173,25 @@ const PaperHeader = ({
           <span>{viewingNow} viewing now</span>
         </div>
       </div>
+
+      {/* Authors Mode explainer banner */}
+      {authorsMode && (
+        <div className="mt-5 border border-primary/20 bg-primary/5 rounded-md p-4 flex items-start gap-3">
+          <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="text-sm font-sans text-foreground/80 leading-relaxed">
+            <span className="font-semibold text-foreground">You are in Authors Mode.</span>{' '}
+            You can edit and enrich AI-generated module content, link code repositories and datasets,
+            add corrections or context, and provide self-assessment scores — making your paper more
+            transparent and reproducible for readers.
+            <button
+              onClick={() => onAuthorsModeChange?.(false)}
+              className="ml-2 text-primary hover:underline font-medium"
+            >
+              Exit Authors Mode
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

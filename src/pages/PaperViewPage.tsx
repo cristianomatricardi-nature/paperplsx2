@@ -206,7 +206,10 @@ const PaperViewPage = () => {
       {/* Main grid */}
       <div className={cn('grid min-h-[calc(100vh-3.5rem)]', sidebarOpen ? 'grid-cols-12' : 'flex')}>
         {/* Main content area */}
-        <div className={sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8'}>
+        <div className={cn(
+          sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8',
+          authorsMode && 'bg-muted/20 border-t-2 border-t-primary/30'
+        )}>
           <div className="max-w-2xl mx-auto">
           <PaperHeader
             title={title}
