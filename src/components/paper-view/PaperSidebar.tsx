@@ -224,20 +224,22 @@ const PaperSidebar = ({
 
         {/* ── 2. Analytical Pipeline card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
-          <div>
-            <div className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground">
+          <Collapsible open={openSections.pipeline} onOpenChange={() => toggleSection('pipeline')}>
+            <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
               <div className="text-center">
-                <span>Analysis assistant</span>
+                <span>Analytical Pipeline</span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Fork & compare decisions</p>
               </div>
-            </div>
-            <div className="px-4 pb-4 space-y-3">
-              <p className="text-xs font-sans text-muted-foreground">
-                Drop a claim or method to decompose its analytical decisions.
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-4 pb-4 space-y-3">
+              <p className="text-xs font-sans text-muted-foreground">Drop a claim, method or figure to compare with your data
+
               </p>
-              {onPipelineCartUpdate && <AnalyticalPipelineCart paperId={paperId}
-              items={pipelineCartItems}
-              onUpdateItems={onPipelineCartUpdate} />
+              {onPipelineCartUpdate &&
+              <AnalyticalPipelineCart
+                paperId={paperId}
+                items={pipelineCartItems}
+                onUpdateItems={onPipelineCartUpdate} />
 
               }
               <Button
@@ -253,8 +255,8 @@ const PaperSidebar = ({
                 <GitFork className="h-3.5 w-3.5" />
                 Open Analytical Pipeline
               </Button>
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* ── 3. Multidimensional Assessment card ── */}
