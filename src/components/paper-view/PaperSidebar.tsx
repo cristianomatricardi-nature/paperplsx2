@@ -18,8 +18,8 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  ResponsiveContainer,
-} from 'recharts';
+  ResponsiveContainer } from
+'recharts';
 import type { SubPersonaId } from '@/types/modules';
 
 /* ---------- types ---------- */
@@ -55,14 +55,14 @@ interface PaperSidebarProps {
 
 
 
-const DIMENSIONS: { key: keyof Omit<ImpactScores, 'reasoning'>; label: string; short: string }[] = [
-  { key: 'conceptual_influence', label: 'Conceptual Influence', short: 'Concept' },
-  { key: 'methodological_adoption', label: 'Methodological Adoption', short: 'Method' },
-  { key: 'policy_relevance', label: 'Policy Relevance', short: 'Policy' },
-  { key: 'industry_transfer', label: 'Industry Transfer', short: 'Industry' },
-  { key: 'educational_value', label: 'Educational Value', short: 'Education' },
-  { key: 'replication_readiness', label: 'Replication Readiness', short: 'Replication' },
-];
+const DIMENSIONS: {key: keyof Omit<ImpactScores, 'reasoning'>;label: string;short: string;}[] = [
+{ key: 'conceptual_influence', label: 'Conceptual Influence', short: 'Concept' },
+{ key: 'methodological_adoption', label: 'Methodological Adoption', short: 'Method' },
+{ key: 'policy_relevance', label: 'Policy Relevance', short: 'Policy' },
+{ key: 'industry_transfer', label: 'Industry Transfer', short: 'Industry' },
+{ key: 'educational_value', label: 'Educational Value', short: 'Education' },
+{ key: 'replication_readiness', label: 'Replication Readiness', short: 'Replication' }];
+
 
 type SectionKey = 'replication' | 'pipeline' | 'assessment';
 
@@ -93,13 +93,13 @@ const PaperSidebar = ({
   cartItems = [],
   onCartUpdate,
   pipelineCartItems = [],
-  onPipelineCartUpdate,
+  onPipelineCartUpdate
 }: PaperSidebarProps) => {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     replication: true,
     pipeline: true,
-    assessment: true,
+    assessment: true
   });
   const [savingScores, setSavingScores] = useState(false);
 
@@ -112,7 +112,7 @@ const PaperSidebar = ({
       setOpenSections((prev) => ({ ...prev, [key]: true }));
       onToggle(); // expand
     },
-    [onToggle],
+    [onToggle]
   );
 
   /* impact scores */
@@ -121,9 +121,9 @@ const PaperSidebar = ({
 
   const radarData = DIMENSIONS.map((d) => ({
     axis: d.short,
-    value: (rawScores?.[d.key] as number) ?? 0,
+    value: rawScores?.[d.key] as number ?? 0,
     author: authorScores?.[d.key] ?? 0,
-    fullMark: 10,
+    fullMark: 10
   }));
 
   const handleAuthorScoreChange = useCallback((key: string, value: number) => {
@@ -134,10 +134,10 @@ const PaperSidebar = ({
   const saveAuthorScores = useCallback(async () => {
     if (!authorScores) return;
     setSavingScores(true);
-    const { error } = await supabase
-      .from('papers')
-      .update({ author_impact_scores: authorScores as any })
-      .eq('id', paperId);
+    const { error } = await supabase.
+    from('papers').
+    update({ author_impact_scores: authorScores as any }).
+    eq('id', paperId);
     setSavingScores(false);
     if (error) {
       toast.error('Failed to save scores');
@@ -152,8 +152,8 @@ const PaperSidebar = ({
       <aside className="hidden lg:flex flex-col items-center w-12 bg-muted/30 border-l border-border py-4 gap-6 sticky top-14 h-[calc(100vh-3.5rem)]">
         <button
           onClick={() => handleCollapsedTabClick('replication')}
-          className="flex items-center justify-center"
-        >
+          className="flex items-center justify-center">
+
           <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
             Replication
           </span>
@@ -161,8 +161,8 @@ const PaperSidebar = ({
 
         <button
           onClick={() => handleCollapsedTabClick('pipeline')}
-          className="flex items-center justify-center"
-        >
+          className="flex items-center justify-center">
+
           <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
             Pipeline
           </span>
@@ -170,14 +170,14 @@ const PaperSidebar = ({
 
         <button
           onClick={() => handleCollapsedTabClick('assessment')}
-          className="flex items-center justify-center"
-        >
+          className="flex items-center justify-center">
+
           <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
             Assessment
           </span>
         </button>
-      </aside>
-    );
+      </aside>);
+
   }
 
   /* ---------- expanded state ---------- */
@@ -198,13 +198,13 @@ const PaperSidebar = ({
               <p className="text-xs font-sans text-muted-foreground">
                 Compare this paper's methods against your lab inventory and identify gaps for replication.
               </p>
-              {onCartUpdate && (
-                <ReplicationCart
-                  paperId={paperId}
-                  items={cartItems}
-                  onUpdateItems={onCartUpdate}
-                />
-              )}
+              {onCartUpdate &&
+              <ReplicationCart
+                paperId={paperId}
+                items={cartItems}
+                onUpdateItems={onCartUpdate} />
+
+              }
               <Button
                 className="w-full gap-2 text-xs"
                 size="sm"
@@ -213,8 +213,8 @@ const PaperSidebar = ({
                     sessionStorage.setItem(`replication-cart-${paperId}`, JSON.stringify(cartItems));
                   }
                   navigate(`/replication/${paperId}`);
-                }}
-              >
+                }}>
+
                 <FlaskConical className="h-3.5 w-3.5" />
                 Open Replication Assistant
               </Button>
@@ -227,7 +227,9 @@ const PaperSidebar = ({
           <Collapsible open={openSections.pipeline} onOpenChange={() => toggleSection('pipeline')}>
             <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
               <div className="text-center">
-                <span>Analytical Pipeline</span>
+                <span>Analysis assistant 
+
+                </span>
                 <p className="text-[10px] font-normal text-muted-foreground mt-0.5">Fork & compare decisions</p>
               </div>
             </CollapsibleTrigger>
@@ -235,13 +237,11 @@ const PaperSidebar = ({
               <p className="text-xs font-sans text-muted-foreground">
                 Drop a claim or method to decompose its analytical decisions.
               </p>
-              {onPipelineCartUpdate && (
-                <AnalyticalPipelineCart
-                  paperId={paperId}
-                  items={pipelineCartItems}
-                  onUpdateItems={onPipelineCartUpdate}
-                />
-              )}
+              {onPipelineCartUpdate && <AnalyticalPipelineCart paperId={paperId}
+              items={pipelineCartItems}
+              onUpdateItems={onPipelineCartUpdate} />
+
+              }
               <Button
                 className="w-full gap-2 text-xs"
                 size="sm"
@@ -250,8 +250,8 @@ const PaperSidebar = ({
                     sessionStorage.setItem(`analysis-cart-${paperId}`, JSON.stringify(pipelineCartItems));
                   }
                   navigate(`/analysis/${paperId}`);
-                }}
-              >
+                }}>
+
                 <GitFork className="h-3.5 w-3.5" />
                 Open Analytical Pipeline
               </Button>
@@ -269,41 +269,41 @@ const PaperSidebar = ({
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent className="px-4 pb-4 space-y-4">
-              {hasScores ? (
-                <>
+              {hasScores ?
+              <>
                   {/* Radar chart */}
                   <div className="w-full aspect-square max-h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart data={radarData} outerRadius="70%">
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis
-                          dataKey="axis"
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        />
+                        dataKey="axis"
+                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+
                         <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
                         <Radar
-                          name="AI Projected"
-                          dataKey="value"
-                          stroke="#3B82F6"
-                          fill="#3B82F6"
-                          fillOpacity={0.3}
-                        />
-                        {authorsMode && authorScores && Object.keys(authorScores).length > 0 && (
-                          <Radar
-                            name="Author"
-                            dataKey="author"
-                            stroke="#22C55E"
-                            fill="#22C55E"
-                            fillOpacity={0.2}
-                          />
-                        )}
+                        name="AI Projected"
+                        dataKey="value"
+                        stroke="#3B82F6"
+                        fill="#3B82F6"
+                        fillOpacity={0.3} />
+
+                        {authorsMode && authorScores && Object.keys(authorScores).length > 0 &&
+                      <Radar
+                        name="Author"
+                        dataKey="author"
+                        stroke="#22C55E"
+                        fill="#22C55E"
+                        fillOpacity={0.2} />
+
+                      }
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Legend when both polygons visible */}
-                  {authorsMode && authorScores && Object.keys(authorScores).length > 0 && (
-                    <div className="flex items-center justify-center gap-4 text-xs font-sans">
+                  {authorsMode && authorScores && Object.keys(authorScores).length > 0 &&
+                <div className="flex items-center justify-center gap-4 text-xs font-sans">
                       <span className="flex items-center gap-1.5">
                         <span className="h-2.5 w-2.5 rounded-full bg-[#3B82F6]" /> AI Projected
                       </span>
@@ -311,7 +311,7 @@ const PaperSidebar = ({
                         <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E]" /> Author
                       </span>
                     </div>
-                  )}
+                }
 
                   {/* Scores breakdown */}
                   <h4 className="font-sans text-sm font-semibold text-foreground">
@@ -319,40 +319,40 @@ const PaperSidebar = ({
                   </h4>
                   <div className="space-y-2">
                     {DIMENSIONS.map((d) => {
-                      const score = (rawScores?.[d.key] as number) ?? 0;
-                      const reason = rawScores?.reasoning?.[d.key];
-                      const bar = (
-                        <div key={d.key} className="space-y-1">
+                    const score = rawScores?.[d.key] as number ?? 0;
+                    const reason = rawScores?.reasoning?.[d.key];
+                    const bar =
+                    <div key={d.key} className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-sans text-muted-foreground">{d.label}</span>
                             <span className="text-xs font-mono font-semibold text-foreground">{score}/10</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                             <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${(score / 10) * 100}%`,
-                                backgroundColor: '#3B82F6',
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${score / 10 * 100}%`,
+                            backgroundColor: '#3B82F6'
+                          }} />
 
-                      if (reason) {
-                        return (
-                          <TooltipProvider key={d.key}>
+                          </div>
+                        </div>;
+
+
+                    if (reason) {
+                      return (
+                        <TooltipProvider key={d.key}>
                             <Tooltip>
                               <TooltipTrigger asChild>{bar}</TooltipTrigger>
                               <TooltipContent side="left" className="max-w-xs text-xs">
                                 {reason}
                               </TooltipContent>
                             </Tooltip>
-                          </TooltipProvider>
-                        );
-                      }
-                      return bar;
-                    })}
+                          </TooltipProvider>);
+
+                    }
+                    return bar;
+                  })}
                   </div>
 
                   <p className="text-[10px] font-sans text-muted-foreground italic leading-relaxed">
@@ -360,54 +360,54 @@ const PaperSidebar = ({
                   </p>
 
                   {/* Author Self-Assessment section */}
-                  {authorsMode && (
-                    <div className="border-t border-border pt-4 space-y-3">
+                  {authorsMode &&
+                <div className="border-t border-border pt-4 space-y-3">
                       <h4 className="font-sans text-sm font-semibold text-foreground">
                         Author's Self-Assessment
                       </h4>
                       <div className="space-y-3">
                         {DIMENSIONS.map((d) => {
-                          const val = authorScores?.[d.key] ?? 5;
-                          return (
-                            <div key={d.key} className="space-y-1">
+                      const val = authorScores?.[d.key] ?? 5;
+                      return (
+                        <div key={d.key} className="space-y-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-sans text-muted-foreground">{d.label}</span>
                                 <span className="text-xs font-mono font-semibold text-[#22C55E]">{val}/10</span>
                               </div>
                               <Slider
-                                value={[val]}
-                                min={1}
-                                max={10}
-                                step={1}
-                                onValueChange={([v]) => handleAuthorScoreChange(d.key, v)}
-                                className="w-full"
-                              />
-                            </div>
-                          );
-                        })}
+                            value={[val]}
+                            min={1}
+                            max={10}
+                            step={1}
+                            onValueChange={([v]) => handleAuthorScoreChange(d.key, v)}
+                            className="w-full" />
+
+                            </div>);
+
+                    })}
                       </div>
                       <Button
-                        size="sm"
-                        className="w-full text-xs"
-                        onClick={saveAuthorScores}
-                        disabled={savingScores}
-                      >
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={saveAuthorScores}
+                    disabled={savingScores}>
+
                         {savingScores ? 'Saving...' : 'Save Self-Assessment'}
                       </Button>
                     </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs font-sans text-muted-foreground italic">
+                }
+                </> :
+
+              <p className="text-xs font-sans text-muted-foreground italic">
                   Impact scores will appear once the analysis pipeline completes.
                 </p>
-              )}
+              }
             </CollapsibleContent>
           </Collapsible>
         </div>
       </div>
-    </aside>
-  );
+    </aside>);
+
 };
 
 export default PaperSidebar;
