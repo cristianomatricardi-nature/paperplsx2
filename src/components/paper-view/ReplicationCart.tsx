@@ -119,7 +119,7 @@ export function ReplicationCart({ paperId, items, onUpdateItems }: ReplicationCa
         </div>
       ) : (
         <p className="text-[11px] text-muted-foreground text-center py-3">
-          {dragOver ? 'Drop here!' : 'Drag module cards here to plan your replication'}
+          {dragOver ? 'Drop here!' : 'Drag protocol cards here to plan your replication'}
         </p>
       )}
 
