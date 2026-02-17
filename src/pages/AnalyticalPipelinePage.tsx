@@ -1,10 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, GitFork, Download, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, GitFork, Download, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PipelineFlowView } from '@/components/analytical-pipeline/PipelineFlowView';
 import { VariableMappingTable, type PipelineVariable } from '@/components/analytical-pipeline/VariableMappingTable';
 import { SensitivityPanel } from '@/components/analytical-pipeline/SensitivityPanel';
 import type { PipelineStep } from '@/components/analytical-pipeline/DecisionPointCard';
@@ -22,28 +21,22 @@ const AnalyticalPipelinePage = () => {
   const [summary, setSummary] = useState('');
   const [mappings, setMappings] = useState<Record<string, string>>({});
   const [activeAlternatives, setActiveAlternatives] = useState<Record<string, string>>({});
+  const [scatterData, setScatterData] = useState<{ x: number; y: number; label?: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load paper title & cart items on mount
   useEffect(() => {
     if (!numericId) return;
-
-    // Load paper title
     supabase.from('papers').select('title').eq('id', numericId).single().then(({ data }) => {
       if (data) setPaperTitle(data.title);
     });
-
-    // Load cart from sessionStorage
     const raw = sessionStorage.getItem(`analysis-cart-${numericId}`);
     if (raw) {
       try {
-        const items = JSON.parse(raw) as ReplicationCartItem[];
-        setCartItems(items);
+        setCartItems(JSON.parse(raw) as ReplicationCartItem[]);
       } catch { /* ignore */ }
     }
   }, [numericId]);
 
-  // Auto-decompose if items present and no steps yet
   useEffect(() => {
     if (cartItems.length > 0 && steps.length === 0 && !loading) {
       runDecomposition();
@@ -61,6 +54,7 @@ const AnalyticalPipelinePage = () => {
       if (data?.pipeline_steps) setSteps(data.pipeline_steps);
       if (data?.variables) setVariables(data.variables);
       if (data?.overall_summary) setSummary(data.overall_summary);
+      if (data?.mock_scatter_data) setScatterData(data.mock_scatter_data);
     } catch (err: any) {
       console.error('Decomposition error:', err);
       toast.error('Failed to decompose pipeline');
@@ -135,7 +129,15 @@ const AnalyticalPipelinePage = () => {
           )}
         </div>
 
-        {/* Loading state */}
+        {/* Beta banner */}
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 dark:text-amber-300 font-sans leading-relaxed">
+            <strong>Beta:</strong> Visualizations use mocked data extrapolated from the manuscript. Figure extraction is not yet implemented.
+          </p>
+        </div>
+
+        {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-12 gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -143,20 +145,8 @@ const AnalyticalPipelinePage = () => {
           </div>
         )}
 
-        {/* Pipeline Flow */}
         {!loading && (
           <>
-            <section>
-              <h2 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wider">
-                Pipeline Flow
-              </h2>
-              <PipelineFlowView
-                steps={steps}
-                activeAlternatives={activeAlternatives}
-                onToggleAlternative={handleToggleAlternative}
-              />
-            </section>
-
             {/* Variable Mapping */}
             {variables.length > 0 && (
               <section>
@@ -167,6 +157,7 @@ const AnalyticalPipelinePage = () => {
                   variables={variables}
                   mappings={mappings}
                   onMappingChange={handleMappingChange}
+                  scatterData={scatterData}
                 />
               </section>
             )}
@@ -180,6 +171,7 @@ const AnalyticalPipelinePage = () => {
                 <SensitivityPanel
                   steps={steps}
                   activeAlternatives={activeAlternatives}
+                  onToggleAlternative={handleToggleAlternative}
                 />
               </section>
             )}

@@ -20,6 +20,10 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert research methods analyst. Given components from a scientific paper (claims, methods, figures), decompose the underlying analytical pipeline into ordered steps. For each step, identify the author's specific choice and 2-3 plausible alternatives. Extract all variables with their roles. Provide sensitivity notes for each decision point.
 
+For each pipeline step, also provide a mock_effect_size (number 0-1 representing the author's result magnitude) and mock_alt_effect_sizes (array of numbers 0-1, one per alternative, representing plausible shifted effect sizes if that alternative were chosen).
+
+Also provide mock_scatter_data: an array of 15-25 {x, y} data points that simulate a plausible correlation between the primary independent and dependent variables extracted from the paper. Use realistic ranges based on the paper's domain.
+
 You MUST respond using the decompose_pipeline tool.`;
 
     const userPrompt = `Decompose the analytical pipeline for the following paper components:\n\n${itemDescriptions}\n\nExtract the full data-to-output pipeline, identify every analytical decision point, extract variables, and provide what-if sensitivity notes.`;
@@ -58,8 +62,10 @@ You MUST respond using the decompose_pipeline tool.`;
                         alternatives: { type: "array", items: { type: "string" } },
                         variables_involved: { type: "array", items: { type: "string" } },
                         sensitivity_note: { type: "string" },
+                        mock_effect_size: { type: "number" },
+                        mock_alt_effect_sizes: { type: "array", items: { type: "number" } },
                       },
-                      required: ["id", "stage", "title", "description", "author_choice", "alternatives", "variables_involved", "sensitivity_note"],
+                      required: ["id", "stage", "title", "description", "author_choice", "alternatives", "variables_involved", "sensitivity_note", "mock_effect_size", "mock_alt_effect_sizes"],
                       additionalProperties: false,
                     },
                   },
@@ -78,8 +84,20 @@ You MUST respond using the decompose_pipeline tool.`;
                     },
                   },
                   overall_summary: { type: "string" },
+                  mock_scatter_data: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        x: { type: "number" },
+                        y: { type: "number" },
+                      },
+                      required: ["x", "y"],
+                      additionalProperties: false,
+                    },
+                  },
                 },
-                required: ["pipeline_steps", "variables", "overall_summary"],
+                required: ["pipeline_steps", "variables", "overall_summary", "mock_scatter_data"],
                 additionalProperties: false,
               },
             },
