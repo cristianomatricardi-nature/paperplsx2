@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.agentic-planning]
 verify_jwt = false
+
+[functions.decompose-pipeline]
+verify_jwt = false

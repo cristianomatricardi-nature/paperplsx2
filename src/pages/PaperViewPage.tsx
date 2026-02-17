@@ -56,6 +56,9 @@ const PaperViewPage = () => {
   // Replication cart
   const [cartItems, setCartItems] = useState<ReplicationCartItem[]>([]);
 
+  // Pipeline cart
+  const [pipelineCartItems, setPipelineCartItems] = useState<ReplicationCartItem[]>([]);
+
   // Realtime
   const { paper: realtimePaper } = useRealtimePaper(numericId);
 
@@ -278,6 +281,8 @@ const PaperViewPage = () => {
             onAuthorScoresChange={setAuthorScores}
             cartItems={cartItems}
             onCartUpdate={setCartItems}
+            pipelineCartItems={pipelineCartItems}
+            onPipelineCartUpdate={setPipelineCartItems}
           />
         )}
       </div>

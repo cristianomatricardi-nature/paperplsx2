@@ -8,6 +8,7 @@ import AuthPage from "./pages/AuthPage";
 import ResearcherHomePage from "./pages/ResearcherHomePage";
 import PaperViewPage from "./pages/PaperViewPage";
 import ReplicationAssistantPage from "./pages/ReplicationAssistantPage";
+import AnalyticalPipelinePage from "./pages/AnalyticalPipelinePage";
 import DigitalLabPage from "./pages/DigitalLabPage";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import PublicPaperViewPage from "./pages/PublicPaperViewPage";
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/researcher-home" element={<ProtectedRoute><ResearcherHomePage /></ProtectedRoute>} />
           <Route path="/paper/:paperId" element={<ProtectedRoute><PaperViewPage /></ProtectedRoute>} />
           <Route path="/replication/:paperId" element={<ProtectedRoute><ReplicationAssistantPage /></ProtectedRoute>} />
+          <Route path="/analysis/:paperId" element={<ProtectedRoute><AnalyticalPipelinePage /></ProtectedRoute>} />
           <Route path="/digital-lab" element={<ProtectedRoute><DigitalLabPage /></ProtectedRoute>} />
           <Route path="/api-keys" element={<ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
           <Route path="/paper/:paperId/public" element={<PublicPaperViewPage />} />
