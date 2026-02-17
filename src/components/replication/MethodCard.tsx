@@ -16,6 +16,11 @@ export function MethodCard({ method, index, selected, onClick }: MethodCardProps
   return (
     <button
       onClick={onClick}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify(method));
+        e.dataTransfer.effectAllowed = 'copyMove';
+      }}
       className={cn(
         'w-full text-left rounded-lg border p-3 transition-colors',
         selected

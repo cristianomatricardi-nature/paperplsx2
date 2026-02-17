@@ -48,15 +48,16 @@ OUTPUT: A JSON object with the following structure. Extract ACTUAL CONTENT, not 
   "methods": [
     {
       "id": "method_1",
-      "title": "name of the method/protocol step",
-      "description": "detailed description of what was done",
-      "tools": ["instrument names"],
-      "reagents": ["reagent names with concentrations"],
-      "software": ["software names with versions"],
-      "conditions": ["temperature, duration, environment conditions"],
-      "duration": "time taken or null",
+      "title": "name of the INDIVIDUAL method/protocol step (e.g. 'Substrate Cleaning', 'Lithography', 'Etching')",
+      "description": "detailed description of what was done in THIS SPECIFIC step only",
+      "tools": ["instrument names used in this step"],
+      "reagents": ["reagent names with concentrations used in this step"],
+      "software": ["software names with versions used in this step"],
+      "conditions": ["temperature, duration, environment conditions for this step"],
+      "duration": "time taken for this specific step or null",
       "page_numbers": [3],
-      "critical_notes": ["important warnings or tips for replication"]
+      "critical_notes": ["important warnings or tips for replication of this step"],
+      "depends_on": ["method_ids this step depends on, e.g. method_1"]
     }
   ],
   "figures": [
@@ -128,7 +129,7 @@ OUTPUT: A JSON object with the following structure. Extract ACTUAL CONTENT, not 
 RULES:
 - Extract EVERY figure referenced in the paper, including subfigures (e.g., Fig. 2a, 2b). Scan EVERY page for figure captions starting with 'Fig.', 'Figure', or similar patterns. A typical paper has 3-8 figures. Do NOT skip any visual element.
 - Extract ALL claims, not just the main one. A typical paper has 3-10 claims.
-- Extract ALL method steps in sufficient detail for replication.
+- Extract EVERY INDIVIDUAL method step as a SEPARATE entry. Break complex procedures into their distinct sub-steps. For example, if a paper describes "Fabrication" with steps like substrate preparation, lithography, etching, deposition, and characterization, each of these MUST be a separate method entry. A typical experimental paper has 5-15 method steps. Do NOT group multiple steps into a single method entry. Include "depends_on" to show the order/dependencies between steps.
 - For negative_results: look in Discussion and Limitations sections. If none are explicitly stated, infer from hedging language or non-significant results.
 - For call_to_actions: extract from Conclusion and Future Work sections.
 - For scicomm_hooks: generate these yourself based on the paper content — create analogies, identify real-world impacts, and find surprising findings that would engage a general audience.
