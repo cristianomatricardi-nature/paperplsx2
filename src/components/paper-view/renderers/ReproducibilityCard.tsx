@@ -11,6 +11,7 @@ interface ReproducibilityData {
 
 interface ReproducibilityCardProps {
   data: ReproducibilityData;
+  moduleId?: string;
 }
 
 function BulletList({ label, items }: { label: string; items: string[] }) {
@@ -29,11 +30,23 @@ function BulletList({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-export function ReproducibilityCard({ data }: ReproducibilityCardProps) {
+export function ReproducibilityCard({ data, moduleId }: ReproducibilityCardProps) {
   const { score, strengths, gaps, pitfalls } = data;
 
   return (
-    <div className="space-y-4">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId ?? 'M3',
+          type: 'reproducibility',
+          title: `Reproducibility: ${score ?? '?'}/10`,
+          data,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className="space-y-4 cursor-grab active:cursor-grabbing"
+    >
       {score != null && (
         <div className="flex items-center gap-4">
           <div className="flex items-baseline gap-1">

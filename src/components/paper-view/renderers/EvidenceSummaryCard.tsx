@@ -12,9 +12,10 @@ interface EvidenceSummaryData {
 
 interface EvidenceSummaryCardProps {
   data: EvidenceSummaryData;
+  moduleId?: string;
 }
 
-export function EvidenceSummaryCard({ data }: EvidenceSummaryCardProps) {
+export function EvidenceSummaryCard({ data, moduleId }: EvidenceSummaryCardProps) {
   const { total_claims, strong = 0, moderate = 0, preliminary = 0, overall_assessment } = data;
 
   const counts = [
@@ -24,7 +25,19 @@ export function EvidenceSummaryCard({ data }: EvidenceSummaryCardProps) {
   ].filter((c) => c.value > 0);
 
   return (
-    <div className="space-y-3">
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId ?? 'M2',
+          type: 'evidence_summary',
+          title: `Evidence: ${total_claims ?? 0} claims`,
+          data,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className="space-y-3 cursor-grab active:cursor-grabbing"
+    >
       <div className="flex items-center flex-wrap gap-2">
         {total_claims != null && (
           <span className="text-sm font-medium text-foreground">

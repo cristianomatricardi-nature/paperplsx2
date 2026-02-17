@@ -71,8 +71,19 @@ function MetricCard({ row, paperId }: { row: MetricRow; paperId?: number }) {
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Card
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.setData('application/json', JSON.stringify({
+                    sourceModule: 'M1',
+                    type: 'metric',
+                    title: row.metric ?? 'Metric',
+                    data: row,
+                  }));
+                  e.dataTransfer.effectAllowed = 'copy';
+                }}
                 className={cn(
-                  'cursor-pointer p-3 transition-all duration-200 hover:shadow-md hover:border-primary/30',
+                  'cursor-grab active:cursor-grabbing p-3 transition-all duration-200 hover:shadow-md hover:border-primary/30',
                   open && 'ring-1 ring-primary/20 shadow-md',
                 )}
               >

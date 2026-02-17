@@ -24,7 +24,7 @@ interface StepData {
 const toArray = (val: unknown): string[] =>
   Array.isArray(val) ? val : typeof val === 'string' ? [val] : [];
 
-function FlowCard({ step, index, total }: { step: StepData; index: number; total: number }) {
+function FlowCard({ step, index, total, moduleId }: { step: StepData; index: number; total: number; moduleId?: string }) {
   const [expanded, setExpanded] = useState(false);
   const tools = toArray(step.tools);
   const reagents = toArray(step.reagents);
@@ -45,8 +45,19 @@ function FlowCard({ step, index, total }: { step: StepData; index: number; total
       )}
 
       <Card
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.setData('application/json', JSON.stringify({
+            sourceModule: moduleId ?? 'M3',
+            type: 'method_step',
+            title: step.title ?? `Step ${index + 1}`,
+            data: step,
+          }));
+          e.dataTransfer.effectAllowed = 'copy';
+        }}
         className={cn(
-          'w-full cursor-pointer transition-all hover:shadow-md border-border',
+          'w-full cursor-grab active:cursor-grabbing transition-all hover:shadow-md border-border',
           expanded && 'ring-1 ring-primary/30'
         )}
         onClick={() => setExpanded(!expanded)}
@@ -150,9 +161,10 @@ function FlowCard({ step, index, total }: { step: StepData; index: number; total
 interface ProtocolFlowViewProps {
   steps: StepData[];
   paperId?: number;
+  moduleId?: string;
 }
 
-export function ProtocolFlowView({ steps, paperId }: ProtocolFlowViewProps) {
+export function ProtocolFlowView({ steps, paperId, moduleId }: ProtocolFlowViewProps) {
   const [infographic, setInfographic] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
@@ -206,7 +218,7 @@ export function ProtocolFlowView({ steps, paperId }: ProtocolFlowViewProps) {
       {/* Flow cards */}
       <div className="flex flex-col items-center">
         {steps.map((step, i) => (
-          <FlowCard key={step.id ?? i} step={step} index={i} total={steps.length} />
+          <FlowCard key={step.id ?? i} step={step} index={i} total={steps.length} moduleId={moduleId} />
         ))}
       </div>
     </div>

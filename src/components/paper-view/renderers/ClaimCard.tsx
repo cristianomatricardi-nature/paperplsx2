@@ -1,3 +1,4 @@
+import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { renderWithPageRefs } from './PageReference';
 
@@ -22,7 +23,7 @@ const STRENGTH_STYLES: Record<string, { border: string; dot: string }> = {
   speculative: { border: 'border-l-gray-400', dot: 'bg-gray-400' },
 };
 
-export function ClaimCard({ claim }: { claim: ClaimData }) {
+export function ClaimCard({ claim, moduleId }: { claim: ClaimData; moduleId?: string }) {
   const strength = claim.strength ?? 'moderate';
   const styles = STRENGTH_STYLES[strength] ?? STRENGTH_STYLES.moderate;
   const evidence = claim.evidence ?? claim.evidence_summary ?? '';
@@ -42,9 +43,22 @@ export function ClaimCard({ claim }: { claim: ClaimData }) {
   ).join('  ·  ');
 
   return (
-    <div className={cn('rounded-md border border-border bg-card p-3 border-l-4 space-y-1.5 h-full flex flex-col', styles.border)}>
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          sourceModule: moduleId ?? 'M2',
+          type: 'claim',
+          title: claim.statement ?? 'Claim',
+          data: claim,
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      className={cn('rounded-md border border-border bg-card p-3 border-l-4 space-y-1.5 h-full flex flex-col group/drag cursor-grab active:cursor-grabbing', styles.border)}
+    >
       {/* Header: dot + strength + statement */}
       <div className="flex items-start gap-2">
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/0 group-hover/drag:text-muted-foreground/60 transition-colors shrink-0 mt-1" />
         <span className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0', styles.dot)} />
         <div className="min-w-0">
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{strength}</span>
