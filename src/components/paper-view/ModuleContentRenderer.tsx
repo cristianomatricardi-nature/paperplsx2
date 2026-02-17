@@ -5,6 +5,7 @@ import { MODULE_REGISTRY } from '@/types/modules';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ClaimCard } from './renderers/ClaimCard';
 import { ProtocolStep } from './renderers/ProtocolStep';
+import { ProtocolFlowView } from './renderers/ProtocolFlowView';
 import { MetricsTable } from './renderers/MetricsTable';
 import { MetricsGrid } from './renderers/MetricsGrid';
 import { NegativeResultCard } from './renderers/NegativeResultCard';
@@ -135,11 +136,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
     }
 
     if (moduleId === 'M3' && typeof first === 'object' && first !== null && ('title' in first || 'description' in first)) {
-      return (
-        <div className="space-y-4">
-          {data.map((step, i) => <ProtocolStep key={i} step={step} index={i} />)}
-        </div>
-      );
+      return <ProtocolFlowView steps={data} paperId={paperId} />;
     }
 
     if (moduleId === 'M1' && typeof first === 'object' && first !== null && ('metric' in first || 'value' in first)) {

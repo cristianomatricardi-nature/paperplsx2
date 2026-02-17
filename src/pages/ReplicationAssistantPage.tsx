@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FlaskConical, Download, Beaker, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, FlaskConical, Download, Beaker, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { MethodCard } from '@/components/replication/MethodCard';
 import { GapSummary } from '@/components/replication/GapSummary';
 import { RequirementsComparison } from '@/components/replication/RequirementsComparison';
 import { CriticalNotes } from '@/components/replication/CriticalNotes';
+import { ExperimentPlanner } from '@/components/replication/ExperimentPlanner';
+import { AgenticPlanningPanel } from '@/components/replication/AgenticPlanningPanel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,8 +38,10 @@ const ReplicationAssistantPage = () => {
     return (meta?.field as string) ?? null;
   }, [structuredData]);
 
-  const [selectedIdx, setSelectedIdx] = useState<number | 'all' | null>(null);
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [plannedSteps, setPlannedSteps] = useState<MethodStep[]>([]);
   const [simulating, setSimulating] = useState(false);
+  const [agenticOpen, setAgenticOpen] = useState(false);
   const loading = loadingMethods || loadingLab;
 
   const handleSimulateLab = async () => {
@@ -58,25 +62,30 @@ const ReplicationAssistantPage = () => {
     }
   };
 
-  const selectedMethods: MethodStep[] = useMemo(() => {
-    if (selectedIdx === 'all') return methods;
+  // Requirements based on planned steps (if any) or selected method
+  const activeSteps: MethodStep[] = useMemo(() => {
+    if (plannedSteps.length > 0) return plannedSteps;
     if (selectedIdx != null && methods[selectedIdx]) return [methods[selectedIdx]];
     return [];
-  }, [selectedIdx, methods]);
+  }, [plannedSteps, selectedIdx, methods]);
 
   const requirements = useMemo(
-    () => selectedMethods.flatMap(m => buildRequirements(m, inventory as any)),
-    [selectedMethods, inventory]
+    () => activeSteps.flatMap(m => buildRequirements(m, inventory as any)),
+    [activeSteps, inventory]
   );
 
   const criticalNotes = useMemo(
-    () => selectedMethods.flatMap(m => m.critical_notes ?? []),
-    [selectedMethods]
+    () => activeSteps.flatMap(m => m.critical_notes ?? []),
+    [activeSteps]
   );
 
-  // Export checklist
   const handleExport = () => {
     const lines = ['# Replication Checklist', `Paper: ${paperTitle}`, ''];
+    if (plannedSteps.length > 0) {
+      lines.push('## Experiment Plan');
+      plannedSteps.forEach((s, i) => lines.push(`${i + 1}. ${s.title}`));
+      lines.push('');
+    }
     requirements.forEach(r => {
       const icon = r.status === 'available' ? '✅' : r.status === 'check' ? '⚠️' : '❌';
       lines.push(`${icon} [${r.type}] ${r.name} — ${r.status === 'available' ? 'Available' : r.status === 'check' ? 'Check compatibility' : 'Missing'}`);
@@ -159,19 +168,14 @@ const ReplicationAssistantPage = () => {
         </div>
       ) : (
         <div className={`mx-auto max-w-7xl flex-1 w-full ${isMobile ? 'flex flex-col' : 'flex'} gap-6 p-4 sm:p-6`}>
-          {/* Method Selector */}
+          {/* Method Selector (source for drag) */}
           <aside className={`${isMobile ? 'w-full' : 'w-[300px] shrink-0'} space-y-2`}>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Methods</h2>
-            <button
-              onClick={() => setSelectedIdx('all')}
-              className={`w-full rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
-                selectedIdx === 'all'
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary text-foreground'
-                  : 'border-border hover:bg-muted/50 text-muted-foreground'
-              }`}
-            >
-              Select All ({methods.length} methods)
-            </button>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Methods ({methods.length})
+            </h2>
+            <p className="text-xs text-muted-foreground mb-3">
+              Drag methods to the experiment planner →
+            </p>
             {methods.map((m, i) => (
               <MethodCard
                 key={m.id}
@@ -183,29 +187,45 @@ const ReplicationAssistantPage = () => {
             ))}
           </aside>
 
-          {/* Comparison Panel */}
+          {/* Experiment Planner + Comparison Panel */}
           <main className="flex-1 min-w-0 space-y-6">
-            {selectedIdx == null ? (
-              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border p-12">
-                <p className="text-sm text-muted-foreground">Select a method to see the comparison</p>
-              </div>
-            ) : (
+            {/* Drag-and-drop planner */}
+            <ExperimentPlanner
+              plannedSteps={plannedSteps}
+              onUpdateSteps={setPlannedSteps}
+              inventory={inventory as any}
+            />
+
+            {/* Gap analysis (shows when steps are planned or selected) */}
+            {activeSteps.length > 0 ? (
               <>
                 <GapSummary requirements={requirements} />
                 <RequirementsComparison requirements={requirements} />
                 <CriticalNotes notes={criticalNotes} />
               </>
-            )}
+            ) : plannedSteps.length === 0 && selectedIdx == null ? (
+              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border p-12">
+                <p className="text-sm text-muted-foreground">Drag methods or click one to see requirements</p>
+              </div>
+            ) : null}
           </main>
         </div>
       )}
 
       {/* Action Bar */}
-      {selectedIdx != null && !loading && (
+      {(activeSteps.length > 0 || plannedSteps.length > 0) && !loading && (
         <footer className="sticky bottom-0 border-t border-border bg-card px-4 py-3 sm:px-6">
           <div className="mx-auto max-w-7xl flex justify-end gap-3">
             <Button variant="outline" asChild>
               <Link to="/digital-lab">Update My Lab</Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setAgenticOpen(true)}
+              className="gap-1.5"
+            >
+              <BrainCircuit className="h-4 w-4" />
+              AI Agentic Planning
             </Button>
             <Button onClick={handleExport} className="gap-1.5">
               <Download className="h-4 w-4" /> Export Checklist
@@ -213,6 +233,16 @@ const ReplicationAssistantPage = () => {
           </div>
         </footer>
       )}
+
+      {/* Agentic Planning Dialog */}
+      <AgenticPlanningPanel
+        open={agenticOpen}
+        onOpenChange={setAgenticOpen}
+        methods={activeSteps}
+        requirements={requirements}
+        inventory={inventory as any}
+        paperField={paperField}
+      />
     </div>
   );
 };

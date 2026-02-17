@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.paper-api]
 verify_jwt = false
+
+[functions.generate-protocol-infographic]
+verify_jwt = false
+
+[functions.agentic-planning]
+verify_jwt = false
