@@ -1,78 +1,46 @@
 
 
-## Persona Selection + AI Agent API
+## Fix Persona Selection Not Appearing + Dropdown Filtering
 
-### Part 1: Persona Selection Step (After Upload Completes)
+### Problem
 
-When the pipeline finishes processing, instead of immediately navigating to the paper view, show a persona selection screen where the user ticks which sub-personas to generate content for.
+Two related issues:
 
-**Changes:**
+1. **Persona selection never shows**: The `PersonaSelectionStep` only renders inside `UploadSection` during a fresh upload when the pipeline finishes in real-time. For papers already in the library (shown via `PaperCard`), clicking "View Paper++" navigates directly to the paper view -- no persona selection step ever appears.
 
-**New component: `src/components/researcher-home/PersonaSelectionStep.tsx`**
-- Displays all 7 sub-personas grouped by parent (Researcher, Policy Maker, Funding Agency, Industry R&D) with checkboxes
-- Each persona shows its short label and a one-line pain point description
-- A "Continue to Paper++" button at the bottom
-- Selected personas are stored on the `papers` row in a new `selected_personas` JSONB column (array of SubPersonaId strings)
-- Default: `phd_postdoc` pre-checked
+2. **Only PhD/Postdoc in dropdown**: All existing papers have `selected_personas` defaulting to `["phd_postdoc"]`, so the persona dropdown on the paper view correctly shows only that one option. But since users never got to choose personas, this feels broken.
 
-**Edit: `src/components/researcher-home/UploadSection.tsx`**
-- After pipeline completes (`isPipelineDone`), replace the "View Paper++" button with the `PersonaSelectionStep` component
-- On confirm, save selected personas to DB, then navigate to `/paper/:paperId`
+### Solution
 
-**Edit: `src/pages/PaperViewPage.tsx` and `PublicPaperViewPage.tsx`**
-- Fetch `selected_personas` from the paper record
-- Filter `PersonaSelector` dropdown to only show the selected personas
-- Filter `MODULE_ORDER_BY_PERSONA` lookups to only show content for selected personas
+Add a persona selection gate on the `PaperViewPage` itself. When a user opens a completed paper that still has the default single persona, show the persona selection UI before showing the paper content. This handles both fresh uploads and existing papers.
 
-**Database migration:**
-- Add `selected_personas` JSONB column to `papers` table (default `'["phd_postdoc"]'`)
+### Changes
 
----
+**File: `src/pages/PaperViewPage.tsx`**
+- After loading the paper, check if `selected_personas` is still the default (`["phd_postdoc"]` with length 1) and no module content has been generated yet
+- If so, show the `PersonaSelectionStep` component as a full-page overlay/card instead of the paper content
+- On confirm, save the selected personas to DB, update local state, and show the paper
 
-### Part 2: AI Agent Persona with REST API
+**File: `src/components/researcher-home/PaperCard.tsx`**
+- No changes needed -- "View Paper++" navigates to paper view where the gate will catch unselected papers
 
-Create a new edge function that serves as a structured REST API for machine consumption of paper data.
-
-**New sub-persona: `ai_agent`**
-- Added to both frontend `SUB_PERSONA_REGISTRY` and backend `SUB_PERSONA_REGISTRY`
-- Parent persona: "AI Agent"
-- Returns raw structured data optimized for machine parsing (all numbers, no prose embellishments)
-- Does NOT appear in the human persona selector -- it's API-only
-
-**New edge function: `supabase/functions/paper-api/index.ts`**
-- Endpoint: `/paper-api`
-- Authentication: API key passed as `Authorization: Bearer <key>` header (validated against a `paper_api_keys` table)
-- Endpoints (via query params):
-  - `?paper_id=42` -- returns paper metadata + structured data
-  - `?paper_id=42&module=M1` -- returns a specific module's generated content for the `ai_agent` persona
-  - `?paper_id=42&summary=true` -- returns the AI agent summary
-- Returns clean JSON with no HTML
-
-**Database migration:**
-- Create `paper_api_keys` table: `id`, `user_id`, `api_key` (hashed), `label`, `created_at`, `last_used_at`
-- RLS: users can only see/manage their own keys
-
-**New page: `src/pages/ApiKeysPage.tsx`** (or section in a settings page)
-- UI to generate, view, and revoke API keys
-- Shows the endpoint URL and example curl commands
-
----
+**File: `src/pages/PaperViewPage.tsx` (persona dropdown)**
+- When `allowedPersonas` is undefined or empty, show all personas (remove the filter so the dropdown is not artificially restricted)
+- Only filter when `selected_personas` contains more than one entry (meaning the user actively chose)
 
 ### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/researcher-home/PersonaSelectionStep.tsx` | New -- checkbox grid for persona selection |
-| `src/components/researcher-home/UploadSection.tsx` | Show persona selection after pipeline completes |
-| `src/pages/PaperViewPage.tsx` | Filter persona selector to selected personas |
-| `src/pages/PublicPaperViewPage.tsx` | Same persona filtering |
-| `src/components/paper-view/PersonaSelector.tsx` | Accept optional `allowedPersonas` prop to filter options |
-| `src/types/modules.ts` | Add `ai_agent` to `SubPersonaId` type (but exclude from UI registry) |
-| `src/lib/constants.ts` | Add `ai_agent` module order |
-| `supabase/functions/_shared/sub-personas.ts` | Add `ai_agent` sub-persona definition |
-| `supabase/functions/paper-api/index.ts` | New -- REST API endpoint for AI agents |
-| `supabase/config.toml` | Add `paper-api` function config |
-| `src/pages/ApiKeysPage.tsx` | New -- API key management UI |
-| `src/App.tsx` | Add `/api-keys` route |
-| Database migration | Add `selected_personas` column to papers; create `paper_api_keys` table |
+| `src/pages/PaperViewPage.tsx` | Add persona selection gate: if paper has default personas and user is owner, show `PersonaSelectionStep` before paper content. After selection, save to DB and proceed. |
+
+The gate logic:
+- Show selection when: `isOwner && paper.selected_personas` is the untouched default `["phd_postdoc"]`
+- Add a `personasConfirmed` state flag so the gate only shows once per session
+- After confirming, update DB row + local `allowedPersonas` state and render the paper normally
+
+This approach means:
+- Existing papers get the persona selection on first open
+- Fresh uploads still get it in the upload flow (no regression)
+- The dropdown then correctly shows all chosen personas
 
