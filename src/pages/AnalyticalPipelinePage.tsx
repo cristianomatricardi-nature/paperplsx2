@@ -37,6 +37,20 @@ const AnalyticalPipelinePage = () => {
     }
   }, [numericId]);
 
+  // Fire analysis_used event on mount (fire-and-forget)
+  useEffect(() => {
+    if (!numericId) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user?.id) return;
+      supabase.from('user_activity_events').insert({
+        user_id: session.user.id,
+        paper_id: numericId,
+        event_type: 'analysis_used',
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (cartItems.length > 0 && steps.length === 0 && !loading) {
       runDecomposition();

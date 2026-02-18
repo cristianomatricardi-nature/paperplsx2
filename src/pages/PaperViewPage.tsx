@@ -59,6 +59,16 @@ const PaperViewPage = () => {
   // Pipeline cart
   const [pipelineCartItems, setPipelineCartItems] = useState<ReplicationCartItem[]>([]);
 
+  // Module opened tracking (fire-and-forget)
+  const handleModuleOpened = useCallback((moduleId: ModuleId) => {
+    if (!user?.id || !numericId) return;
+    supabase.from('user_activity_events').insert({
+      user_id: user.id,
+      paper_id: numericId,
+      event_type: 'protocol_opened',
+    });
+  }, [user, numericId]);
+
   // Realtime
   const { paper: realtimePaper } = useRealtimePaper(numericId);
 
@@ -108,8 +118,16 @@ const PaperViewPage = () => {
     (newPersona: SubPersonaId) => {
       setSubPersonaId(newPersona);
       setModuleOrder(MODULE_ORDER_BY_PERSONA[newPersona]);
+      // Fire-and-forget activity event
+      if (user?.id && numericId) {
+        supabase.from('user_activity_events').insert({
+          user_id: user.id,
+          paper_id: numericId,
+          event_type: 'persona_changed',
+        });
+      }
     },
-    [],
+    [user, numericId],
   );
 
   // Check if persona selection gate should show
@@ -135,7 +153,16 @@ const PaperViewPage = () => {
     setSubPersonaId(chosen[0]);
     setModuleOrder(MODULE_ORDER_BY_PERSONA[chosen[0]]);
     setPersonasConfirmed(true);
-  }, [numericId]);
+    // Fire persona_changed event if user chose something beyond the default
+    const isNonDefault = !(chosen.length === 1 && chosen[0] === 'phd_postdoc');
+    if (isNonDefault && user?.id) {
+      supabase.from('user_activity_events').insert({
+        user_id: user.id,
+        paper_id: numericId,
+        event_type: 'persona_changed',
+      });
+    }
+  }, [numericId, user]);
 
   // Derive fields from paper
   const title = (paper?.title as string) ?? null;
@@ -255,6 +282,7 @@ const PaperViewPage = () => {
                     authorsMode={authorsMode}
                     authorEnrichments={authorEnrichments}
                     onEnrichmentsUpdate={setAuthorEnrichments}
+                    onModuleOpened={handleModuleOpened}
                   />
                 )}
 
