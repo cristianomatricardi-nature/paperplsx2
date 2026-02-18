@@ -4,25 +4,25 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const features = [
-  {
-    icon: Users,
-    title: 'Persona-Tailored Views',
-    description:
-      'Read as an expert, student, reviewer, or journalist. Each persona surfaces the insights most relevant to you.'
-  },
-  {
-    icon: Sparkles,
-    title: 'AI-Enriched Layers',
-    description:
-      'From insights to actions: interactive data, tweakable parameters, reusable workflows, and real‑time comparison with your own results.'
-  },
-  {
-    icon: FlaskConical,
-    title: 'Agentic Replication Assistant',
-    description:
-      'Find everything you need to reproduce and speed up your work through community-engaging tools, and a step-by-step replication checklist — check your resources and fill the missing ones in a timely fashion.'
-  }
-];
+{
+  icon: Users,
+  title: 'Persona-Tailored Views',
+  description:
+  'Read as an expert, student, reviewer, or journalist. Each persona surfaces the insights most relevant to you.'
+},
+{
+  icon: Sparkles,
+  title: 'AI-Enriched Layers',
+  description:
+  'From insights to actions: interactive data, tweakable parameters, reusable workflows, and real‑time comparison with your own results.'
+},
+{
+  icon: FlaskConical,
+  title: 'Agentic Replication Assistant',
+  description:
+  'Find everything you need to reproduce and speed up your work through community-engaging tools, and a step-by-step replication checklist — check your resources and fill the missing ones in a timely fashion.'
+}];
+
 
 // Lightweight IntersectionObserver fade-in hook
 function useFadeInRefs(count: number) {
@@ -83,8 +83,8 @@ function ParticleCanvas() {
     const MAX_DIST = 130;
 
     type Particle = {
-      x: number; y: number;
-      vx: number; vy: number;
+      x: number;y: number;
+      vx: number;vy: number;
       r: number;
     };
 
@@ -93,7 +93,7 @@ function ParticleCanvas() {
       y: Math.random() * height,
       vx: (Math.random() - 0.5) * 0.55,
       vy: (Math.random() - 0.5) * 0.55,
-      r: Math.random() * 2.5 + 1.2,
+      r: Math.random() * 2.5 + 1.2
     }));
 
     const draw = () => {
@@ -151,9 +151,9 @@ function ParticleCanvas() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.6 }}
-    />
-  );
+      style={{ opacity: 0.6 }} />);
+
+
 }
 
 const LandingPage = () => {
@@ -219,7 +219,7 @@ const LandingPage = () => {
         style={{
           minHeight: '62vh',
           background:
-            'linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)'
+          'linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)'
         }}>
 
         {/* Subtle noise-texture overlay */}
@@ -227,7 +227,7 @@ const LandingPage = () => {
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'300\' height=\'300\' filter=\'url(%23n)\'/%3E%3C/svg%3E")'
+            'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'300\' height=\'300\' filter=\'url(%23n)\'/%3E%3C/svg%3E")'
           }} />
 
         {/* Particle network — right half */}
@@ -274,7 +274,7 @@ const LandingPage = () => {
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  'hsl(var(--hero-teal-foreground) / 0.12)';
+                'hsl(var(--hero-teal-foreground) / 0.12)';
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
@@ -308,29 +308,29 @@ const LandingPage = () => {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, i) => (
-              <div
-                key={feature.title}
-                ref={(el) => { cardRefs.current[i] = el; }}
-                className="rounded-xl border border-border bg-card p-7 transition-all duration-700"
-                style={{
-                  opacity: cardVisible[i] ? 1 : 0,
-                  transform: cardVisible[i] ? 'translateY(0)' : 'translateY(28px)',
-                  boxShadow: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow =
-                    '0 4px 24px 0 hsl(var(--primary) / 0.08)';
-                  (e.currentTarget as HTMLDivElement).style.borderColor =
-                    'hsl(var(--primary) / 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '';
-                }}>
+            {features.map((feature, i) =>
+            <div
+              key={feature.title}
+              ref={(el) => {cardRefs.current[i] = el;}}
+              className="rounded-xl border border-border bg-card p-7 transition-all duration-700"
+              style={{
+                opacity: cardVisible[i] ? 1 : 0,
+                transform: cardVisible[i] ? 'translateY(0)' : 'translateY(28px)',
+                boxShadow: 'none'
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow =
+                '0 4px 24px 0 hsl(var(--primary) / 0.08)';
+                (e.currentTarget as HTMLDivElement).style.borderColor =
+                'hsl(var(--primary) / 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLDivElement).style.borderColor = '';
+              }}>
                 <div
-                  className="mb-5 flex h-10 w-10 items-center justify-center rounded-full"
-                  style={{ background: 'hsl(var(--primary) / 0.08)' }}>
+                className="mb-5 flex h-10 w-10 items-center justify-center rounded-full"
+                style={{ background: 'hsl(var(--primary) / 0.08)' }}>
                   <feature.icon className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} />
                 </div>
                 <h3 className="mb-2 text-lg font-bold text-foreground">{feature.title}</h3>
@@ -338,7 +338,7 @@ const LandingPage = () => {
                   {feature.description}
                 </p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -346,21 +346,21 @@ const LandingPage = () => {
       {/* ── CTA ── */}
       <section className="py-20 border-t border-border">
         <div className="container">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-bold mb-4 text-foreground">
-              Ready to transform how you read research?
-            </h2>
-            <p className="mb-8 text-muted-foreground font-sans">
-              Join researchers already using Paper++ to accelerate their understanding.
-            </p>
-            <Button
-              size="lg"
-              className="gap-2 font-sans rounded-full px-8"
-              onClick={() => navigate('/hub')}>
-              Get Started Free
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         </div>
       </section>
 
@@ -377,8 +377,8 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
+
 };
 
 export default LandingPage;
