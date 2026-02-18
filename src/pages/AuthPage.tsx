@@ -18,7 +18,7 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/researcher-home', { replace: true });
+      navigate('/hub', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
@@ -44,7 +44,7 @@ const AuthPage = () => {
         password: signInPassword,
       });
       if (error) throw error;
-      navigate('/researcher-home');
+      navigate('/hub');
     } catch (error: any) {
       toast({ title: 'Sign in failed', description: error.message, variant: 'destructive' });
     } finally {
