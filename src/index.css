@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,107 +7,125 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 13%;
+    --foreground: 220 20% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 13%;
+    --card-foreground: 220 20% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
+    --popover-foreground: 220 20% 10%;
 
-    --primary: 348 83% 47%;
+    /* Primary: deep navy blue */
+    --primary: 221 83% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 20%;
+    --secondary: 217 30% 96%;
+    --secondary-foreground: 220 20% 20%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 217 25% 94%;
+    --muted-foreground: 220 12% 45%;
 
-    --accent: 348 83% 47%;
+    --accent: 221 83% 35%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 348 83% 47%;
+    --border: 217 20% 88%;
+    --input: 217 20% 88%;
+    --ring: 221 83% 45%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 348 83% 47%;
+    --sidebar-foreground: 220 20% 20%;
+    --sidebar-primary: 221 83% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 20%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 348 83% 47%;
+    --sidebar-accent: 217 30% 96%;
+    --sidebar-accent-foreground: 220 20% 20%;
+    --sidebar-border: 217 20% 88%;
+    --sidebar-ring: 221 83% 35%;
 
-    /* Custom tokens — Nature palette */
-    --nature-red: 348 83% 47%;
+    /* Custom tokens — Blue palette */
+    --nature-red: 221 83% 35%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 348 83% 47%;
+    --nature-teal: 221 83% 35%;
     --nature-teal-foreground: 0 0% 100%;
-    --nature-dark: 0 0% 13%;
-    --nature-gray: 0 0% 45%;
-    --surface-warm: 0 0% 97%;
-    --deep-blue: 348 83% 47%;
+    --nature-dark: 220 20% 10%;
+    --nature-gray: 220 12% 45%;
+    --surface-warm: 217 25% 97%;
+    --deep-blue: 221 83% 35%;
     --deep-blue-foreground: 0 0% 100%;
-    --hero-teal: 199 73% 25%;
+
+    /* Hero banner: rich navy */
+    --hero-teal: 221 65% 22%;
     --hero-teal-foreground: 0 0% 100%;
+
+    /* Blue shades */
+    --blue-50: 217 80% 97%;
+    --blue-100: 217 70% 92%;
+    --blue-200: 218 60% 82%;
+    --blue-500: 221 75% 50%;
+    --blue-700: 221 83% 35%;
+    --blue-900: 221 65% 18%;
   }
 
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 92%;
+    --background: 220 20% 6%;
+    --foreground: 217 25% 92%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 92%;
+    --card: 220 20% 9%;
+    --card-foreground: 217 25% 92%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 92%;
+    --popover: 220 20% 9%;
+    --popover-foreground: 217 25% 92%;
 
-    --primary: 348 83% 52%;
+    --primary: 221 75% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 85%;
+    --secondary: 220 20% 14%;
+    --secondary-foreground: 217 25% 85%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 220 20% 16%;
+    --muted-foreground: 217 15% 55%;
 
-    --accent: 348 83% 52%;
+    --accent: 221 75% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 348 83% 52%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 221 75% 55%;
 
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 348 83% 52%;
+    --sidebar-background: 220 20% 7%;
+    --sidebar-foreground: 217 25% 85%;
+    --sidebar-primary: 221 75% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 85%;
-    --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 348 83% 52%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 217 25% 85%;
+    --sidebar-border: 220 20% 16%;
+    --sidebar-ring: 221 75% 55%;
 
-    --nature-red: 348 83% 52%;
+    --nature-red: 221 75% 55%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 348 83% 52%;
+    --nature-teal: 221 75% 55%;
     --nature-teal-foreground: 0 0% 100%;
-    --nature-dark: 0 0% 92%;
-    --nature-gray: 0 0% 55%;
-    --surface-warm: 0 0% 10%;
-    --deep-blue: 348 83% 52%;
+    --nature-dark: 217 25% 92%;
+    --nature-gray: 217 15% 55%;
+    --surface-warm: 220 20% 11%;
+    --deep-blue: 221 75% 55%;
     --deep-blue-foreground: 0 0% 100%;
-    --hero-teal: 199 73% 20%;
+    --hero-teal: 221 65% 18%;
     --hero-teal-foreground: 0 0% 100%;
+
+    --blue-50: 220 20% 14%;
+    --blue-100: 220 20% 18%;
+    --blue-200: 220 30% 26%;
+    --blue-500: 221 70% 50%;
+    --blue-700: 221 75% 55%;
+    --blue-900: 217 80% 72%;
   }
 }
 
@@ -121,15 +139,17 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 700;
   }
 }
 
 @layer utilities {
+  /* Keep .font-serif pointing to sans so legacy classes don't break layout */
   .font-serif {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
   .font-sans {
-    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
