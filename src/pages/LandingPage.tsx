@@ -344,9 +344,7 @@ const LandingPage = () => {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-20 border-t border-border">
-        <div className="container">
-          
+      
 
 
 
@@ -361,8 +359,10 @@ const LandingPage = () => {
 
 
 
-        </div>
-      </section>
+
+
+
+
 
       {/* ── Footer ── */}
       <footer className="border-t border-border py-8 bg-card">
