@@ -167,7 +167,12 @@ const ResearcherHomePage = () => {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
           <div className="mb-4 flex items-center gap-1 text-xs" style={{ color: 'hsl(var(--hero-teal-foreground) / 0.65)' }}>
-            <span>Home</span>
+            <button
+              onClick={() => navigate('/hub')}
+              className="hover:underline underline-offset-2 transition-opacity hover:opacity-100 opacity-80"
+            >
+              Home
+            </button>
             <ChevronRight className="h-3 w-3" />
             <span>My Account</span>
           </div>
