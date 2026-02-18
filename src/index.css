@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Libre+Baskerville:wght@700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -153,5 +153,12 @@
   }
   .font-sans {
     font-family: 'Inter', system-ui, sans-serif;
+  }
+  /* Logo-only: Springer Nature brand style */
+  .logo-brand {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-weight: 700;
+    font-variant: small-caps;
+    letter-spacing: 0.02em;
   }
 }
