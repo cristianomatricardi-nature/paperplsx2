@@ -132,9 +132,14 @@ const HubPage = () => {
       {/* ── Top Nav ── */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <span className="font-serif text-xl font-bold tracking-tight text-foreground">
-            Paper<span className="text-primary">+</span>
-          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-base font-bold tracking-tight" style={{ color: 'hsl(var(--hero-teal))' }}>
+              Springer Nature – Paper<span style={{ color: 'hsl(var(--hero-teal-mid))' }}>++</span>
+            </span>
+            <span className="text-[10px] font-normal tracking-wide" style={{ color: 'hsl(var(--hero-teal) / 0.65)' }}>
+              Powered by Content Innovation department
+            </span>
+          </div>
 
           <div className="flex items-center gap-1">
             <DropdownMenu>
