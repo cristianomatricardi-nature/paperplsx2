@@ -129,14 +129,13 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
   return (
     <div className="space-y-4">
       {/* Hero copy */}
-      <div className="space-y-2">
-        <p className="text-xl font-serif font-semibold text-foreground leading-snug">
-          Transform your paper from something you read into something you can operate on.
+      <div className="space-y-3 text-center py-4">
+        <p className="text-2xl font-semibold text-foreground leading-tight tracking-tight">
+          Transform your paper from something you read<br className="hidden sm:block" /> into something you can operate on.
         </p>
-        <p className="text-sm italic text-muted-foreground leading-relaxed">
+        <p className="text-sm italic text-muted-foreground leading-relaxed max-w-2xl mx-auto">
           Paper++ harnesses liquid content and modular knowledge objects to enable fair evaluation, faster dissemination, stronger replication, and better action.
-          <br />
-          This is not how publications will look in the future. It is how they will work.
+          {' '}This is not how publications will look in the future. It is how they will work.
         </p>
       </div>
 
