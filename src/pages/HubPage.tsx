@@ -179,7 +179,7 @@ const HubPage = () => {
       </header>
 
       {/* ── Hero Banner ── */}
-      <div className="w-full" style={{ background: 'hsl(var(--hero-teal))' }}>
+      <div className="w-full" style={{ background: 'linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)' }}>
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <div

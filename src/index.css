@@ -7,125 +7,127 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 220 20% 10%;
+    --foreground: 200 20% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 200 20% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 200 20% 10%;
 
-    /* Primary: deep navy blue */
-    --primary: 221 83% 35%;
+    /* Primary: Springer Nature teal-blue */
+    --primary: 197 80% 28%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 30% 96%;
-    --secondary-foreground: 220 20% 20%;
+    --secondary: 197 30% 95%;
+    --secondary-foreground: 197 40% 18%;
 
-    --muted: 217 25% 94%;
-    --muted-foreground: 220 12% 45%;
+    --muted: 197 20% 93%;
+    --muted-foreground: 200 12% 45%;
 
-    --accent: 221 83% 35%;
+    --accent: 197 80% 28%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 20% 88%;
-    --input: 217 20% 88%;
-    --ring: 221 83% 45%;
+    --border: 197 18% 86%;
+    --input: 197 18% 86%;
+    --ring: 197 75% 38%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 20% 20%;
-    --sidebar-primary: 221 83% 35%;
+    --sidebar-foreground: 197 40% 18%;
+    --sidebar-primary: 197 80% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 96%;
-    --sidebar-accent-foreground: 220 20% 20%;
-    --sidebar-border: 217 20% 88%;
-    --sidebar-ring: 221 83% 35%;
+    --sidebar-accent: 197 30% 95%;
+    --sidebar-accent-foreground: 197 40% 18%;
+    --sidebar-border: 197 18% 86%;
+    --sidebar-ring: 197 80% 28%;
 
-    /* Custom tokens — Blue palette */
-    --nature-red: 221 83% 35%;
+    /* Custom tokens — Springer Nature palette */
+    --nature-red: 197 80% 28%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 221 83% 35%;
+    --nature-teal: 197 80% 28%;
     --nature-teal-foreground: 0 0% 100%;
-    --nature-dark: 220 20% 10%;
-    --nature-gray: 220 12% 45%;
-    --surface-warm: 217 25% 97%;
-    --deep-blue: 221 83% 35%;
+    --nature-dark: 200 20% 10%;
+    --nature-gray: 200 12% 45%;
+    --surface-warm: 197 20% 97%;
+    --deep-blue: 197 80% 28%;
     --deep-blue-foreground: 0 0% 100%;
 
-    /* Hero banner: rich navy */
-    --hero-teal: 221 65% 22%;
+    /* Hero banner — exact Springer Nature dark teal with gradient */
+    --hero-teal: 197 80% 24%;
+    --hero-teal-mid: 197 65% 32%;
     --hero-teal-foreground: 0 0% 100%;
 
-    /* Blue shades */
-    --blue-50: 217 80% 97%;
-    --blue-100: 217 70% 92%;
-    --blue-200: 218 60% 82%;
-    --blue-500: 221 75% 50%;
-    --blue-700: 221 83% 35%;
-    --blue-900: 221 65% 18%;
+    /* Teal shades */
+    --teal-50: 197 60% 96%;
+    --teal-100: 197 55% 90%;
+    --teal-200: 197 50% 78%;
+    --teal-500: 197 72% 42%;
+    --teal-700: 197 80% 28%;
+    --teal-900: 197 80% 16%;
   }
 
   .dark {
-    --background: 220 20% 6%;
-    --foreground: 217 25% 92%;
+    --background: 197 30% 6%;
+    --foreground: 197 20% 92%;
 
-    --card: 220 20% 9%;
-    --card-foreground: 217 25% 92%;
+    --card: 197 25% 9%;
+    --card-foreground: 197 20% 92%;
 
-    --popover: 220 20% 9%;
-    --popover-foreground: 217 25% 92%;
+    --popover: 197 25% 9%;
+    --popover-foreground: 197 20% 92%;
 
-    --primary: 221 75% 55%;
+    --primary: 197 72% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 14%;
-    --secondary-foreground: 217 25% 85%;
+    --secondary: 197 25% 14%;
+    --secondary-foreground: 197 20% 85%;
 
-    --muted: 220 20% 16%;
-    --muted-foreground: 217 15% 55%;
+    --muted: 197 20% 16%;
+    --muted-foreground: 197 15% 55%;
 
-    --accent: 221 75% 55%;
+    --accent: 197 72% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 20%;
-    --input: 220 20% 20%;
-    --ring: 221 75% 55%;
+    --border: 197 20% 20%;
+    --input: 197 20% 20%;
+    --ring: 197 72% 42%;
 
-    --sidebar-background: 220 20% 7%;
-    --sidebar-foreground: 217 25% 85%;
-    --sidebar-primary: 221 75% 55%;
+    --sidebar-background: 197 25% 7%;
+    --sidebar-foreground: 197 20% 85%;
+    --sidebar-primary: 197 72% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 14%;
-    --sidebar-accent-foreground: 217 25% 85%;
-    --sidebar-border: 220 20% 16%;
-    --sidebar-ring: 221 75% 55%;
+    --sidebar-accent: 197 25% 14%;
+    --sidebar-accent-foreground: 197 20% 85%;
+    --sidebar-border: 197 20% 16%;
+    --sidebar-ring: 197 72% 42%;
 
-    --nature-red: 221 75% 55%;
+    --nature-red: 197 72% 42%;
     --nature-red-foreground: 0 0% 100%;
-    --nature-teal: 221 75% 55%;
+    --nature-teal: 197 72% 42%;
     --nature-teal-foreground: 0 0% 100%;
-    --nature-dark: 217 25% 92%;
-    --nature-gray: 217 15% 55%;
-    --surface-warm: 220 20% 11%;
-    --deep-blue: 221 75% 55%;
+    --nature-dark: 197 20% 92%;
+    --nature-gray: 197 15% 55%;
+    --surface-warm: 197 20% 11%;
+    --deep-blue: 197 72% 42%;
     --deep-blue-foreground: 0 0% 100%;
-    --hero-teal: 221 65% 18%;
+    --hero-teal: 197 80% 18%;
+    --hero-teal-mid: 197 65% 26%;
     --hero-teal-foreground: 0 0% 100%;
 
-    --blue-50: 220 20% 14%;
-    --blue-100: 220 20% 18%;
-    --blue-200: 220 30% 26%;
-    --blue-500: 221 70% 50%;
-    --blue-700: 221 75% 55%;
-    --blue-900: 217 80% 72%;
+    --teal-50: 197 25% 14%;
+    --teal-100: 197 25% 18%;
+    --teal-200: 197 30% 26%;
+    --teal-500: 197 65% 42%;
+    --teal-700: 197 72% 52%;
+    --teal-900: 197 60% 70%;
   }
 }
 
