@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import ProfileCard from '@/components/researcher-home/ProfileCard';
 import UploadSection from '@/components/researcher-home/UploadSection';
 import PaperLibrary from '@/components/researcher-home/PaperLibrary';
 import {
@@ -12,15 +11,30 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ShieldCheck } from 'lucide-react';
+import {
+  Bell,
+  User,
+  FlaskConical,
+  ExternalLink,
+  ShieldCheck,
+  LogOut,
+  ChevronRight,
+} from 'lucide-react';
 
 const ResearcherHomePage = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
@@ -54,7 +68,6 @@ const ResearcherHomePage = () => {
       if (error) throw error;
       toast({ title: 'Profile updated' });
       setEditOpen(false);
-      // Force a page-level refresh to pick up new profile data
       setRefreshKey((k) => k + 1);
     } catch (err: any) {
       toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
@@ -67,6 +80,11 @@ const ResearcherHomePage = () => {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -77,49 +95,139 @@ const ResearcherHomePage = () => {
 
   if (!user) return null;
 
+  const displayName = profile?.full_name || 'Researcher';
+  const initials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <div className="min-h-screen bg-background" key={refreshKey}>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Admin banner */}
-        {isAdmin && (
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <span>You have admin access.</span>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5 text-xs"
-              onClick={() => navigate('/admin')}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Admin Dashboard
-            </Button>
-          </div>
-        )}
-        {/* Two-column layout: profile sidebar + main content */}
-        <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Left column — sticky profile card */}
-          <aside className="w-full shrink-0 lg:sticky lg:top-8 lg:w-[300px] lg:self-start">
-            <ProfileCard
-              userId={user.id}
-              fullName={profile?.full_name ?? null}
-              email={user.email || ''}
-              avatarUrl={profile?.avatar_url ?? null}
-              institution={profile?.institution ?? null}
-              orcid={profile?.orcid ?? null}
-              onEditProfile={openEditDialog}
-            />
-          </aside>
+      {/* ── Top Navigation Bar ── */}
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Logo */}
+          <span className="font-serif text-xl font-bold tracking-tight text-foreground">
+            Paper<span className="text-primary">+</span>
+          </span>
 
-          {/* Right column — upload + library */}
-          <main className="flex-1 space-y-8">
-            <UploadSection userId={user.id} onPaperAdded={handlePaperAdded} />
-            <PaperLibrary userId={user.id} refreshKey={refreshKey} />
-          </main>
+          {/* Right side actions */}
+          <div className="flex items-center gap-1">
+            {/* Notifications (decorative) */}
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <Bell className="h-4 w-4" />
+              <span className="hidden text-sm sm:inline">Notifications</span>
+            </Button>
+
+            {/* Account dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span className="hidden text-sm sm:inline">Account</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={openEditDialog}>
+                  <User className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/digital-lab')}>
+                  <FlaskConical className="mr-2 h-4 w-4" />
+                  Digital Lab
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/profile/${user.id}`)}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  View Public Profile
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Hero Identity Banner ── */}
+      <div className="w-full" style={{ background: 'hsl(var(--hero-teal))' }}>
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {/* Breadcrumb */}
+          <div className="mb-4 flex items-center gap-1 text-xs" style={{ color: 'hsl(var(--hero-teal-foreground) / 0.65)' }}>
+            <span>Home</span>
+            <ChevronRight className="h-3 w-3" />
+            <span>My Account</span>
+          </div>
+
+          <div className="flex items-center gap-5">
+            {/* Outline avatar */}
+            <div
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
+              style={{ border: '2px solid hsl(var(--hero-teal-foreground) / 0.7)' }}
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={displayName}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <span className="font-serif text-xl font-semibold" style={{ color: 'hsl(var(--hero-teal-foreground))' }}>
+                  {initials}
+                </span>
+              )}
+            </div>
+
+            {/* Identity text */}
+            <div className="flex-1">
+              <h1 className="font-serif text-2xl font-bold leading-tight" style={{ color: 'hsl(var(--hero-teal-foreground))' }}>
+                {displayName}
+              </h1>
+              <p className="mt-0.5 text-sm" style={{ color: 'hsl(var(--hero-teal-foreground) / 0.75)' }}>
+                {user.email}
+              </p>
+              {profile?.institution && (
+                <p className="mt-0.5 text-xs" style={{ color: 'hsl(var(--hero-teal-foreground) / 0.65)' }}>
+                  {profile.institution}
+                </p>
+              )}
+            </div>
+
+            {/* Admin badge */}
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="hidden shrink-0 gap-1.5 border-white/30 text-xs sm:flex"
+                style={{ color: 'hsl(var(--hero-teal-foreground))', background: 'hsl(var(--hero-teal-foreground) / 0.1)' }}
+                onClick={() => navigate('/admin')}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Admin Dashboard
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* ── Main Content ── */}
+      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+        <UploadSection userId={user.id} onPaperAdded={handlePaperAdded} />
+        <PaperLibrary userId={user.id} refreshKey={refreshKey} />
+      </main>
 
       {/* Edit Profile Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -141,7 +249,7 @@ const ResearcherHomePage = () => {
               <Label htmlFor="edit-orcid">ORCID</Label>
               <Input id="edit-orcid" placeholder="0000-0000-0000-0000" value={editOrcid} onChange={(e) => setEditOrcid(e.target.value)} />
             </div>
-            <Button onClick={handleSaveProfile} disabled={saving} className="mt-2 bg-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue)/.85)] text-[hsl(var(--deep-blue-foreground))]">
+            <Button onClick={handleSaveProfile} disabled={saving} className="mt-2">
               {saving ? 'Saving…' : 'Save Changes'}
             </Button>
           </div>
