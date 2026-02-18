@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,13 +14,13 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Users,
   FileText,
   RefreshCw,
   Loader2,
   ShieldAlert,
   ChevronDown,
   ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -65,6 +66,7 @@ const StatCard = ({ label, value, sub }: { label: string; value: string | number
 );
 
 const AdminPage = () => {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,13 +147,24 @@ const AdminPage = () => {
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold font-sans text-foreground">Admin Dashboard</h1>
-            {lastUpdated && (
-              <p className="text-xs text-muted-foreground">
-                Last updated: {format(lastUpdated, 'MMM d, yyyy HH:mm')}
-              </p>
-            )}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('/researcher-home')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold font-sans text-foreground">Admin Dashboard</h1>
+              {lastUpdated && (
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {format(lastUpdated, 'MMM d, yyyy HH:mm')}
+                </p>
+              )}
+            </div>
           </div>
           <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" />
