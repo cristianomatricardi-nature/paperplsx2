@@ -44,6 +44,17 @@ const ReplicationAssistantPage = () => {
   const [agenticOpen, setAgenticOpen] = useState(false);
   const loading = loadingMethods || loadingLab;
 
+  // Fire replication_used event on mount (fire-and-forget)
+  useEffect(() => {
+    if (!numericId || !user?.id) return;
+    supabase.from('user_activity_events').insert({
+      user_id: user.id,
+      paper_id: numericId,
+      event_type: 'replication_used',
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Load cart items from sessionStorage (passed from Paper++ ReplicationCart)
   useEffect(() => {
     if (!numericId) return;

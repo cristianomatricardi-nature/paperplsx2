@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.decompose-pipeline]
 verify_jwt = false
+
+[functions.admin-dashboard]
+verify_jwt = false

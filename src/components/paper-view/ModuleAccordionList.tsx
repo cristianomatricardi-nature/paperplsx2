@@ -13,6 +13,7 @@ interface ModuleAccordionListProps {
   authorsMode?: boolean;
   authorEnrichments?: AuthorEnrichments;
   onEnrichmentsUpdate?: (e: AuthorEnrichments) => void;
+  onModuleOpened?: (moduleId: ModuleId) => void;
 }
 
 const ModuleAccordionList = ({
@@ -23,6 +24,7 @@ const ModuleAccordionList = ({
   authorsMode = false,
   authorEnrichments = {},
   onEnrichmentsUpdate,
+  onModuleOpened,
 }: ModuleAccordionListProps) => {
   const [openModuleId, setOpenModuleId] = useState<ModuleId | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, unknown>>({});
@@ -42,8 +44,12 @@ const ModuleAccordionList = ({
   }, [subPersonaId]);
 
   const handleToggle = useCallback((moduleId: ModuleId) => {
-    setOpenModuleId((prev) => (prev === moduleId ? null : moduleId));
-  }, []);
+    setOpenModuleId((prev) => {
+      const isOpening = prev !== moduleId;
+      if (isOpening) onModuleOpened?.(moduleId);
+      return isOpening ? moduleId : null;
+    });
+  }, [onModuleOpened]);
 
   // Split into ordered core and satellite groups
   const orderedModules = moduleOrder

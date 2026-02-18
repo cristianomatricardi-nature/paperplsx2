@@ -13,6 +13,7 @@ import DigitalLabPage from "./pages/DigitalLabPage";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import PublicPaperViewPage from "./pages/PublicPaperViewPage";
 import ApiKeysPage from "./pages/ApiKeysPage";
+import AdminPage from "./pages/AdminPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/analysis/:paperId" element={<ProtectedRoute><AnalyticalPipelinePage /></ProtectedRoute>} />
           <Route path="/digital-lab" element={<ProtectedRoute><DigitalLabPage /></ProtectedRoute>} />
           <Route path="/api-keys" element={<ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="/paper/:paperId/public" element={<PublicPaperViewPage />} />
           <Route path="/profile/:userId" element={<PublicProfilePage />} />
           <Route path="*" element={<NotFound />} />
