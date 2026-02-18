@@ -127,6 +127,19 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
   };
 
   return (
+    <div className="space-y-4">
+      {/* Hero copy */}
+      <div className="space-y-2">
+        <p className="text-xl font-serif font-semibold text-foreground leading-snug">
+          Transform your paper from something you read into something you can operate on.
+        </p>
+        <p className="text-sm italic text-muted-foreground leading-relaxed">
+          Paper++ harnesses liquid content and modular knowledge objects to enable fair evaluation, faster dissemination, stronger replication, and better action.
+          <br />
+          This is not how publications will look in the future. It is how they will work.
+        </p>
+      </div>
+
     <Card className="border-border shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-serif">Add New Paper</CardTitle>
@@ -276,5 +289,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
         </Tabs>
       </CardContent>
     </Card>
+    </div>
   );
 }
