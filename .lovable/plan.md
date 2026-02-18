@@ -1,91 +1,63 @@
+## Landing Page Overhaul — Content + Modern Layout
 
-## Redesign: Springer Nature-Inspired Page Header
+### Summary of all changes
 
-### What I See in the Reference Image
+**Content changes to LandingPage.tsx:**
 
-The image shows a two-part header structure from Springer Nature's account portal:
-
-1. **Top navigation bar** — white background, product logo/name on the left (bold serif, "SPRINGER NATURE"), and two utility links on the right: "Notifications" (bell icon) and "Account" (user icon). This bar is slim and clean.
-
-2. **Hero identity banner** — a full-width deep teal/dark blue band below the nav. It contains:
-   - A breadcrumb in the top-left (e.g. "Account > Manage your account")
-   - A large circular outline user avatar icon on the left
-   - The user's full name in large, bold, white serif text
-   - Their email address in smaller white text beneath the name
-
-The current page has no top nav bar and shows profile info in a left sidebar card instead. The goal is to replace the current page header with this two-part Springer Nature-style structure.
+1. **Top navbar brand** — Replace static "Paper++" text with the Springer Nature two-line brand block (identical to HubPage): `logo-brand` class for "Springer Nature" with the "Powered by Content Innovation department" subtitle in teal color tokens.
+2. **"Start Discovery" button** —need to navigate to the page with the three cards the( whic are "generate paper++" "manage account" "digital lab"
+3. **Hero body copy** — Replace "Experience research publications like never before. Explore modular content, interactive visualizations, and personalized insights." with: *"Turn scientific knowledge from something you read into something you operate on."*
+4. **Remove "PDF to Interactive" card** — Delete it from the features array. Remaining cards: Persona-Tailored Views, AI-Enriched Layers, Agentic Replication Assistant.
+5. **"AI-Enriched Layers" card description** — Replace with: *"From insights to actions: interactive data, tweakable parameters, reusable workflows, and real-time comparison with your own results."*
+6. **"Replication Assistant" card** — Rename to **"Agentic Replication Assistant"** and replace description with: *"Find everything you need to reproduce and speed up your work through community-engaging tools, and a step-by-step replication checklist — check your resources and fill the missing ones in a timely fashion."*
 
 ---
 
-### What Will Change
+### Modern layout redesign with parallax + fade-in
 
-#### 1. New top navigation bar (inside `ResearcherHomePage.tsx`)
+The new layout will be structured in these sections:
 
-Added at the very top, full-width, white background with a bottom border:
-- **Left**: "Paper+" or the product name in bold serif font
-- **Right**: Icon links — a bell icon for notifications (decorative for now) and a user/account icon that opens the edit profile dialog
+**1. Sticky Header**
 
-This replaces the absence of a global nav on the home page.
+- Left: Springer Nature – Paper++ in `logo-brand` style (same as HubPage/ResearcherHome)
+- Right: Log in + Get Started buttons
+- Subtle border-bottom, white background
 
-#### 2. New full-width hero identity banner (inside `ResearcherHomePage.tsx`)
+**2. Hero Section — Full-viewport, teal gradient**
 
-Replaces the current left sidebar `ProfileCard` for the name/email identity display. Full-width band directly beneath the nav bar:
-- Background: deep teal color using a new CSS custom property (`--hero-teal: 199 73% 25%`) — matching the dark teal from the screenshot
-- Breadcrumb: "Home > My Account" in small white/semi-transparent text
-- Left: a large circular outlined user avatar (like the image — outline circle with a person silhouette, white stroke)
-- Right of avatar: full name in ~2rem bold white serif text, email in small white/muted text below
-- If admin: small "Admin" badge in the banner
+- Same dark teal gradient used across the app: `linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)`
+- Large bold headline ("Paper++") + tagline ("Interactive research publication")
+- Powered-by subtitle
+- New hero body copy
+- CTA button — white outline pill style (to contrast on teal)
+- Subtle parallax: a CSS `background-attachment: fixed` or transform-based shift using a `useEffect` scroll listener for lightweight implementation
 
-#### 3. Remove the left-sidebar `ProfileCard` component
+**3. Feature Cards Section — Fade-in on scroll**
 
-The profile identity information (name, email, avatar) moves into the new banner. The left sidebar `ProfileCard` will be removed from the layout.
+- 3-column grid (after removing PDF to Interactive)
+- Cards fade and slide up using `IntersectionObserver` — each card gets `opacity-0 translate-y-6` initial state, transitions to `opacity-100 translate-y-0` when entering viewport, staggered by 100ms per card
+- Very light teal tint on card hover, thin border, no heavy shadows
 
-The **Edit Profile**, **Digital Lab**, and **View Public Profile** action buttons will move to the top-right nav area or appear as a dropdown under the Account icon in the nav bar.
+**4. CTA Section**
 
-#### 4. Layout becomes single-column (main content full width)
+- Centered, clean, white background, one bold line + button
 
-With the profile card sidebar gone, the main content area (Upload + Library) expands to full width under the banner. This gives papers more horizontal space.
+**5. Footer**
 
-#### 5. Admin banner
-
-The current admin banner (with shield icon + Admin Dashboard button) moves into the hero banner itself — as a subtle badge or a small button in the top-right corner of the banner.
-
----
-
-### Technical Plan
-
-**Files to change:**
-
-| File | Change |
-|------|--------|
-| `src/pages/ResearcherHomePage.tsx` | Add top nav bar + hero banner; remove aside/ProfileCard; restructure layout to single column |
-| `src/components/researcher-home/ProfileCard.tsx` | Not deleted (still used potentially), but its identity section is now redundant — the action buttons (Edit, Digital Lab, Public Profile) are moved to a dropdown in the nav |
-| `src/index.css` | Add `--hero-teal` color token for the dark teal banner |
-
-**Hero banner color:** `hsl(199, 73%, 25%)` — a dark teal matching the screenshot.
-
-**Avatar icon in banner:** A CSS-styled circle with a `User` icon from lucide-react, white-outlined, approximately 64px. Not a filled avatar — mimics the outline style in the reference image.
-
-**Nav bar right side:** A simple row of icon buttons:
-- Bell icon (Notifications — no functionality, just visual)
-- User icon (Account) — clicking opens a dropdown with: Edit Profile, Digital Lab, View Public Profile, and if admin: Admin Dashboard link
-
-This matches the reference image's "Notifications | Account" top-right pattern.
+- Same brand wordmark in `logo-brand` + copyright
 
 ---
 
-### Visual Result
+### Technical approach
 
-```text
-+-------------------------------------------------------------+
-| Paper+                         [Bell] Notifications  [User] Account |
-+-------------------------------------------------------------+
-| [dark teal banner, full width]                              |
-|  Home > My Account                              [Admin btn] |
-|  ( O )  Cristiano Matricardi                               |
-|         cristiano.matricardi@gmail.com                     |
-+-------------------------------------------------------------+
-|  [Upload Section — full width]                             |
-|  [Paper Library — full width grid]                         |
-+-------------------------------------------------------------+
-```
+- Add a custom `useFadeIn` IntersectionObserver hook inline (no new file needed — small enough to embed)
+- Use CSS `transform: translateY` + `opacity` transitions with Tailwind `transition-all duration-700`
+- Parallax on hero: `useEffect` scroll listener that sets a CSS `--scroll-y` variable, then uses `transform: translateY(calc(var(--scroll-y) * 0.3px))` on the hero content — lightweight, no library needed
+- All existing color tokens respected: `--hero-teal`, `--hero-teal-mid`, `--primary`, `--border`, `--muted-foreground`
+- No heavy libraries added — pure CSS transitions + IntersectionObserver
+
+---
+
+### Files to edit
+
+- `**src/pages/LandingPage.tsx**` — Complete rewrite with: brand fix, content changes, new modern layout with scroll animations
