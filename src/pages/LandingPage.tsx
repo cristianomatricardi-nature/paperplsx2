@@ -4,25 +4,25 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const features = [
-  {
-    icon: Users,
-    title: 'Persona-Tailored Views',
-    description:
-      'Read as an expert, student, reviewer, or journalist. Each persona surfaces the insights most relevant to you.',
-  },
-  {
-    icon: Sparkles,
-    title: 'AI-Enriched Layers',
-    description:
-      'From insights to actions: interactive data, tweakable parameters, reusable workflows, and real‑time comparison with your own results.',
-  },
-  {
-    icon: FlaskConical,
-    title: 'Agentic Replication Assistant',
-    description:
-      'Find everything you need to reproduce and speed up your work through community-engaging tools, and a step-by-step replication checklist — check your resources and fill the missing ones in a timely fashion.',
-  },
-];
+{
+  icon: Users,
+  title: 'Persona-Tailored Views',
+  description:
+  'Read as an expert, student, reviewer, or journalist. Each persona surfaces the insights most relevant to you.'
+},
+{
+  icon: Sparkles,
+  title: 'AI-Enriched Layers',
+  description:
+  'From insights to actions: interactive data, tweakable parameters, reusable workflows, and real‑time comparison with your own results.'
+},
+{
+  icon: FlaskConical,
+  title: 'Agentic Replication Assistant',
+  description:
+  'Find everything you need to reproduce and speed up your work through community-engaging tools, and a step-by-step replication checklist — check your resources and fill the missing ones in a timely fashion.'
+}];
+
 
 // Lightweight IntersectionObserver fade-in hook
 function useFadeInRefs(count: number) {
@@ -86,8 +86,8 @@ const LandingPage = () => {
             </span>
             <span
               className="text-[10px] font-normal tracking-wide"
-              style={{ color: 'hsl(var(--hero-teal) / 0.65)' }}
-            >
+              style={{ color: 'hsl(var(--hero-teal) / 0.65)' }}>
+
               Powered by Content Innovation department
             </span>
           </div>
@@ -103,15 +103,15 @@ const LandingPage = () => {
               variant="ghost"
               size="sm"
               className="font-sans text-muted-foreground"
-              onClick={() => navigate('/auth')}
-            >
+              onClick={() => navigate('/auth')}>
+
               Log in
             </Button>
             <Button
               size="sm"
               className="font-sans rounded-full px-5"
-              onClick={() => navigate('/hub')}
-            >
+              onClick={() => navigate('/hub')}>
+
               Get Started
             </Button>
           </div>
@@ -124,54 +124,54 @@ const LandingPage = () => {
         style={{
           minHeight: '92vh',
           background:
-            'linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)',
-        }}
-      >
+          'linear-gradient(100deg, hsl(var(--hero-teal)) 0%, hsl(var(--hero-teal-mid)) 60%, hsl(197 55% 36%) 100%)'
+        }}>
+
         {/* Subtle noise-texture overlay for depth */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'300\' height=\'300\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
-          }}
-        />
+            'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'300\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.75\' numOctaves=\'4\'/%3E%3C/filter%3E%3Crect width=\'300\' height=\'300\' filter=\'url(%23n)\'/%3E%3C/svg%3E")'
+          }} />
+
 
         {/* Parallax content wrapper */}
         <div
           ref={heroRef}
           className="container relative z-10 flex flex-col justify-center"
-          style={{ minHeight: '92vh', paddingTop: '6rem', paddingBottom: '6rem' }}
-        >
+          style={{ minHeight: '92vh', paddingTop: '6rem', paddingBottom: '6rem' }}>
+
           <div className="max-w-2xl">
             {/* Eyebrow */}
-            <p
-              className="mb-4 text-xs font-semibold tracking-widest uppercase"
-              style={{ color: 'hsl(var(--hero-teal-foreground) / 0.6)' }}
-            >
-              Springer Nature · Content Innovation
-            </p>
+            
+
+
+
+
+
 
             {/* Main headline */}
             <h1
               className="mb-3 text-6xl sm:text-7xl lg:text-8xl font-bold leading-[1.02] tracking-tight"
-              style={{ color: 'hsl(var(--hero-teal-foreground))' }}
-            >
+              style={{ color: 'hsl(var(--hero-teal-foreground))' }}>
+
               Paper<span style={{ color: 'hsl(197 55% 72%)' }}>++</span>
             </h1>
 
             {/* Tagline */}
             <p
               className="mb-8 text-xl sm:text-2xl font-light"
-              style={{ color: 'hsl(var(--hero-teal-foreground) / 0.85)' }}
-            >
+              style={{ color: 'hsl(var(--hero-teal-foreground) / 0.85)' }}>
+
               Interactive research publication
             </p>
 
             {/* Body copy */}
             <p
               className="mb-10 max-w-lg text-base leading-relaxed sm:text-lg"
-              style={{ color: 'hsl(var(--hero-teal-foreground) / 0.75)' }}
-            >
+              style={{ color: 'hsl(var(--hero-teal-foreground) / 0.75)' }}>
+
               Turn scientific knowledge from something you read into something you operate on.
             </p>
 
@@ -182,17 +182,17 @@ const LandingPage = () => {
               style={{
                 background: 'transparent',
                 borderColor: 'hsl(var(--hero-teal-foreground) / 0.8)',
-                color: 'hsl(var(--hero-teal-foreground))',
+                color: 'hsl(var(--hero-teal-foreground))'
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  'hsl(var(--hero-teal-foreground) / 0.12)';
+                'hsl(var(--hero-teal-foreground) / 0.12)';
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
               }}
-              onClick={() => navigate('/hub')}
-            >
+              onClick={() => navigate('/hub')}>
+
               Start Discovery
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -204,9 +204,9 @@ const LandingPage = () => {
           className="pointer-events-none absolute bottom-0 left-0 right-0 h-24"
           style={{
             background:
-              'linear-gradient(to bottom, transparent, hsl(var(--background)))',
-          }}
-        />
+            'linear-gradient(to bottom, transparent, hsl(var(--background)))'
+          }} />
+
       </section>
 
       {/* ── Feature Cards — fade-in on scroll ── */}
@@ -223,31 +223,31 @@ const LandingPage = () => {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, i) => (
-              <div
-                key={feature.title}
-                ref={(el) => { cardRefs.current[i] = el; }}
-                className="rounded-xl border border-border bg-card p-7 transition-all duration-700"
-                style={{
-                  opacity: cardVisible[i] ? 1 : 0,
-                  transform: cardVisible[i] ? 'translateY(0)' : 'translateY(28px)',
-                  boxShadow: 'none',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow =
-                    '0 4px 24px 0 hsl(var(--primary) / 0.08)';
-                  (e.currentTarget as HTMLDivElement).style.borderColor =
-                    'hsl(var(--primary) / 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '';
-                }}
-              >
+            {features.map((feature, i) =>
+            <div
+              key={feature.title}
+              ref={(el) => {cardRefs.current[i] = el;}}
+              className="rounded-xl border border-border bg-card p-7 transition-all duration-700"
+              style={{
+                opacity: cardVisible[i] ? 1 : 0,
+                transform: cardVisible[i] ? 'translateY(0)' : 'translateY(28px)',
+                boxShadow: 'none'
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow =
+                '0 4px 24px 0 hsl(var(--primary) / 0.08)';
+                (e.currentTarget as HTMLDivElement).style.borderColor =
+                'hsl(var(--primary) / 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLDivElement).style.borderColor = '';
+              }}>
+
                 <div
-                  className="mb-5 flex h-10 w-10 items-center justify-center rounded-full"
-                  style={{ background: 'hsl(var(--primary) / 0.08)' }}
-                >
+                className="mb-5 flex h-10 w-10 items-center justify-center rounded-full"
+                style={{ background: 'hsl(var(--primary) / 0.08)' }}>
+
                   <feature.icon className="h-5 w-5" style={{ color: 'hsl(var(--primary))' }} />
                 </div>
                 <h3 className="mb-2 text-lg font-bold text-foreground">{feature.title}</h3>
@@ -255,7 +255,7 @@ const LandingPage = () => {
                   {feature.description}
                 </p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -273,8 +273,8 @@ const LandingPage = () => {
             <Button
               size="lg"
               className="gap-2 font-sans rounded-full px-8"
-              onClick={() => navigate('/hub')}
-            >
+              onClick={() => navigate('/hub')}>
+
               Get Started Free
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -295,8 +295,8 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
+
 };
 
 export default LandingPage;
