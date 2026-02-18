@@ -1,169 +1,91 @@
 
-## Admin Dashboard: User Activity Tracker
+## Redesign: Springer Nature-Inspired Page Header
 
-### Overview
+### What I See in the Reference Image
 
-Build a secure, admin-only dashboard at `/admin` accessible only to Cristiona Matricardi (email: `cristiano.matricardi@gmail.com`). The page shows:
-- A **summary dashboard** at the top with aggregate % stats across all users
-- A **per-user activity table** with boolean flags for each tracked behavior
+The image shows a two-part header structure from Springer Nature's account portal:
 
-### Tracking Strategy
+1. **Top navigation bar** — white background, product logo/name on the left (bold serif, "SPRINGER NATURE"), and two utility links on the right: "Notifications" (bell icon) and "Account" (user icon). This bar is slim and clean.
 
-Four activity signals will be tracked via a new `user_activity_events` table. Events are inserted client-side as fire-and-forget operations at key interaction moments. The admin dashboard reads them securely via a privileged edge function.
+2. **Hero identity banner** — a full-width deep teal/dark blue band below the nav. It contains:
+   - A breadcrumb in the top-left (e.g. "Account > Manage your account")
+   - A large circular outline user avatar icon on the left
+   - The user's full name in large, bold, white serif text
+   - Their email address in smaller white text beneath the name
 
-**Events tracked:**
-1. `persona_changed` — when user changes the persona selector (away from default `phd_postdoc`)
-2. `protocol_opened` — when user opens any module/protocol accordion
-3. `replication_used` — when user visits the Replication Assistant page
-4. `analysis_used` — when user visits the Analytical Pipeline page
+The current page has no top nav bar and shows profile info in a left sidebar card instead. The goal is to replace the current page header with this two-part Springer Nature-style structure.
 
 ---
 
-### Step 1 — Database Migrations (2 migrations)
+### What Will Change
 
-**Migration A: Activity events table**
-```sql
-CREATE TABLE public.user_activity_events (
-  id bigint primary key generated always as identity,
-  user_id uuid not null,
-  paper_id bigint references public.papers(id) on delete set null,
-  event_type text not null,
-  created_at timestamptz default now()
-);
-ALTER TABLE public.user_activity_events ENABLE ROW LEVEL SECURITY;
+#### 1. New top navigation bar (inside `ResearcherHomePage.tsx`)
 
-CREATE POLICY "Users can insert own events" ON public.user_activity_events
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+Added at the very top, full-width, white background with a bottom border:
+- **Left**: "Paper+" or the product name in bold serif font
+- **Right**: Icon links — a bell icon for notifications (decorative for now) and a user/account icon that opens the edit profile dialog
 
-CREATE POLICY "Users can read own events" ON public.user_activity_events
-  FOR SELECT USING (auth.uid() = user_id);
-```
+This replaces the absence of a global nav on the home page.
 
-**Migration B: User roles table + admin assignment**
-```sql
-CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+#### 2. New full-width hero identity banner (inside `ResearcherHomePage.tsx`)
 
-CREATE TABLE public.user_roles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null,
-  role app_role not null,
-  unique (user_id, role)
-);
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+Replaces the current left sidebar `ProfileCard` for the name/email identity display. Full-width band directly beneath the nav bar:
+- Background: deep teal color using a new CSS custom property (`--hero-teal: 199 73% 25%`) — matching the dark teal from the screenshot
+- Breadcrumb: "Home > My Account" in small white/semi-transparent text
+- Left: a large circular outlined user avatar (like the image — outline circle with a person silhouette, white stroke)
+- Right of avatar: full name in ~2rem bold white serif text, email in small white/muted text below
+- If admin: small "Admin" badge in the banner
 
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
-$$;
+#### 3. Remove the left-sidebar `ProfileCard` component
 
--- Admins can read all roles (for their own verification)
-CREATE POLICY "Admins can read roles" ON public.user_roles
-  FOR SELECT USING (public.has_role(auth.uid(), 'admin'));
+The profile identity information (name, email, avatar) moves into the new banner. The left sidebar `ProfileCard` will be removed from the layout.
 
--- Assign Cristiona as admin
-INSERT INTO public.user_roles (user_id, role)
-SELECT id, 'admin'::app_role FROM auth.users WHERE email = 'cristiano.matricardi@gmail.com'
-ON CONFLICT DO NOTHING;
-```
+The **Edit Profile**, **Digital Lab**, and **View Public Profile** action buttons will move to the top-right nav area or appear as a dropdown under the Account icon in the nav bar.
+
+#### 4. Layout becomes single-column (main content full width)
+
+With the profile card sidebar gone, the main content area (Upload + Library) expands to full width under the banner. This gives papers more horizontal space.
+
+#### 5. Admin banner
+
+The current admin banner (with shield icon + Admin Dashboard button) moves into the hero banner itself — as a subtle badge or a small button in the top-right corner of the banner.
 
 ---
 
-### Step 2 — Edge Function: `admin-dashboard`
+### Technical Plan
 
-New file: `supabase/functions/admin-dashboard/index.ts`
+**Files to change:**
 
-- Validates caller JWT using `getClaims()`, then checks `has_role(userId, 'admin')` via service-role client
-- If not admin → returns 403
-- If admin → uses service-role client to query:
-  - All profiles (name, created_at)
-  - All auth users (email) via `auth.users` with service role
-  - All papers (grouped by user_id)
-  - All activity events (grouped by user_id + event_type)
-- Computes per-user booleans and protocol % opened
-- Computes summary percentages
-- Returns structured JSON
+| File | Change |
+|------|--------|
+| `src/pages/ResearcherHomePage.tsx` | Add top nav bar + hero banner; remove aside/ProfileCard; restructure layout to single column |
+| `src/components/researcher-home/ProfileCard.tsx` | Not deleted (still used potentially), but its identity section is now redundant — the action buttons (Edit, Digital Lab, Public Profile) are moved to a dropdown in the nav |
+| `src/index.css` | Add `--hero-teal` color token for the dark teal banner |
 
----
+**Hero banner color:** `hsl(199, 73%, 25%)` — a dark teal matching the screenshot.
 
-### Step 3 — Event Tracking: 4 file changes
+**Avatar icon in banner:** A CSS-styled circle with a `User` icon from lucide-react, white-outlined, approximately 64px. Not a filled avatar — mimics the outline style in the reference image.
 
-**`src/pages/PaperViewPage.tsx`**
-- In `handlePersonaChange`: insert `persona_changed` event when persona differs from the current one (fire-and-forget, no await that blocks UX)
-- In `handlePersonasConfirm`: if user selected personas other than just `['phd_postdoc']`, insert `persona_changed`
+**Nav bar right side:** A simple row of icon buttons:
+- Bell icon (Notifications — no functionality, just visual)
+- User icon (Account) — clicking opens a dropdown with: Edit Profile, Digital Lab, View Public Profile, and if admin: Admin Dashboard link
 
-**`src/components/paper-view/ModuleAccordionList.tsx`**
-- Add optional prop: `onModuleOpened?: (moduleId: ModuleId) => void`
-- In `handleToggle`: when opening (not closing), call `onModuleOpened`
-
-**`src/pages/PaperViewPage.tsx`** (same file)
-- Pass `onModuleOpened` to `ModuleAccordionList` → fires insert to `user_activity_events` for `protocol_opened`
-
-**`src/pages/ReplicationAssistantPage.tsx`**
-- Add `useEffect` on mount to fire-and-forget insert of `replication_used`
-
-**`src/pages/AnalyticalPipelinePage.tsx`**
-- Add `useEffect` on mount (when `numericId` is set) to fire-and-forget insert of `analysis_used`
+This matches the reference image's "Notifications | Account" top-right pattern.
 
 ---
 
-### Step 4 — Admin Page: `src/pages/AdminPage.tsx`
-
-**Layout:**
+### Visual Result
 
 ```text
-+--------------------------------------------------+
-|  Admin Dashboard                 [last updated]  |
-+--------------------------------------------------+
-|  [Total Users: 24]  [Total Papers: 67]           |
-|                                                  |
-|  [ % Persona Changed ]  [ % Protocol Opened ]    |
-|  [     61.9%         ]  [     45.2%         ]    |
-|                                                  |
-|  [ % Replication Used ] [ % Analysis Used ]      |
-|  [     28.6%          ] [     19.0%        ]     |
-+--------------------------------------------------+
-|  USER ACTIVITY TABLE                             |
-|  Name | Email | Signed Up | Papers | Persona? |  |
-|       |       |           |        | Protocol?|  |
-|       |       |           |        |% Opened  |  |
-|       |       |           |        | Replic.? |  |
-|       |       |           |        | Analysis?|  |
-+--------------------------------------------------+
++-------------------------------------------------------------+
+| Paper+                         [Bell] Notifications  [User] Account |
++-------------------------------------------------------------+
+| [dark teal banner, full width]                              |
+|  Home > My Account                              [Admin btn] |
+|  ( O )  Cristiano Matricardi                               |
+|         cristiano.matricardi@gmail.com                     |
++-------------------------------------------------------------+
+|  [Upload Section — full width]                             |
+|  [Paper Library — full width grid]                         |
++-------------------------------------------------------------+
 ```
-
-- Summary cards use a clean grid, each with a big number and label
-- Table uses shadcn `Table` components
-- Booleans rendered as green `✓` Badge or gray `—` text
-- Protocol % shown as a small `Progress` bar + number
-- Expandable rows to see paper titles (click to expand)
-- A "Refresh" button to re-fetch
-
-**Admin Guard:**
-- On load, calls the edge function
-- If 403 → shows "Access Denied" message
-- If loading → shows spinner
-
----
-
-### Step 5 — Route Registration
-
-**`src/App.tsx`**: Add `<Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />`
-
----
-
-### Files Changed Summary
-
-| File | Action |
-|------|--------|
-| `supabase/migrations/[new_A].sql` | Create `user_activity_events` table + RLS |
-| `supabase/migrations/[new_B].sql` | Create `app_role` enum + `user_roles` table + `has_role` function + assign Cristiona as admin |
-| `supabase/functions/admin-dashboard/index.ts` | New edge function: admin validation + aggregated data |
-| `supabase/config.toml` | Add `[functions.admin-dashboard]` with `verify_jwt = false` |
-| `src/pages/AdminPage.tsx` | New admin dashboard page |
-| `src/pages/PaperViewPage.tsx` | Fire `persona_changed` and `protocol_opened` events |
-| `src/components/paper-view/ModuleAccordionList.tsx` | Add `onModuleOpened` callback prop |
-| `src/pages/ReplicationAssistantPage.tsx` | Fire `replication_used` event on mount |
-| `src/pages/AnalyticalPipelinePage.tsx` | Fire `analysis_used` event on mount |
-| `src/App.tsx` | Register `/admin` route |
-
-No existing data is affected. All new tables are additive. Event tracking is silent (fire-and-forget, no UX impact).
