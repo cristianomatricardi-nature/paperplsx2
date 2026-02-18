@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import ProfileCard from '@/components/researcher-home/ProfileCard';
 import UploadSection from '@/components/researcher-home/UploadSection';
 import PaperLibrary from '@/components/researcher-home/PaperLibrary';
@@ -15,9 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ShieldCheck } from 'lucide-react';
 
 const ResearcherHomePage = () => {
   const { user, profile, loading } = useAuth();
+  const { isAdmin } = useUserRole();
+  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -75,6 +80,24 @@ const ResearcherHomePage = () => {
   return (
     <div className="min-h-screen bg-background" key={refreshKey}>
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Admin banner */}
+        {isAdmin && (
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span>You have admin access.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => navigate('/admin')}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Admin Dashboard
+            </Button>
+          </div>
+        )}
         {/* Two-column layout: profile sidebar + main content */}
         <div className="flex flex-col gap-8 lg:flex-row">
           {/* Left column — sticky profile card */}
