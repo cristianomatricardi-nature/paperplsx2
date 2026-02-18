@@ -55,6 +55,8 @@
     --surface-warm: 0 0% 97%;
     --deep-blue: 348 83% 47%;
     --deep-blue-foreground: 0 0% 100%;
+    --hero-teal: 199 73% 25%;
+    --hero-teal-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -104,6 +106,8 @@
     --surface-warm: 0 0% 10%;
     --deep-blue: 348 83% 52%;
     --deep-blue-foreground: 0 0% 100%;
+    --hero-teal: 199 73% 20%;
+    --hero-teal-foreground: 0 0% 100%;
   }
 }
 
