@@ -50,3 +50,12 @@ verify_jwt = false
 
 [functions.admin-dashboard]
 verify_jwt = false
+
+[functions.generate-policy-view]
+verify_jwt = false
+
+[functions.generate-policy-infographic]
+verify_jwt = false
+
+[functions.match-policy-content]
+verify_jwt = false

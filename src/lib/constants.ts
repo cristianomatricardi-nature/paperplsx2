@@ -1,4 +1,5 @@
 import { ModuleId, SubPersonaId, MODULE_REGISTRY, SUB_PERSONA_REGISTRY } from '@/types/modules';
+export type { SubPersonaId };
 
 export { MODULE_REGISTRY, SUB_PERSONA_REGISTRY };
 
@@ -49,3 +50,15 @@ export const PIPELINE_STEPS: { key: PaperStatus; label: string }[] = [
   { key: 'extracting_figures', label: 'Figures' },
   { key: 'completed', label: 'Completed' },
 ];
+
+/** Maps each sub-persona to its parent visualization paradigm */
+export const PARENT_PERSONA_MAP: Record<SubPersonaId, string> = {
+  phd_postdoc: 'Researcher',
+  pi_tenure: 'Researcher',
+  think_tank: 'Policy Maker',
+  gov_institution: 'Policy Maker',
+  funder_governmental: 'Funding Agency',
+  funder_private: 'Funding Agency',
+  industry_rd: 'Industry R&D',
+  ai_agent: 'AI Agent',
+};
