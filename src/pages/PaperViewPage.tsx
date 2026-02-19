@@ -4,17 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
 import { useAuth } from '@/hooks/useAuth';
-import { MODULE_ORDER_BY_PERSONA } from '@/lib/constants';
+import { MODULE_ORDER_BY_PERSONA, PARENT_PERSONA_MAP } from '@/lib/constants';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import PaperSidebar from '@/components/paper-view/PaperSidebar';
-import FiguresSection from '@/components/paper-view/FiguresSection';
 import PaperHeader from '@/components/paper-view/PaperHeader';
-import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
-import ModuleAccordionList from '@/components/paper-view/ModuleAccordionList';
 import AiAgentConsole from '@/components/paper-view/AiAgentConsole';
 import PersonaSelectionStep from '@/components/researcher-home/PersonaSelectionStep';
+import ResearcherView from '@/components/paper-view/views/ResearcherView';
+import PolicyMakerView from '@/components/paper-view/views/PolicyMakerView';
 import { toast } from 'sonner';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
@@ -251,49 +250,48 @@ const PaperViewPage = () => {
             paperId={numericId}
           />
 
-            {numericId && subPersonaId === 'ai_agent' ? (
-              <AiAgentConsole
-                paperId={numericId}
-                subPersonaId={subPersonaId}
-                onPersonaChange={handlePersonaChange}
-                allowedPersonas={allowedPersonas}
-              />
-            ) : (
-              <>
-                {/* Summary card */}
-                {numericId && (
-                  <div className="mb-6">
-                    <PersonalizedSummaryCard
+            {(() => {
+              if (!numericId) return null;
+              const parentPersona = PARENT_PERSONA_MAP[subPersonaId];
+              switch (parentPersona) {
+                case 'AI Agent':
+                  return (
+                    <AiAgentConsole
                       paperId={numericId}
                       subPersonaId={subPersonaId}
                       onPersonaChange={handlePersonaChange}
                       allowedPersonas={allowedPersonas}
                     />
-                  </div>
-                )}
-
-                {/* Module accordion list */}
-                {numericId && (
-                  <ModuleAccordionList
-                    paperId={numericId}
-                    subPersonaId={subPersonaId}
-                    moduleOrder={moduleOrder}
-                    figures={structured?.figures}
-                    authorsMode={authorsMode}
-                    authorEnrichments={authorEnrichments}
-                    onEnrichmentsUpdate={setAuthorEnrichments}
-                    onModuleOpened={handleModuleOpened}
-                  />
-                )}
-
-                {/* Figures section */}
-                {structured?.figures && structured.figures.length > 0 && (
-                  <div className="mt-6">
-                    <FiguresSection figures={structured.figures} storagePath={storagePath} />
-                  </div>
-                )}
-              </>
-            )}
+                  );
+                case 'Policy Maker':
+                  return (
+                    <PolicyMakerView
+                      paperId={numericId}
+                      subPersonaId={subPersonaId}
+                      paper={paper}
+                      onPersonaChange={handlePersonaChange}
+                      allowedPersonas={allowedPersonas}
+                    />
+                  );
+                default:
+                  // 'Researcher', and future fallback for 'Funding Agency' / 'Industry R&D'
+                  return (
+                    <ResearcherView
+                      paperId={numericId}
+                      subPersonaId={subPersonaId}
+                      moduleOrder={moduleOrder}
+                      structured={structured}
+                      storagePath={storagePath}
+                      authorsMode={authorsMode}
+                      authorEnrichments={authorEnrichments}
+                      onEnrichmentsUpdate={setAuthorEnrichments}
+                      onPersonaChange={handlePersonaChange}
+                      onModuleOpened={handleModuleOpened}
+                      allowedPersonas={allowedPersonas}
+                    />
+                  );
+              }
+            })()}
           </div>
         </div>
 
