@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, RefreshCw, Download, FileJson, ExternalLink } from 'lucide-react';
+import { AlertCircle, RefreshCw, FileJson, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PersonaSelector from '@/components/paper-view/PersonaSelector';
 import AimAttainmentGrid from './AimAttainmentGrid';
 import KeyFindingCard from './KeyFindingCard';
@@ -26,17 +27,14 @@ interface FunderViewProps {
 const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPersonas }: FunderViewProps) => {
   const { payload, loading, error, refetch } = useFunderView(paperId, subPersonaId);
 
-  // Evidence drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedRef, setSelectedRef] = useState<FunderEvidenceRef | null>(null);
 
-  // Build evidence refs lookup
   const evidenceMap = useMemo(() => {
     if (!payload?.evidence_refs) return new Map<string, FunderEvidenceRef>();
     return new Map(payload.evidence_refs.map((r) => [r.id, r]));
   }, [payload]);
 
-  // Find citing claims for drawer
   const citingClaims = useMemo(() => {
     if (!selectedRef || !payload) return [];
     const claims: Array<{ type: 'aim' | 'finding'; label: string }> = [];
@@ -76,7 +74,6 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
     <div className="space-y-5">
       <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
 
-      {/* Loading */}
       {loading && (
         <div className="space-y-4 pt-2">
           <Skeleton className="h-20 w-full rounded-lg" />
@@ -88,7 +85,6 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
         </div>
       )}
 
-      {/* Error */}
       {error && !loading && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-5 flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-6 w-6 text-destructive" />
@@ -100,74 +96,79 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
         </div>
       )}
 
-      {/* Content */}
       {payload && !loading && (
         <>
-          {/* Header */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                {payload.metadata?.funders?.map((f, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">{f}</Badge>
-                ))}
-                {payload.metadata?.grant_ids?.map((g, i) => (
-                  <Badge key={i} variant="outline" className="text-xs font-mono">{g}</Badge>
-                ))}
-                {payload.metadata?.doi && (
-                  <a
-                    href={`https://doi.org/${payload.metadata.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    DOI <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleExportJson}>
-                  <FileJson className="h-3.5 w-3.5" />
-                  Export JSON
-                </Button>
-              </div>
+          {/* Header strip */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {payload.metadata?.funders?.map((f, i) => (
+                <Badge key={i} variant="secondary" className="text-xs">{f}</Badge>
+              ))}
+              {payload.metadata?.grant_ids?.map((g, i) => (
+                <Badge key={i} variant="outline" className="text-xs font-mono">{g}</Badge>
+              ))}
+              {payload.metadata?.doi && (
+                <a
+                  href={`https://doi.org/${payload.metadata.doi}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  DOI <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportJson} title="Export JSON">
+              <FileJson className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Aim Attainment */}
           <AimAttainmentGrid aims={payload.aims ?? []} onEvidenceClick={handleEvidenceClick} />
 
-          {/* Key Findings */}
-          {payload.key_findings && payload.key_findings.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wide">
-                Key Findings
-              </h3>
-              <div className="space-y-3">
-                {payload.key_findings.slice(0, 5).map((f) => (
-                  <KeyFindingCard key={f.id} finding={f} onEvidenceClick={handleEvidenceClick} />
-                ))}
-              </div>
-            </div>
+          {/* Key Findings + Confidence — 2-column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {payload.key_findings && payload.key_findings.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold uppercase tracking-wide">
+                    Key Findings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {payload.key_findings.slice(0, 5).map((f) => (
+                    <KeyFindingCard key={f.id} finding={f} onEvidenceClick={handleEvidenceClick} />
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            <ConfidenceScorecard aims={payload.aims ?? []} />
+          </div>
+
+          {/* Outputs + Stewardship combined card */}
+          {(payload.outputs || payload.compliance) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wide">
+                  Outputs & Stewardship
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {payload.outputs && <ReusableOutputsPanel outputs={payload.outputs} />}
+                {payload.compliance && <StewardshipBadges compliance={payload.compliance} />}
+              </CardContent>
+            </Card>
           )}
 
-          {/* Confidence Scorecard */}
-          <ConfidenceScorecard aims={payload.aims ?? []} />
-
-          {/* Reusable Outputs */}
-          {payload.outputs && <ReusableOutputsPanel outputs={payload.outputs} />}
-
-          {/* Next Steps & Limitations */}
+          {/* Next Steps */}
           <NextStepsGates nextSteps={payload.next_steps ?? []} limitations={payload.limitations ?? []} />
-
-          {/* Stewardship */}
-          {payload.compliance && <StewardshipBadges compliance={payload.compliance} />}
 
           {/* Disclaimer */}
           <p className="text-[11px] text-muted-foreground font-sans italic text-center pt-2 border-t border-border mt-4">
             {payload.disclaimer ?? 'This summary reflects one paper and does not measure real-world impact.'}
           </p>
 
-          {/* Evidence Drawer */}
           <EvidenceDrawer
             open={drawerOpen}
             onOpenChange={setDrawerOpen}

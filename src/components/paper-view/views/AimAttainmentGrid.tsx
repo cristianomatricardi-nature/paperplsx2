@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { FunderAim } from '@/hooks/useFunderView';
 
 interface AimAttainmentGridProps {
@@ -7,12 +9,12 @@ interface AimAttainmentGridProps {
   onEvidenceClick: (refId: string) => void;
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  met: { label: 'Met', className: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  partial: { label: 'Partial', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-  not_met: { label: 'Not Met', className: 'bg-red-100 text-red-800 border-red-200' },
-  inconclusive: { label: 'Inconclusive', className: 'bg-slate-100 text-slate-700 border-slate-200' },
-  not_addressed: { label: 'Not Addressed', className: 'bg-gray-100 text-gray-600 border-gray-200' },
+const statusConfig: Record<string, { label: string; className: string; borderClass: string }> = {
+  met: { label: 'Met', className: 'bg-emerald-100 text-emerald-800 border-emerald-200', borderClass: 'border-l-emerald-500' },
+  partial: { label: 'Partial', className: 'bg-amber-100 text-amber-800 border-amber-200', borderClass: 'border-l-amber-500' },
+  not_met: { label: 'Not Met', className: 'bg-red-100 text-red-800 border-red-200', borderClass: 'border-l-red-500' },
+  inconclusive: { label: 'Inconclusive', className: 'bg-slate-100 text-slate-700 border-slate-200', borderClass: 'border-l-slate-400' },
+  not_addressed: { label: 'Not Addressed', className: 'bg-gray-100 text-gray-600 border-gray-200', borderClass: 'border-l-gray-300' },
 };
 
 const confidenceConfig: Record<string, { label: string; className: string }> = {
@@ -22,23 +24,29 @@ const confidenceConfig: Record<string, { label: string; className: string }> = {
 };
 
 const AimAttainmentGrid = ({ aims, onEvidenceClick }: AimAttainmentGridProps) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   if (!aims || aims.length === 0) return null;
 
   return (
-    <div>
-      <h3 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wide">
-        Aim Attainment
-      </h3>
-      <div className="space-y-3">
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold uppercase tracking-wide">
+          Aim Attainment
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
         {aims.map((aim) => {
           const status = statusConfig[aim.status] ?? statusConfig.not_addressed;
           const confidence = confidenceConfig[aim.confidence] ?? confidenceConfig.low;
           const hasEvidence = aim.evidence_refs && aim.evidence_refs.length > 0;
+          const hasRationale = aim.confidence_rationale && aim.confidence_rationale.length > 0;
+          const isExpanded = expandedId === aim.id;
 
           return (
             <div
               key={aim.id}
-              className="rounded-lg border border-border bg-card p-4 space-y-2"
+              className={`rounded-lg border border-border border-l-4 ${status.borderClass} bg-card p-4 space-y-2`}
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-sans font-medium text-foreground flex-1">{aim.statement}</p>
@@ -76,12 +84,30 @@ const AimAttainmentGrid = ({ aims, onEvidenceClick }: AimAttainmentGridProps) =>
                     Evidence link missing
                   </span>
                 )}
+
+                {hasRationale && (
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : aim.id)}
+                    className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Why?
+                    {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                )}
               </div>
+
+              {isExpanded && hasRationale && (
+                <ul className="mt-1 pl-4 space-y-1 border-t border-border pt-2">
+                  {aim.confidence_rationale.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground font-sans list-disc">{r}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           );
         })}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

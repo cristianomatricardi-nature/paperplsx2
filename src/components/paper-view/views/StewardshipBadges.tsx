@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import { Unlock, Lock, ShieldCheck, AlertCircle, HelpCircle } from 'lucide-react';
+import { Unlock, Lock, HelpCircle } from 'lucide-react';
 
 interface StewardshipBadgesProps {
   compliance: {
@@ -45,17 +45,12 @@ const StewardshipBadges = ({ compliance }: StewardshipBadgesProps) => {
   if (!compliance) return null;
 
   return (
-    <div>
-      <h3 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wide">
-        Stewardship
-      </h3>
-      <div className="flex flex-wrap gap-3">
-        {badgeItem('Open Access', compliance.oa_status)}
-        {badgeItem('Data', compliance.data_availability)}
-        {badgeItem('Code', compliance.code_availability)}
-        {badgeItem('Ethics', compliance.ethics)}
-        {badgeItem('COI', compliance.coi)}
-      </div>
+    <div className="flex flex-wrap gap-3 pt-3 border-t border-border">
+      {badgeItem('Open Access', compliance.oa_status)}
+      {badgeItem('Data', compliance.data_availability)}
+      {badgeItem('Code', compliance.code_availability)}
+      {badgeItem('Ethics', compliance.ethics)}
+      {badgeItem('COI', compliance.coi)}
     </div>
   );
 };

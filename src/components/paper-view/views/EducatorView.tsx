@@ -1,12 +1,14 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, RefreshCw, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PersonaSelector from '@/components/paper-view/PersonaSelector';
 import LearningObjectivesPanel from './LearningObjectivesPanel';
 import SimplifiedExplanation from './SimplifiedExplanation';
+import KeyConceptsGrid from './KeyConceptsGrid';
 import DiscussionQuestions from './DiscussionQuestions';
 import ClassroomActivities from './ClassroomActivities';
-import AssessmentQuiz from './AssessmentQuiz';
 import FurtherReadingList from './FurtherReadingList';
 import { useEducatorView } from '@/hooks/useEducatorView';
 import type { SubPersonaId } from '@/types/modules';
@@ -26,7 +28,6 @@ const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPe
     <div className="space-y-5">
       <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
 
-      {/* Loading */}
       {loading && (
         <div className="space-y-4 pt-2">
           <Skeleton className="h-20 w-full rounded-lg" />
@@ -39,7 +40,6 @@ const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPe
         </div>
       )}
 
-      {/* Error */}
       {error && !loading && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-5 flex flex-col items-center gap-3 text-center">
           <AlertCircle className="h-6 w-6 text-destructive" />
@@ -51,51 +51,73 @@ const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPe
         </div>
       )}
 
-      {/* Content */}
       {payload && !loading && (
         <>
-          {/* Learning Objectives */}
-          <LearningObjectivesPanel objectives={payload.learning_objectives ?? []} />
-
-          {/* Simplified Explanation */}
+          {/* Hero card — summary + prerequisites */}
           {payload.simplified_explanation && (
             <SimplifiedExplanation
               summary={payload.simplified_explanation.summary}
-              keyConcepts={payload.simplified_explanation.key_concepts ?? []}
               prerequisiteKnowledge={payload.simplified_explanation.prerequisite_knowledge ?? []}
             />
           )}
 
-          {/* Misconceptions */}
-          {payload.misconceptions && payload.misconceptions.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wide">
-                ⚠️ Common Misconceptions
-              </h3>
-              <div className="space-y-2">
-                {payload.misconceptions.map((m, i) => (
-                  <div key={i} className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-1">
-                    <p className="text-sm font-sans text-foreground">
-                      <span className="font-semibold text-amber-800">Misconception:</span> {m.misconception}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-semibold">Correction:</span> {m.correction}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Learning Objectives + Key Concepts — 2-column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <LearningObjectivesPanel objectives={payload.learning_objectives ?? []} />
+            {payload.simplified_explanation?.key_concepts && (
+              <KeyConceptsGrid concepts={payload.simplified_explanation.key_concepts} />
+            )}
+          </div>
 
-          {/* Discussion Questions */}
-          <DiscussionQuestions questions={payload.discussion_questions ?? []} />
+          {/* Teaching Resources — tabbed card */}
+          {((payload.discussion_questions?.length ?? 0) > 0 ||
+            (payload.classroom_activities?.length ?? 0) > 0 ||
+            (payload.misconceptions?.length ?? 0) > 0) && (
+            <Card>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wide">
+                  Teaching Resources
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-3">
+                <Tabs defaultValue="discussion">
+                  <TabsList className="w-full justify-start">
+                    {(payload.discussion_questions?.length ?? 0) > 0 && (
+                      <TabsTrigger value="discussion">Discussion</TabsTrigger>
+                    )}
+                    {(payload.classroom_activities?.length ?? 0) > 0 && (
+                      <TabsTrigger value="activities">Activities</TabsTrigger>
+                    )}
+                    {(payload.misconceptions?.length ?? 0) > 0 && (
+                      <TabsTrigger value="misconceptions">Misconceptions</TabsTrigger>
+                    )}
+                  </TabsList>
 
-          {/* Classroom Activities */}
-          <ClassroomActivities activities={payload.classroom_activities ?? []} />
+                  <TabsContent value="discussion">
+                    <DiscussionQuestions questions={payload.discussion_questions ?? []} />
+                  </TabsContent>
 
-          {/* Assessment Quiz */}
-          {payload.assessment?.quiz_questions && (
-            <AssessmentQuiz questions={payload.assessment.quiz_questions} />
+                  <TabsContent value="activities">
+                    <ClassroomActivities activities={payload.classroom_activities ?? []} />
+                  </TabsContent>
+
+                  <TabsContent value="misconceptions">
+                    <div className="space-y-2">
+                      {payload.misconceptions?.map((m, i) => (
+                        <div key={i} className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 space-y-1">
+                          <p className="text-sm font-sans text-foreground">
+                            <span className="font-semibold text-amber-800">Misconception:</span> {m.misconception}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-semibold">Correction:</span> {m.correction}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           )}
 
           {/* Further Reading */}
