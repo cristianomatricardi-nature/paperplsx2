@@ -210,11 +210,30 @@ const AdminPage = () => {
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => {
-                const link = document.createElement('a');
-                link.href = '/ARCHITECTURE.md';
-                link.download = 'ARCHITECTURE.md';
-                link.click();
+              onClick={async () => {
+                try {
+                  const res = await fetch('/ARCHITECTURE.md');
+                  const md = await res.text();
+                  const html = md
+                    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/`([^`]+)`/g, '<code style="background:#f3f4f6;padding:2px 5px;border-radius:3px;font-size:0.9em">$1</code>')
+                    .replace(/^- (.+)$/gm, '<li>$1</li>')
+                    .replace(/^(?!<[hlu1-9cli])(.*\S.*)$/gm, '<p>$1</p>')
+                    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+                  const win = window.open('', '_blank');
+                  if (!win) return;
+                  win.document.write(`<!DOCTYPE html><html><head><title>Paper++ Architecture Guide</title>
+                    <style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a1a1a;line-height:1.7}
+                    h1{font-size:28px;border-bottom:2px solid #e5e7eb;padding-bottom:8px}h2{font-size:22px;margin-top:32px;color:#374151}
+                    h3{font-size:18px;margin-top:24px;color:#4b5563}ul{padding-left:24px}li{margin:4px 0}
+                    code{background:#f3f4f6;padding:2px 5px;border-radius:3px;font-size:0.9em}
+                    @media print{body{margin:20px}}</style></head><body>${html}</body></html>`);
+                  win.document.close();
+                  setTimeout(() => win.print(), 500);
+                } catch { /* silent */ }
               }}
             >
               <Download className="h-3.5 w-3.5" />
