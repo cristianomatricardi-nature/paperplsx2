@@ -7,10 +7,10 @@ interface KeyFindingCardProps {
   onEvidenceClick: (refId: string) => void;
 }
 
-const confidenceConfig: Record<string, { label: string; className: string }> = {
-  high: { label: 'High', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  medium: { label: 'Medium', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  low: { label: 'Low', className: 'bg-red-50 text-red-700 border-red-200' },
+const confidenceConfig: Record<string, { label: string; className: string; borderClass: string }> = {
+  high: { label: 'High', className: 'bg-emerald-50 text-emerald-700 border-emerald-200', borderClass: 'border-l-emerald-500' },
+  medium: { label: 'Medium', className: 'bg-amber-50 text-amber-700 border-amber-200', borderClass: 'border-l-amber-500' },
+  low: { label: 'Low', className: 'bg-red-50 text-red-700 border-red-200', borderClass: 'border-l-red-500' },
 };
 
 const KeyFindingCard = ({ finding, onEvidenceClick }: KeyFindingCardProps) => {
@@ -18,7 +18,7 @@ const KeyFindingCard = ({ finding, onEvidenceClick }: KeyFindingCardProps) => {
   const hasEvidence = finding.evidence_refs && finding.evidence_refs.length > 0;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+    <div className={`rounded-lg border border-border border-l-4 ${confidence.borderClass} bg-card p-4 space-y-2`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-sans font-medium text-foreground flex-1">{finding.finding}</p>
         <Badge className={`text-[10px] border shrink-0 ${confidence.className}`}>{confidence.label}</Badge>

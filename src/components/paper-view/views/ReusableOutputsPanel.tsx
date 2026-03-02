@@ -29,43 +29,38 @@ const ReusableOutputsPanel = ({ outputs }: ReusableOutputsPanelProps) => {
   if (!hasAnyOutputs) return null;
 
   return (
-    <div>
-      <h3 className="text-sm font-semibold font-sans text-foreground mb-3 uppercase tracking-wide">
-        Reusable Outputs
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {categoryConfig.map(({ key, label, icon: Icon }) => {
-          const items = outputs[key] ?? [];
-          if (items.length === 0) return null;
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {categoryConfig.map(({ key, label, icon: Icon }) => {
+        const items = outputs[key] ?? [];
+        if (items.length === 0) return null;
 
-          return (
-            <div key={key} className="rounded-lg border border-border bg-card p-3 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </div>
-              {items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-sans text-foreground truncate">{item.name}</span>
-                    {item.link && (
-                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                        <ExternalLink className="h-3 w-3 text-primary" />
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] text-muted-foreground">{item.license}</span>
-                    <Badge className={`text-[10px] border capitalize ${accessColors[item.access] ?? accessColors.unavailable}`}>
-                      {item.access}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+        return (
+          <div key={key} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Icon className="h-3.5 w-3.5" />
+              {label}
             </div>
-          );
-        })}
-      </div>
+            {items.map((item, i) => (
+              <div key={i} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-sans text-foreground truncate">{item.name}</span>
+                  {item.link && (
+                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                      <ExternalLink className="h-3 w-3 text-primary" />
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-muted-foreground">{item.license}</span>
+                  <Badge className={`text-[10px] border capitalize ${accessColors[item.access] ?? accessColors.unavailable}`}>
+                    {item.access}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 };
