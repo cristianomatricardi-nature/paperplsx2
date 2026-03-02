@@ -84,6 +84,7 @@ const DigitalLabPage = () => {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<LabItem | null>(null);
+  const [clearAllOpen, setClearAllOpen] = useState(false);
 
   /* ── Fetch ── */
   const fetchItems = useCallback(async () => {
@@ -167,6 +168,22 @@ const DigitalLabPage = () => {
     fetchItems();
   };
 
+  /* ── Clear all ── */
+  const handleClearAll = async () => {
+    if (!user) return;
+    const backup = [...items];
+    setItems([]);
+    setClearAllOpen(false);
+
+    const { error } = await supabase.from('digital_lab_inventory').delete().eq('user_id', user.id);
+    if (error) {
+      toast({ title: 'Failed to clear lab', description: error.message, variant: 'destructive' });
+      setItems(backup);
+    } else {
+      toast({ title: 'Lab cleared' });
+    }
+  };
+
   /* ── Delete ── */
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -210,10 +227,18 @@ const DigitalLabPage = () => {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <Button size="sm" className="gap-1.5 font-sans" onClick={handleOpenAdd}>
-            <Plus className="h-4 w-4" />
-            Add Item
-          </Button>
+          <div className="flex gap-2">
+            {items.length > 0 && (
+              <Button size="sm" variant="destructive" className="gap-1.5 font-sans" onClick={() => setClearAllOpen(true)}>
+                <Trash2 className="h-4 w-4" />
+                Clear Lab
+              </Button>
+            )}
+            <Button size="sm" className="gap-1.5 font-sans" onClick={handleOpenAdd}>
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -337,6 +362,24 @@ const DigitalLabPage = () => {
             <AlertDialogCancel className="font-sans">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-sans">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear all confirmation */}
+      <AlertDialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif">Clear Lab</AlertDialogTitle>
+            <AlertDialogDescription className="font-sans">
+              This will delete <strong>all {items.length} items</strong> from your lab. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-sans">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-sans">
+              Clear All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
