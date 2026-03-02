@@ -112,6 +112,36 @@ const AdminPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const exportUsersCsv = () => {
+    if (!users.length) return;
+    const headers = ['Name', 'Email', 'Signed Up', 'Papers', 'Persona Changed', 'Protocol Opened', 'Protocol Open Count', 'Replication Used', 'Analysis Used'];
+    const rows = users.map((u) => [
+      u.full_name || '', u.email, u.created_at ?? '', u.papers.length,
+      u.persona_changed, u.protocol_opened, u.protocol_open_count,
+      u.replication_used, u.analysis_used,
+    ]);
+    downloadCsv([headers, ...rows.map(r => r.map(String))], 'user-activity.csv');
+  };
+
+  const exportPapersCsv = () => {
+    if (!users.length) return;
+    const headers = ['User', 'Email', 'Paper Title', 'Paper Created'];
+    const rows: string[][] = [];
+    users.forEach((u) => u.papers.forEach((p) => {
+      rows.push([u.full_name || '', u.email, p.title ?? 'Untitled', p.created_at ?? '']);
+    }));
+    downloadCsv([headers, ...rows], 'papers.csv');
+  };
+
+  const downloadCsv = (data: string[][], filename: string) => {
+    const csv = data.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -168,6 +198,14 @@ const AdminPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportUsersCsv}>
+              <Download className="h-3.5 w-3.5" />
+              Users CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportPapersCsv}>
+              <Download className="h-3.5 w-3.5" />
+              Papers CSV
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -180,7 +218,7 @@ const AdminPage = () => {
               }}
             >
               <Download className="h-3.5 w-3.5" />
-              Architecture Guide
+              Architecture
             </Button>
             <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" />
