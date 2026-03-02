@@ -42,7 +42,7 @@ const PolicyBriefCard = ({
 
   return (
     <>
-      <Card className="border-border/60 h-full flex flex-col">
+      <Card className="border-border/60 flex flex-col">
         <CardHeader className="pb-3 space-y-2">
           {/* Evidence quality + score */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
