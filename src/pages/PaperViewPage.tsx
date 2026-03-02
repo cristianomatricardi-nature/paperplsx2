@@ -14,6 +14,8 @@ import AiAgentConsole from '@/components/paper-view/AiAgentConsole';
 import PersonaSelectionStep from '@/components/researcher-home/PersonaSelectionStep';
 import ResearcherView from '@/components/paper-view/views/ResearcherView';
 import PolicyMakerView from '@/components/paper-view/views/PolicyMakerView';
+import FunderView from '@/components/paper-view/views/FunderView';
+import EducatorView from '@/components/paper-view/views/EducatorView';
 import { toast } from 'sonner';
 import type { SubPersonaId, ModuleId } from '@/types/modules';
 import type { Author } from '@/types/database';
@@ -273,8 +275,28 @@ const PaperViewPage = () => {
                       allowedPersonas={allowedPersonas}
                     />
                   );
+                case 'Funding Agency':
+                  return (
+                    <FunderView
+                      paperId={numericId}
+                      subPersonaId={subPersonaId}
+                      paper={paper}
+                      onPersonaChange={handlePersonaChange}
+                      allowedPersonas={allowedPersonas}
+                    />
+                  );
+                case 'Educator':
+                  return (
+                    <EducatorView
+                      paperId={numericId}
+                      subPersonaId={subPersonaId}
+                      paper={paper}
+                      onPersonaChange={handlePersonaChange}
+                      allowedPersonas={allowedPersonas}
+                    />
+                  );
                 default:
-                  // 'Researcher', and future fallback for 'Funding Agency' / 'Industry R&D'
+                  // 'Researcher', and future fallback for 'Industry R&D'
                   return (
                     <ResearcherView
                       paperId={numericId}

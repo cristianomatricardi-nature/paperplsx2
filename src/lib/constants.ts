@@ -34,6 +34,7 @@ export const MODULE_ORDER_BY_PERSONA: Record<SubPersonaId, ModuleId[]> = {
   funder_private: ['M1', 'M5', 'M2', 'M3', 'M4', 'M6'],
   industry_rd: ['M2', 'M3', 'M1', 'M5', 'M4', 'M6'],
   ai_agent: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
+  science_educator: ['M6', 'M1', 'M2', 'M3', 'M5', 'M4'],
 };
 
 export const PERSONA_CONTENT_MODALITIES: Record<string, string[]> = {
@@ -41,6 +42,7 @@ export const PERSONA_CONTENT_MODALITIES: Record<string, string[]> = {
   'Policy Maker': ['executive_briefs', 'infographics', 'short_videos', 'decision_matrices', 'context_snapshots'],
   'Funding Agency': ['compliance_dashboards', 'impact_metrics', 'portfolio_views', 'automated_reporting'],
   'Industry R&D': ['tech_scouting', 'competitive_benchmarks', 'talent_profiles', 'feasibility_scores'],
+  Educator: ['lesson_plans', 'discussion_questions', 'classroom_activities', 'assessments', 'simplified_explanations'],
 };
 
 export const PIPELINE_STEPS: { key: PaperStatus; label: string }[] = [
@@ -61,4 +63,5 @@ export const PARENT_PERSONA_MAP: Record<SubPersonaId, string> = {
   funder_private: 'Funding Agency',
   industry_rd: 'Industry R&D',
   ai_agent: 'AI Agent',
+  science_educator: 'Educator',
 };

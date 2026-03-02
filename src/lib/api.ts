@@ -79,3 +79,19 @@ export async function matchPolicyContent(
   if (error) throw error;
   return data;
 }
+
+export async function fetchFunderView(paperId: number, subPersonaId: string) {
+  const { data, error } = await supabase.functions.invoke('generate-funder-view', {
+    body: { paper_id: paperId, sub_persona_id: subPersonaId },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchEducatorView(paperId: number, subPersonaId: string) {
+  const { data, error } = await supabase.functions.invoke('generate-educator-view', {
+    body: { paper_id: paperId, sub_persona_id: subPersonaId },
+  });
+  if (error) throw error;
+  return data;
+}
