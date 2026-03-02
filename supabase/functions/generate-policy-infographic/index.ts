@@ -247,7 +247,19 @@ No photographs, pure infographic. Include a title at the top and source attribut
     }
 
     return new Response(
-      JSON.stringify({ success: true, image_url: storedUrl }),
+      JSON.stringify({
+        success: true,
+        image_url: storedUrl,
+        debug: {
+          prompt_text: promptText,
+          model: "google/gemini-3-pro-image-preview",
+          modules_used: { M1: m1 ?? null, M2: m2 ?? null, M5: m5 ?? null },
+          pdf_included: !!pdfBase64,
+          claims_extracted: claims,
+          metrics_extracted: metrics,
+          actions_extracted: { policy: policyActions, research: researchActions },
+        },
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
