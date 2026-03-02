@@ -1,94 +1,102 @@
 
+# Add Audio Brief Cards to Educator and Funder Views
 
-# Make Funder & Educator Views More Interactive and Structured
+## Overview
 
-## Data Source (Your Question)
+Add an "Audio Brief" card to both the Educator and Funder views. Each card generates a narrated summary using ElevenLabs TTS, with the script sourced from the paper's own Discussion/Introduction sections (via existing RAG chunks and liquefaction data -- no external search needed).
 
-Yes -- both views **do** come from the main parsing and RAG structuring. The flow is:
+## How It Works
 
-1. Paper upload triggers parsing pipeline (chunking, embedding, structuring into M1-M6 modules)
-2. When you select a Funder or Educator persona, a "liquefaction" edge function fetches the cached M1+M2+M5 (Funder) or M1+M2+M6 (Educator) module outputs
-3. Those structured chunks are fed into a synthesis prompt that produces the persona-specific JSON
-4. The frontend renders that JSON
+1. **Script Generation**: A new edge function (`generate-audio-brief`) takes the existing liquefaction payload (already cached) and composes a 2-3 minute narration script using GPT-4o. For Educators, it contextualizes the paper within the field using references the paper itself cites. For Funders, it produces a concise executive accountability summary.
 
-So the structured chunks are indeed the building blocks of everything you see.
+2. **TTS Narration**: The same edge function sends the script to ElevenLabs TTS and returns base64 audio. The audio is cached in the `generated_content_cache` table so it's only generated once per paper/persona.
 
----
+3. **Frontend Card**: A reusable `AudioBriefCard` component with play/pause controls, a waveform-style progress indicator, and a collapsible transcript.
 
-## Changes Overview
+## Prerequisites
 
-Redesign both views to feel more like the Policy Maker view: contained cards with clear purpose, visual hierarchy, and interactivity -- not a flat list of sections.
+ElevenLabs is available as a connector. We need to connect it first so the `ELEVENLABS_API_KEY` secret is available in edge functions.
 
 ---
 
-## Funder View Improvements
+## Step 1: Connect ElevenLabs
 
-**Current problem:** Flat list of sections (Aim Attainment, Key Findings, Confidence, Outputs, Next Steps, Stewardship) stacked vertically with no visual grouping or interactive flow.
+Use the ElevenLabs connector to link an API key to this project. This provides the `ELEVENLABS_API_KEY` secret for edge functions.
 
-**New layout (top to bottom):**
+## Step 2: Edge Function -- `generate-audio-brief`
 
-1. **Header strip** (already exists) -- keep DOI badges, grant badges, Export JSON button. No changes needed.
+**File:** `supabase/functions/generate-audio-brief/index.ts`
 
-2. **Aim Attainment Grid** -- wrap in a proper `Card` with header. Add collapsible confidence rationale inline (click "Why?" to expand rationale bullets). Currently rationale exists in the data but isn't shown.
+This function:
+- Accepts `{ paper_id, persona_type: 'educator' | 'funder', sub_persona_id }`
+- Checks cache (`content_type = 'audio_brief_educator'` or `'audio_brief_funder'`)
+- If not cached:
+  1. Fetches the already-cached liquefaction payload (educator_view or funder_view) from `generated_content_cache`
+  2. Fetches paper metadata (title, abstract)
+  3. Calls GPT-4o with a narration prompt:
+     - **Educator script**: "You are a science communicator narrating a 2-minute field context briefing for educators. Summarize what this paper found, why it matters in the field, and how it connects to related work mentioned in the paper's own references. Use accessible language."
+     - **Funder script**: "You are a grant reviewer narrating a 1-minute executive briefing. Cover: what was funded, what was achieved (aims met/partial/not met), confidence level, and key outputs. Be factual and concise."
+  4. Sends the generated script to ElevenLabs TTS (`POST /v1/text-to-speech/{voiceId}`) using a professional voice (e.g., "Brian" for Funder, "Alice" for Educator)
+  5. Base64-encodes the audio and caches both the script text and audio in `generated_content_cache`
+- Returns `{ script, audio_base64, duration_estimate }`
 
-3. **Key Findings + Confidence side-by-side** -- place Key Findings cards and Confidence Scorecard in a 2-column grid layout (like Policy Maker's Brief + Infographic). Key Findings on the left, Confidence Scorecard on the right. This creates visual pairing instead of two separate vertical blocks.
+**Config:** Add to `supabase/config.toml`:
+```text
+[functions.generate-audio-brief]
+verify_jwt = false
+```
 
-4. **Reusable Outputs + Stewardship row** -- combine into a single card with two sections (tabs or stacked). Outputs on top, stewardship badges below as a footer row. Currently these are two separate disconnected blocks.
+## Step 3: API + Hook
 
-5. **Next Steps** -- wrap in a `Card` with a cleaner visual. Add a subtle connecting line between steps to suggest a pathway/sequence.
+**File:** `src/lib/api.ts` -- add `fetchAudioBrief(paperId, personaType, subPersonaId)`
 
-6. **Hide "Export JSON" for now** -- keep it but move to a small icon button in the header to reduce noise.
+**File:** `src/hooks/useAudioBrief.ts` -- new hook managing loading/error/audio state with:
+- `script` (string) -- the narration text
+- `audioBase64` (string) -- base64-encoded MP3
+- `loading`, `error`, `refetch`
+- `isPlaying`, `play()`, `pause()` -- audio playback controls using `HTMLAudioElement`
 
-### Specific component changes:
+## Step 4: Frontend Component
 
-- **AimAttainmentGrid.tsx**: Wrap in `Card`. Add collapsible `Collapsible` for confidence rationale on each aim. Add a subtle left-border color based on status (green for met, amber for partial, etc.).
-- **FunderView.tsx**: Restructure layout to use `grid grid-cols-1 md:grid-cols-2` for findings + confidence. Combine outputs + stewardship into one card.
-- **KeyFindingCard.tsx**: Already a card -- add a colored left border based on confidence level.
-- **ConfidenceScorecard.tsx**: Wrap in a `Card` to match visual weight of Key Findings.
+**File:** `src/components/paper-view/views/AudioBriefCard.tsx`
+
+A reusable card component used in both views:
+- Props: `paperId`, `personaType: 'educator' | 'funder'`, `subPersonaId`
+- Uses `useAudioBrief` hook
+- Layout:
+  - Card with a headphone/volume icon and title ("Field Context Brief" for Educator, "Executive Audio Brief" for Funder)
+  - Play/Pause button with a simple progress bar
+  - Duration estimate label
+  - Collapsible "Read transcript" section showing the script text
+  - Loading state: skeleton with "Generating audio brief..." message
+  - Error state with retry button
+
+## Step 5: Wire Into Views
+
+**File:** `src/components/paper-view/views/EducatorView.tsx`
+- Add `AudioBriefCard` after the hero card (SimplifiedExplanation), before the 2-column grid
+- Props: `personaType="educator"`
+
+**File:** `src/components/paper-view/views/FunderView.tsx`
+- Add `AudioBriefCard` after the header strip, before the Aim Attainment Grid
+- Props: `personaType="funder"`
 
 ---
 
-## Educator View Improvements
+## File Summary
 
-**Current problem:** Same flat list issue. Learning Objectives, Explanation, Misconceptions, Discussion Questions, Activities, Quiz, Further Reading all stacked with no grouping.
+| Action | File |
+|--------|------|
+| Create | `supabase/functions/generate-audio-brief/index.ts` |
+| Create | `src/hooks/useAudioBrief.ts` |
+| Create | `src/components/paper-view/views/AudioBriefCard.tsx` |
+| Edit | `src/lib/api.ts` |
+| Edit | `src/components/paper-view/views/EducatorView.tsx` |
+| Edit | `src/components/paper-view/views/FunderView.tsx` |
+| Edit | `supabase/config.toml` |
 
-**New layout (top to bottom):**
+## Notes
 
-1. **Hero card** -- a single top card combining the Simplified Explanation summary with prerequisite knowledge badges. This is the "what is this paper about" entry point, similar to Policy Maker's Evidence Dashboard Strip.
-
-2. **Learning Objectives + Key Concepts side-by-side** -- 2-column grid. Objectives on left (already compact), Key Concepts on right (term/definition/analogy cards). Currently key concepts are buried inside SimplifiedExplanation.
-
-3. **Teaching Resources card** -- a tabbed card (using Radix Tabs) combining:
-   - Tab 1: "Discussion" -- Discussion Questions with expandable answers
-   - Tab 2: "Activities" -- Classroom Activities 
-   - Tab 3: "Misconceptions" -- Common misconceptions
-   
-   This groups the "in-class use" content into one interactive block instead of three separate sections.
-
-4. **Further Reading** -- keep as-is at the bottom (already clean).
-
-5. **Assessment Quiz** -- hidden (as requested).
-
-### Specific component changes:
-
-- **EducatorView.tsx**: Major restructure. Remove AssessmentQuiz rendering. Create hero card from simplified_explanation.summary + prerequisites. Split key concepts out of SimplifiedExplanation into its own column. Add tabbed "Teaching Resources" card.
-- **SimplifiedExplanation.tsx**: Simplify to just render the summary text and prerequisites as a hero card (remove key concepts from this component).
-- **New: KeyConceptsGrid.tsx** -- extracted from SimplifiedExplanation, renders key concept cards in their own section.
-- **EducatorView.tsx**: Wrap Discussion Questions, Activities, and Misconceptions inside a `Tabs` component within a single `Card`.
-
----
-
-## File Changes
-
-| Action | File | What |
-|--------|------|------|
-| Edit | `src/components/paper-view/views/FunderView.tsx` | 2-column grid layout, combine outputs+stewardship |
-| Edit | `src/components/paper-view/views/AimAttainmentGrid.tsx` | Wrap in Card, add collapsible rationale, colored left borders |
-| Edit | `src/components/paper-view/views/KeyFindingCard.tsx` | Add colored left border by confidence |
-| Edit | `src/components/paper-view/views/ConfidenceScorecard.tsx` | Wrap in Card |
-| Edit | `src/components/paper-view/views/ReusableOutputsPanel.tsx` | Remove outer heading (will be inside combined card) |
-| Edit | `src/components/paper-view/views/StewardshipBadges.tsx` | Remove outer heading (will be inside combined card) |
-| Edit | `src/components/paper-view/views/EducatorView.tsx` | Major restructure: hero card, 2-col grid, tabbed teaching resources, hide quiz |
-| Edit | `src/components/paper-view/views/SimplifiedExplanation.tsx` | Simplify to hero-card format (summary + prerequisites only) |
-| Create | `src/components/paper-view/views/KeyConceptsGrid.tsx` | Extracted key concepts display |
-
+- The narration script is derived entirely from the paper's own content (existing liquefaction payload), so no external literature search is needed. The Discussion section typically contains the field context and related work references.
+- Audio is cached after first generation, so subsequent visits play instantly.
+- ElevenLabs TTS produces high-quality narration (~128kbps MP3). A 2-minute script is roughly 1.5MB base64.
