@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowLeft,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -166,10 +167,26 @@ const AdminPage = () => {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = '/ARCHITECTURE.md';
+                link.download = 'ARCHITECTURE.md';
+                link.click();
+              }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Architecture Guide
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
