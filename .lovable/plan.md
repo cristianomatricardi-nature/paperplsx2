@@ -1,46 +1,36 @@
 
 
-# Admin-Only "Show Prompt" Debug Button for Infographic Generation
+# Rework Infographic and Policy Brief Card Layout
 
-## Overview
-After generating an infographic, admin users will see a "Show Prompt" button that opens a dialog displaying the exact prompt sent to Gemini, along with all assets (module JSON data, PDF context status).
+## Problem
+The Infographic Panel and Policy Brief Card are currently displayed side-by-side in a 2-column grid, making the generated infographic too small to read properly.
+
+## Solution
+Stack them vertically as full-width cards (matching the Evidence Dashboard Strip width), with the Infographic Panel on top and the Policy Brief Card below. When an infographic is generated, the card expands to maximize the image display.
 
 ## Changes
 
-### 1. Edge function: `supabase/functions/generate-policy-infographic/index.ts`
-- Include a `debug` object in the success response alongside `image_url`
-- The debug object will contain:
-  - `prompt_text` -- the full composed text prompt
-  - `model` -- the model name used
-  - `modules_used` -- object with M1, M2, M5 raw content (or null if missing)
-  - `pdf_included` -- boolean indicating whether PDF page was sent
-  - `claims_extracted` -- the parsed claims array
-  - `metrics_extracted` -- the parsed metrics array
-  - `actions_extracted` -- the parsed actions arrays
+### 1. `src/components/paper-view/views/PolicyMakerView.tsx`
+- Remove the `grid grid-cols-1 md:grid-cols-2 gap-4` wrapper
+- Render `InfographicPanel` first as a full-width card
+- Render `PolicyBriefCard` below it as a full-width card
+- Update loading skeletons to match the new stacked layout
 
-### 2. API client: `src/lib/api.ts`
-- No signature change needed; the response already returns the full `data` object, so `debug` will be available automatically
+### 2. `src/components/paper-view/views/InfographicPanel.tsx`
+- Before generation: show the section list and generate button in a compact layout (similar to current)
+- After generation: expand the card to show the infographic image at full width with no constrained height, so the image renders at its natural aspect ratio
+- The generate/regenerate button and admin "Show Prompt" button move below the image
+- Remove the `h-full` constraint so the card sizes naturally to its content
 
-### 3. Frontend: `src/components/paper-view/views/InfographicPanel.tsx`
-- Import `useUserRole` hook and Dialog components
-- Store the `debug` payload from the generation response in local state
-- After generation succeeds, if the user is admin, show a small "Show Prompt" button (e.g., with a `Code` or `Eye` icon) next to the Regenerate button
-- Clicking it opens a Dialog with:
-  - **Prompt tab**: the full text prompt in a scrollable monospace block
-  - **Modules tab**: collapsible JSON views of M1, M2, M5 data
-  - **Assets tab**: PDF included (yes/no), model name, extracted claims/metrics/actions
-- Use Tabs inside the Dialog for clean organization
+### 3. `src/components/paper-view/views/PolicyBriefCard.tsx`
+- Remove `h-full` constraint
+- Adjust layout to work well as a full-width card (the content already flows vertically, so minimal changes needed)
 
-### 4. No database changes needed
-
-## UI Behavior
-- The "Show Prompt" button only appears for admin users (checked via `useUserRole`)
-- It only appears after a successful generation (when debug data is available)
-- The dialog is read-only, purely for inspection
-- Non-admin users see no change at all
-
-## Technical Notes
-- The `useUserRole` hook already exists and queries the `user_roles` table
-- The debug payload is returned from the edge function but only surfaced in UI for admins -- no security risk since the edge function already requires authentication
-- The debug data is kept in component state (not persisted) and resets on page navigation
-
+## Visual Order (after changes)
+```text
+[Evidence Dashboard Strip          ] -- full width (unchanged)
+[Policy Tags Row                   ] -- full width (unchanged)
+[Infographic Panel                 ] -- full width, expands with image
+[Policy Brief Card                 ] -- full width
+[Policy Content Matcher            ] -- full width (unchanged)
+```
