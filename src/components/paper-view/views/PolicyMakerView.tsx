@@ -89,6 +89,7 @@ const PolicyMakerView = ({
               paperId={paperId}
               paperTitle={paperTitle}
               infographicSpec={payload.infographic_spec}
+              subPersonaId={subPersonaId}
             />
           </div>
 

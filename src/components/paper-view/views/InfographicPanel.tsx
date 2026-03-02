@@ -11,9 +11,10 @@ interface InfographicPanelProps {
   paperId: number;
   paperTitle: string | null;
   infographicSpec: PolicyViewPayload['infographic_spec'];
+  subPersonaId?: string;
 }
 
-const InfographicPanel = ({ paperId, paperTitle, infographicSpec }: InfographicPanelProps) => {
+const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }: InfographicPanelProps) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec }: InfographicP
     setGenerating(true);
     setGenError(null);
     try {
-      const result = await generatePolicyInfographic(paperId, paperTitle ?? 'Research Paper', infographicSpec);
+      const result = await generatePolicyInfographic(paperId, paperTitle ?? 'Research Paper', infographicSpec, subPersonaId);
       if (result?.image_url) {
         setImageUrl(result.image_url);
         toast.success('Infographic generated');

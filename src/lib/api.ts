@@ -60,9 +60,10 @@ export async function generatePolicyInfographic(
   paperId: number,
   paperTitle: string,
   infographicSpec: { title: string; sections: string[]; key_visual_description: string },
+  subPersonaId?: string,
 ) {
   const { data, error } = await supabase.functions.invoke('generate-policy-infographic', {
-    body: { paper_id: paperId, paper_title: paperTitle, infographic_spec: infographicSpec },
+    body: { paper_id: paperId, paper_title: paperTitle, infographic_spec: infographicSpec, sub_persona_id: subPersonaId },
   });
   if (error) throw error;
   return data;
