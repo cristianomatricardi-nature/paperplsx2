@@ -28,7 +28,8 @@ export type SubPersonaId =
   | 'funder_governmental'
   | 'funder_private'
   | 'industry_rd'
-  | 'ai_agent';
+  | 'ai_agent'
+  | 'science_educator';
 
 export interface SubPersonaDefinition {
   id: SubPersonaId;
@@ -130,5 +131,16 @@ export const SUB_PERSONA_REGISTRY: SubPersonaDefinition[] = [
     statisticsDisplay: 'All raw numbers in structured JSON. No prose embellishments.',
     languageStyle: 'Terse, structured, machine-optimized. Pure data extraction.',
     moduleOrder: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
+  },
+  {
+    id: 'science_educator',
+    parentPersona: 'Educator',
+    label: 'Science Educator (General)',
+    shortLabel: 'Educator',
+    painPoint: 'I need to translate cutting-edge research into engaging, age-appropriate learning materials.',
+    numberPolicy: 'explained_raw',
+    statisticsDisplay: 'Key numbers with plain-language interpretations and everyday comparisons.',
+    languageStyle: 'Educational, scaffolded, encouraging. Uses analogies and real-world examples.',
+    moduleOrder: ['M6', 'M1', 'M2', 'M3', 'M5', 'M4'],
   },
 ];
