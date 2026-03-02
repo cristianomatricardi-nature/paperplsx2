@@ -59,7 +59,7 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
 
   return (
     <>
-      <Card className="border-border/60 h-full flex flex-col">
+      <Card className="border-border/60 flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4 text-primary" />

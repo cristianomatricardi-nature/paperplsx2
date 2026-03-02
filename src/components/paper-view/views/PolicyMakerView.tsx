@@ -43,11 +43,8 @@ const PolicyMakerView = ({
           <div className="flex gap-2">
             {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-6 w-24 rounded-full" />)}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Skeleton className="h-64 w-full rounded-lg" />
-            <Skeleton className="h-64 w-full rounded-lg" />
-          </div>
-          <Skeleton className="h-48 w-full rounded-lg" />
+           <Skeleton className="h-48 w-full rounded-lg" />
+           <Skeleton className="h-64 w-full rounded-lg" />
           <p className="text-xs text-muted-foreground font-sans text-center pt-1">
             Generating policy intelligence brief…
           </p>
@@ -75,23 +72,23 @@ const PolicyMakerView = ({
           {/* Policy Tags Row */}
           <PolicyTagsRow policyTags={payload.policy_tags} />
 
-          {/* Policy Brief Card + Infographic Panel */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <PolicyBriefCard
-              paperTitle={paperTitle}
-              journal={journal}
-              publicationDate={publicationDate}
-              policyTags={payload.policy_tags}
-              policyBrief={payload.policy_brief}
-              executiveStrip={payload.executive_strip}
-            />
-            <InfographicPanel
-              paperId={paperId}
-              paperTitle={paperTitle}
-              infographicSpec={payload.infographic_spec}
-              subPersonaId={subPersonaId}
-            />
-          </div>
+          {/* Infographic Panel — full width */}
+          <InfographicPanel
+            paperId={paperId}
+            paperTitle={paperTitle}
+            infographicSpec={payload.infographic_spec}
+            subPersonaId={subPersonaId}
+          />
+
+          {/* Policy Brief Card — full width */}
+          <PolicyBriefCard
+            paperTitle={paperTitle}
+            journal={journal}
+            publicationDate={publicationDate}
+            policyTags={payload.policy_tags}
+            policyBrief={payload.policy_brief}
+            executiveStrip={payload.executive_strip}
+          />
 
           {/* Policy Content Matcher */}
           <PolicyContentMatcher
