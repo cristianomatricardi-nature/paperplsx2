@@ -1,203 +1,94 @@
 
 
-# Add Funding Agency Visualization + Educator Persona
+# Make Funder & Educator Views More Interactive and Structured
 
-## Overview
+## Data Source (Your Question)
 
-Two major additions:
-1. **Funding Agency view** -- a dedicated "Grant Accountability Dashboard" that shows whether funded research hit its aims, with traceable evidence links
-2. **Educator persona** -- a new parent persona with one sub-persona ("Science Educator") and a "Lesson Plan Builder" visualization
+Yes -- both views **do** come from the main parsing and RAG structuring. The flow is:
 
-Both follow the existing pattern: register persona/sub-persona in both frontend and backend registries, write a liquefaction prompt, create a view component, add the case to the PaperViewPage dispatcher.
+1. Paper upload triggers parsing pipeline (chunking, embedding, structuring into M1-M6 modules)
+2. When you select a Funder or Educator persona, a "liquefaction" edge function fetches the cached M1+M2+M5 (Funder) or M1+M2+M6 (Educator) module outputs
+3. Those structured chunks are fed into a synthesis prompt that produces the persona-specific JSON
+4. The frontend renders that JSON
 
----
-
-## Part 1: Funding Agency Visualization
-
-### 1A. Liquefaction Prompt (backend)
-
-**File:** `supabase/functions/_shared/parent-personas.ts`
-
-Fill in the currently-stubbed `'Funding Agency'` entry with a full `liquefactionPrompt` that consumes cached M1 + M2 + M5 and produces this JSON schema:
-
-```text
-{
-  metadata: { title, authors, journal, year, doi, funders, grant_ids },
-  aims: [{ id, statement, planned_endpoint, status, outcome_summary,
-           effect_size_text, uncertainty_text, confidence, confidence_rationale[],
-           evidence_refs[] }],
-  key_findings: [{ id, finding, effect_size_text, uncertainty_text,
-                   population_or_model, conditions, confidence, evidence_refs[] }],
-  evidence_refs: [{ id, type, label, caption_or_excerpt, section, url_or_anchor }],
-  outputs: { data[], code[], protocols[], materials[] },
-  limitations: [],
-  next_steps: [{ step, gating_evidence, dependency, scale_hint }],
-  compliance: { oa_status, data_availability, code_availability, ethics, coi }
-}
-```
-
-The prompt will instruct GPT-4o to:
-- Extract every stated research aim and map it to outcomes (met/partial/not_met/inconclusive/not_addressed)
-- Assign confidence (high/medium/low) with rationale
-- Link every claim to evidence_refs (figure/table/text)
-- Avoid cross-paper metrics, citation counts, or journal impact factor
-- Include a disclaimer: "This summary reflects one paper and does not measure real-world impact."
-
-### 1B. API Layer
-
-**File:** `src/lib/api.ts` -- add `fetchFunderView(paperId, subPersonaId)` (mirrors `fetchPolicyView`)
-
-**File:** `src/hooks/useFunderView.ts` -- new hook mirroring `usePolicyView.ts` with typed `FunderViewPayload`
-
-### 1C. Edge Function
-
-The existing `generate-policy-view/index.ts` is already generic -- it reads from `PARENT_PERSONA_REGISTRY` and uses the `liquefactionPrompt`. The same function works for Funders since the logic is: check cache -> fetch modules -> call liquefaction prompt -> cache result.
-
-We need to update it to use `content_type` based on parent persona rather than hardcoded `'policy_view'`. We'll add a `content_type` mapping: `'Policy Maker' -> 'policy_view'`, `'Funding Agency' -> 'funder_view'`.
-
-Alternatively, create a new `generate-funder-view/index.ts` to keep things clean and independent (simpler, avoids touching Policy Maker logic).
-
-**Decision:** Create a new `supabase/functions/generate-funder-view/index.ts` that mirrors `generate-policy-view` but with `content_type = 'funder_view'`.
-
-### 1D. Frontend Components
-
-All in `src/components/paper-view/views/`:
-
-1. **FunderView.tsx** -- main orchestrator (like PolicyMakerView)
-   - Uses `useFunderView` hook
-   - Layout top-to-bottom: Header badges, Aim Attainment Grid, Key Findings Cards, Confidence Scorecard, Reusable Outputs, Next Steps, Stewardship Badges
-
-2. **AimAttainmentGrid.tsx** -- compact grid of aims with status chips (Met/Partial/Not Met/Inconclusive/Not Addressed) and confidence chips (High/Medium/Low). Each aim is clickable to open the Evidence Drawer.
-
-3. **KeyFindingCard.tsx** -- card showing finding + effect size + uncertainty + confidence + "Show evidence" button
-
-4. **ConfidenceScorecard.tsx** -- checklist-style rows, each with a label, confidence badge, and expandable "Why?" rationale
-
-5. **ReusableOutputsPanel.tsx** -- cards for data/code/protocol/materials with license and access badges
-
-6. **NextStepsGates.tsx** -- impact pathway list with gating evidence and dependencies
-
-7. **StewardshipBadges.tsx** -- OA/data/code/ethics/COI badge row
-
-8. **EvidenceDrawer.tsx** -- right-side sheet (using Radix Sheet) showing evidence snippet, source location (Figure/Table/Section), link anchor, and list of all claims citing this evidence. Opens when clicking any evidence_ref link.
-
-### 1E. Wire into PaperViewPage
-
-Add `'Funding Agency'` case to the switch in `PaperViewPage.tsx` that dispatches to `FunderView`.
+So the structured chunks are indeed the building blocks of everything you see.
 
 ---
 
-## Part 2: Educator Persona
+## Changes Overview
 
-### 2A. Sub-Persona Registry (backend)
-
-**File:** `supabase/functions/_shared/sub-personas.ts` -- add `science_educator` entry:
-- parentPersona: `'Educator'`
-- numberPolicy: `'explained_raw'`
-- jargonLevel: `'define_all'`
-- languageStyle: educational, scaffolded, age-appropriate adaptations
-- depthPreference: `'balanced'`
-- educationalExtras: `true`
-- moduleInstructions for M1-M6 focused on pedagogical framing (learning objectives, discussion questions, common misconceptions)
-
-### 2B. Sub-Persona Registry (frontend)
-
-**File:** `src/types/modules.ts`:
-- Add `'science_educator'` to `SubPersonaId` union type
-- Add entry to `SUB_PERSONA_REGISTRY` array
-
-### 2C. Constants Updates
-
-**File:** `src/lib/constants.ts`:
-- Add `science_educator` to `MODULE_ORDER_BY_PERSONA` (suggested order: M6, M1, M2, M3, M5, M4 -- SciComm first for educators)
-- Add `science_educator: 'Educator'` to `PARENT_PERSONA_MAP`
-- Add `Educator` to `PERSONA_CONTENT_MODALITIES`
-
-### 2D. Parent Persona Config (backend)
-
-**File:** `supabase/functions/_shared/parent-personas.ts` -- add `'Educator'` entry:
-- visualizationType: `'lesson_plan'`
-- primaryModules: `['M6', 'M1', 'M2']`
-- secondaryModules: `['M3', 'M5', 'M4']`
-- liquefactionInputModules: `['M1', 'M2', 'M6']`
-- Full liquefaction prompt that produces:
-
-```text
-{
-  learning_objectives: [{ objective, bloom_level, source_module }],
-  simplified_explanation: { summary, key_concepts[], prerequisite_knowledge[] },
-  discussion_questions: [{ question, suggested_answer_points[], difficulty }],
-  classroom_activities: [{ title, description, duration, materials, learning_outcome }],
-  misconceptions: [{ misconception, correction, evidence_ref }],
-  assessment: { quiz_questions: [{ question, options[], correct, explanation }] },
-  further_reading: [{ title, type, url_or_description, level }]
-}
-```
-
-### 2E. Edge Function
-
-**File:** `supabase/functions/generate-educator-view/index.ts` -- mirrors `generate-policy-view` with `content_type = 'educator_view'`
-
-### 2F. Frontend Components
-
-All in `src/components/paper-view/views/`:
-
-1. **EducatorView.tsx** -- main orchestrator
-2. **LearningObjectivesPanel.tsx** -- objectives with Bloom's taxonomy level badges
-3. **SimplifiedExplanation.tsx** -- layered summary with key concepts and prerequisites
-4. **DiscussionQuestions.tsx** -- expandable cards with suggested answer points
-5. **ClassroomActivities.tsx** -- activity cards with duration, materials, and outcomes
-6. **AssessmentQuiz.tsx** -- interactive quiz with reveal-answer functionality
-7. **FurtherReadingList.tsx** -- reading list with level indicators
-
-### 2G. API + Hook
-
-- `src/lib/api.ts` -- add `fetchEducatorView()`
-- `src/hooks/useEducatorView.ts` -- new hook with typed `EducatorViewPayload`
-
-### 2H. Wire into PaperViewPage + PersonaSelector
-
-- Add `'Educator'` case to the switch in `PaperViewPage.tsx`
-- The PersonaSelector already groups by parent persona dynamically, so it will pick up the new Educator group automatically
+Redesign both views to feel more like the Policy Maker view: contained cards with clear purpose, visual hierarchy, and interactivity -- not a flat list of sections.
 
 ---
 
-## Implementation Sequence
+## Funder View Improvements
 
-1. Backend registries first (sub-personas.ts, parent-personas.ts, modules.ts, constants.ts)
-2. Edge functions (generate-funder-view, generate-educator-view)
-3. API layer + hooks
-4. Funder view components (8 components)
-5. Educator view components (7 components)
-6. Wire both into PaperViewPage dispatcher
+**Current problem:** Flat list of sections (Aim Attainment, Key Findings, Confidence, Outputs, Next Steps, Stewardship) stacked vertically with no visual grouping or interactive flow.
 
-## File Change Summary
+**New layout (top to bottom):**
 
-| Action | File |
-|--------|------|
-| Edit | `supabase/functions/_shared/sub-personas.ts` |
-| Edit | `supabase/functions/_shared/parent-personas.ts` |
-| Edit | `src/types/modules.ts` |
-| Edit | `src/lib/constants.ts` |
-| Edit | `src/lib/api.ts` |
-| Edit | `src/pages/PaperViewPage.tsx` |
-| Create | `supabase/functions/generate-funder-view/index.ts` |
-| Create | `supabase/functions/generate-educator-view/index.ts` |
-| Create | `src/hooks/useFunderView.ts` |
-| Create | `src/hooks/useEducatorView.ts` |
-| Create | `src/components/paper-view/views/FunderView.tsx` |
-| Create | `src/components/paper-view/views/AimAttainmentGrid.tsx` |
-| Create | `src/components/paper-view/views/KeyFindingCard.tsx` |
-| Create | `src/components/paper-view/views/ConfidenceScorecard.tsx` |
-| Create | `src/components/paper-view/views/ReusableOutputsPanel.tsx` |
-| Create | `src/components/paper-view/views/NextStepsGates.tsx` |
-| Create | `src/components/paper-view/views/StewardshipBadges.tsx` |
-| Create | `src/components/paper-view/views/EvidenceDrawer.tsx` |
-| Create | `src/components/paper-view/views/EducatorView.tsx` |
-| Create | `src/components/paper-view/views/LearningObjectivesPanel.tsx` |
-| Create | `src/components/paper-view/views/SimplifiedExplanation.tsx` |
-| Create | `src/components/paper-view/views/DiscussionQuestions.tsx` |
-| Create | `src/components/paper-view/views/ClassroomActivities.tsx` |
-| Create | `src/components/paper-view/views/AssessmentQuiz.tsx` |
-| Create | `src/components/paper-view/views/FurtherReadingList.tsx` |
+1. **Header strip** (already exists) -- keep DOI badges, grant badges, Export JSON button. No changes needed.
+
+2. **Aim Attainment Grid** -- wrap in a proper `Card` with header. Add collapsible confidence rationale inline (click "Why?" to expand rationale bullets). Currently rationale exists in the data but isn't shown.
+
+3. **Key Findings + Confidence side-by-side** -- place Key Findings cards and Confidence Scorecard in a 2-column grid layout (like Policy Maker's Brief + Infographic). Key Findings on the left, Confidence Scorecard on the right. This creates visual pairing instead of two separate vertical blocks.
+
+4. **Reusable Outputs + Stewardship row** -- combine into a single card with two sections (tabs or stacked). Outputs on top, stewardship badges below as a footer row. Currently these are two separate disconnected blocks.
+
+5. **Next Steps** -- wrap in a `Card` with a cleaner visual. Add a subtle connecting line between steps to suggest a pathway/sequence.
+
+6. **Hide "Export JSON" for now** -- keep it but move to a small icon button in the header to reduce noise.
+
+### Specific component changes:
+
+- **AimAttainmentGrid.tsx**: Wrap in `Card`. Add collapsible `Collapsible` for confidence rationale on each aim. Add a subtle left-border color based on status (green for met, amber for partial, etc.).
+- **FunderView.tsx**: Restructure layout to use `grid grid-cols-1 md:grid-cols-2` for findings + confidence. Combine outputs + stewardship into one card.
+- **KeyFindingCard.tsx**: Already a card -- add a colored left border based on confidence level.
+- **ConfidenceScorecard.tsx**: Wrap in a `Card` to match visual weight of Key Findings.
+
+---
+
+## Educator View Improvements
+
+**Current problem:** Same flat list issue. Learning Objectives, Explanation, Misconceptions, Discussion Questions, Activities, Quiz, Further Reading all stacked with no grouping.
+
+**New layout (top to bottom):**
+
+1. **Hero card** -- a single top card combining the Simplified Explanation summary with prerequisite knowledge badges. This is the "what is this paper about" entry point, similar to Policy Maker's Evidence Dashboard Strip.
+
+2. **Learning Objectives + Key Concepts side-by-side** -- 2-column grid. Objectives on left (already compact), Key Concepts on right (term/definition/analogy cards). Currently key concepts are buried inside SimplifiedExplanation.
+
+3. **Teaching Resources card** -- a tabbed card (using Radix Tabs) combining:
+   - Tab 1: "Discussion" -- Discussion Questions with expandable answers
+   - Tab 2: "Activities" -- Classroom Activities 
+   - Tab 3: "Misconceptions" -- Common misconceptions
+   
+   This groups the "in-class use" content into one interactive block instead of three separate sections.
+
+4. **Further Reading** -- keep as-is at the bottom (already clean).
+
+5. **Assessment Quiz** -- hidden (as requested).
+
+### Specific component changes:
+
+- **EducatorView.tsx**: Major restructure. Remove AssessmentQuiz rendering. Create hero card from simplified_explanation.summary + prerequisites. Split key concepts out of SimplifiedExplanation into its own column. Add tabbed "Teaching Resources" card.
+- **SimplifiedExplanation.tsx**: Simplify to just render the summary text and prerequisites as a hero card (remove key concepts from this component).
+- **New: KeyConceptsGrid.tsx** -- extracted from SimplifiedExplanation, renders key concept cards in their own section.
+- **EducatorView.tsx**: Wrap Discussion Questions, Activities, and Misconceptions inside a `Tabs` component within a single `Card`.
+
+---
+
+## File Changes
+
+| Action | File | What |
+|--------|------|------|
+| Edit | `src/components/paper-view/views/FunderView.tsx` | 2-column grid layout, combine outputs+stewardship |
+| Edit | `src/components/paper-view/views/AimAttainmentGrid.tsx` | Wrap in Card, add collapsible rationale, colored left borders |
+| Edit | `src/components/paper-view/views/KeyFindingCard.tsx` | Add colored left border by confidence |
+| Edit | `src/components/paper-view/views/ConfidenceScorecard.tsx` | Wrap in Card |
+| Edit | `src/components/paper-view/views/ReusableOutputsPanel.tsx` | Remove outer heading (will be inside combined card) |
+| Edit | `src/components/paper-view/views/StewardshipBadges.tsx` | Remove outer heading (will be inside combined card) |
+| Edit | `src/components/paper-view/views/EducatorView.tsx` | Major restructure: hero card, 2-col grid, tabbed teaching resources, hide quiz |
+| Edit | `src/components/paper-view/views/SimplifiedExplanation.tsx` | Simplify to hero-card format (summary + prerequisites only) |
+| Create | `src/components/paper-view/views/KeyConceptsGrid.tsx` | Extracted key concepts display |
 
