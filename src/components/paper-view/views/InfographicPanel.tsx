@@ -157,6 +157,35 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
 
             <TabsContent value="prompt" className="flex-1 min-h-0">
               <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
+                {/* Pipeline explanation */}
+                <div className="rounded-md bg-muted/60 border border-border/40 p-3 mb-4 space-y-2">
+                  <p className="text-xs font-sans font-semibold text-foreground">How this prompt was composed</p>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    This prompt was composed automatically from three cached analysis modules:
+                  </p>
+                  <ul className="text-xs font-sans text-muted-foreground space-y-1 ml-3 list-disc">
+                    <li><span className="font-semibold text-foreground/80">M1</span> (Overview &amp; Metrics) — core contribution title, up to 5 key metrics</li>
+                    <li><span className="font-semibold text-foreground/80">M2</span> (Claims &amp; Evidence) — up to 4 claims with evidence strength ratings</li>
+                    <li><span className="font-semibold text-foreground/80">M5</span> (Actions &amp; Next Steps) — policy and research action recommendations</li>
+                  </ul>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    If available, the first page of the paper PDF was rendered and sent as visual context to guide layout and branding.
+                  </p>
+                  <div className="flex flex-wrap gap-3 pt-1 text-[11px] font-mono text-muted-foreground">
+                    <span>Model: <span className="text-primary font-semibold">{debugData?.model}</span></span>
+                    <span>PDF: <span className="font-semibold">{debugData?.pdf_included ? 'Yes' : 'No'}</span></span>
+                    <span>Claims: <span className="font-semibold">{debugData?.claims_extracted?.length ?? 0}</span></span>
+                    <span>Metrics: <span className="font-semibold">{debugData?.metrics_extracted?.length ?? 0}</span></span>
+                    <span>Actions: <span className="font-semibold">{(debugData?.actions_extracted?.policy?.length ?? 0) + (debugData?.actions_extracted?.research?.length ?? 0)}</span></span>
+                  </div>
+                </div>
+
+                <div className="border-t border-border/40 pt-3 mb-2">
+                  <p className="text-[11px] font-sans font-semibold text-foreground/70 uppercase tracking-wide mb-2">
+                    Exact prompt sent to Gemini (verbatim):
+                  </p>
+                </div>
+
                 <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/90">
                   {debugData?.prompt_text}
                 </pre>
