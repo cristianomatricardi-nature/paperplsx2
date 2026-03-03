@@ -90,9 +90,9 @@ export function composeSummaryPrompt(
 
   // 4. Dynamic word range based on depth preference
   const wordRangeMap: Record<string, string> = {
-    exhaustive: "250–350",
-    balanced: "180–250",
-    executive: "120–160",
+    exhaustive: "80–100",
+    balanced: "60–80",
+    executive: "40–60",
   };
   const wordRange = wordRangeMap[persona.depthPreference] || "180–250";
 
