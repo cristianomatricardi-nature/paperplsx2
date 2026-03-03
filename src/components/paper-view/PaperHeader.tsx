@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Pencil, Link2, Info } from 'lucide-react';
+import { Download, Eye, ExternalLink, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { downloadPaperPDF } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -29,10 +29,6 @@ const PaperHeader = ({
   doi,
   storagePath,
   isOpenAccess = false,
-  isOwner = false,
-  authorsMode = false,
-  onAuthorsModeChange,
-  paperId,
 }: PaperHeaderProps) => {
   const { toast } = useToast();
   const [showAllAuthors, setShowAllAuthors] = useState(false);
@@ -63,10 +59,7 @@ const PaperHeader = ({
     : null;
 
   return (
-    <header className={cn(
-      "border-b border-border pb-8 mb-8 transition-all duration-200",
-      authorsMode && "border-l-[3px] border-l-primary bg-muted/30 pl-5 rounded-sm"
-    )}>
+    <header className="border-b border-border pb-8 mb-8">
       {/* Meta line */}
       <div className="flex flex-wrap items-center gap-2 mb-3 text-sm font-sans text-muted-foreground">
         <span className="font-medium text-foreground">Article</span>
@@ -121,7 +114,6 @@ const PaperHeader = ({
         </div>
       )}
 
-
       {/* Actions row */}
       <div className="flex flex-wrap items-center gap-3">
         {storagePath && (
@@ -137,61 +129,11 @@ const PaperHeader = ({
           </Button>
         )}
 
-        {isOwner && (
-          <Button
-            variant={authorsMode ? 'default' : 'outline'}
-            size="sm"
-            className={authorsMode
-              ? 'font-sans gap-1.5'
-              : 'font-sans gap-1.5 border-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue))]/10'
-            }
-            onClick={() => onAuthorsModeChange?.(!authorsMode)}
-          >
-            <Pencil className="h-4 w-4" />
-            Authors Mode
-          </Button>
-        )}
-
-        {paperId && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="font-sans gap-1.5 border-[hsl(var(--deep-blue))] text-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue))]/10"
-            onClick={() => {
-              const url = `${window.location.origin}/paper/${paperId}/public`;
-              navigator.clipboard.writeText(url);
-              toast({ title: 'Link copied', description: 'Public paper link copied to clipboard.' });
-            }}
-          >
-            <Link2 className="h-4 w-4" />
-            Copy Link
-          </Button>
-        )}
-
         <div className="flex items-center gap-1 text-sm font-sans text-muted-foreground ml-auto">
           <Eye className="h-4 w-4" />
           <span>{viewingNow} viewing now</span>
         </div>
       </div>
-
-      {/* Authors Mode explainer banner */}
-      {authorsMode && (
-        <div className="mt-5 border border-primary/20 bg-primary/5 rounded-md p-4 flex items-start gap-3">
-          <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-          <div className="text-sm font-sans text-foreground/80 leading-relaxed">
-            <span className="font-semibold text-foreground">You are in Authors Mode.</span>{' '}
-            You can edit and enrich AI-generated module content, link code repositories and datasets,
-            add corrections or context, and provide self-assessment scores — making your paper more
-            transparent and reproducible for readers.
-            <button
-              onClick={() => onAuthorsModeChange?.(false)}
-              className="ml-2 text-primary hover:underline font-medium"
-            >
-              Exit Authors Mode
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
