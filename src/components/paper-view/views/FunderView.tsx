@@ -4,7 +4,7 @@ import { AlertCircle, RefreshCw, FileJson, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import PersonaSelector from '@/components/paper-view/PersonaSelector';
+import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import AimAttainmentGrid from './AimAttainmentGrid';
 import KeyFindingCard from './KeyFindingCard';
 import ConfidenceScorecard from './ConfidenceScorecard';
@@ -72,7 +72,7 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
 
   return (
     <div className="space-y-5">
-      <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
 
       {loading && (
         <div className="space-y-4 pt-2">
