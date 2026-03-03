@@ -8,6 +8,83 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/** Extract the most useful text from a module's cached JSON content */
+function extractModuleContext(moduleId: string, content: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  switch (moduleId) {
+    case "M1": {
+      if (content.core_contribution) parts.push(`Core contribution: ${content.core_contribution}`);
+      if (content.research_gap) parts.push(`Research gap: ${content.research_gap}`);
+      if (content.novelty) parts.push(`Novelty: ${content.novelty}`);
+      if (Array.isArray(content.metrics)) {
+        const metricsSummary = content.metrics
+          .slice(0, 5)
+          .map((m: Record<string, unknown>) => `${m.label}: ${m.value}`)
+          .join("; ");
+        if (metricsSummary) parts.push(`Key metrics: ${metricsSummary}`);
+      }
+      break;
+    }
+    case "M2": {
+      if (Array.isArray(content.claims)) {
+        for (const claim of content.claims.slice(0, 4)) {
+          const c = claim as Record<string, unknown>;
+          parts.push(`Claim (${c.strength || "unknown"} strength): ${c.statement || c.claim_text || ""}`);
+        }
+      }
+      break;
+    }
+    case "M3": {
+      if (Array.isArray(content.steps)) {
+        const stepSummary = content.steps
+          .slice(0, 5)
+          .map((s: Record<string, unknown>) => s.title || s.description || "")
+          .filter(Boolean)
+          .join(" → ");
+        if (stepSummary) parts.push(`Methodology: ${stepSummary}`);
+      }
+      break;
+    }
+    case "M4": {
+      if (Array.isArray(content.negative_results)) {
+        for (const nr of content.negative_results.slice(0, 3)) {
+          const n = nr as Record<string, unknown>;
+          parts.push(`Negative result: ${n.description || n.hypothesis_tested || ""}`);
+        }
+      }
+      break;
+    }
+    case "M5": {
+      if (Array.isArray(content.actions)) {
+        for (const a of content.actions.slice(0, 3)) {
+          const act = a as Record<string, unknown>;
+          parts.push(`Next step: ${act.action || act.description || ""}`);
+        }
+      }
+      if (Array.isArray(content.call_to_actions)) {
+        for (const a of content.call_to_actions.slice(0, 3)) {
+          const act = a as Record<string, unknown>;
+          parts.push(`Action: ${act.action || act.description || ""}`);
+        }
+      }
+      break;
+    }
+    case "M6": {
+      if (Array.isArray(content.hooks)) {
+        for (const h of content.hooks.slice(0, 3)) {
+          const hook = h as Record<string, unknown>;
+          parts.push(`SciComm hook: ${hook.content || ""}`);
+        }
+      }
+      if (content.one_sentence_summary) parts.push(`Summary: ${content.one_sentence_summary}`);
+      break;
+    }
+  }
+
+  return parts.join("\n");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -15,7 +92,6 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const openaiApiKey = Deno.env.get("OPENAI_API_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   let paperId: number;
@@ -66,80 +142,63 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 3. Create embedding for query
-    const queryText = "Key findings and main contributions of this research paper";
+    // 3. Fetch cached module content for this persona's summaryModules
+    const moduleIds = subPersona.summaryModules;
+    console.log(`[generate-summary] Fetching modules ${moduleIds.join(",")} for paper ${paperId}, persona ${subPersonaId}`);
 
-    const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "text-embedding-3-small",
-        input: queryText,
-      }),
-    });
+    const { data: moduleRows, error: moduleError } = await supabase
+      .from("generated_content_cache")
+      .select("module_id, content")
+      .eq("paper_id", paperId)
+      .eq("content_type", "module")
+      .eq("persona_id", subPersonaId)
+      .in("module_id", moduleIds);
 
-    if (!embeddingResponse.ok) {
-      const errText = await embeddingResponse.text();
-      console.error("[generate-summary] Embedding API error:", embeddingResponse.status, errText);
-      throw new Error(`Embedding API error: ${embeddingResponse.status}`);
+    if (moduleError) {
+      console.error("[generate-summary] Module fetch error:", moduleError);
     }
 
-    const embeddingData = await embeddingResponse.json();
-    const queryEmbedding = embeddingData.data[0].embedding;
+    let contextText: string;
 
-    // 4. Match chunks via database function
-    let { data: chunks, error: matchError } = await supabase.rpc("match_chunks", {
-      p_paper_id: paperId,
-      p_query_embedding: JSON.stringify(queryEmbedding),
-      p_match_threshold: 0.5,
-      p_match_count: 12,
-    });
-
-    if (matchError) {
-      console.error("[generate-summary] match_chunks error:", matchError);
-      throw new Error(`match_chunks failed: ${matchError.message}`);
-    }
-
-    if (!chunks || chunks.length === 0) {
-      console.warn("[generate-summary] No chunks above 0.5 threshold, retrying with 0.2");
-      const fallback = await supabase.rpc("match_chunks", {
-        p_paper_id: paperId,
-        p_query_embedding: JSON.stringify(queryEmbedding),
-        p_match_threshold: 0.2,
-        p_match_count: 12,
-      });
-      if (fallback.error) {
-        console.error("[generate-summary] Fallback match_chunks error:", fallback.error);
-        throw new Error(`match_chunks fallback failed: ${fallback.error.message}`);
+    if (moduleRows && moduleRows.length > 0) {
+      // Build context from cached modules
+      const contextParts: string[] = [];
+      for (const row of moduleRows) {
+        const moduleContent = row.content as Record<string, unknown>;
+        const extracted = extractModuleContext(row.module_id!, moduleContent);
+        if (extracted) {
+          contextParts.push(`--- Module ${row.module_id} ---\n${extracted}`);
+        }
       }
-      chunks = fallback.data;
+      contextText = contextParts.join("\n\n");
+      console.log(`[generate-summary] Built context from ${moduleRows.length} cached modules`);
+    } else {
+      // Fallback: use paper abstract
+      console.warn("[generate-summary] No cached modules found, falling back to abstract");
+      const { data: paper } = await supabase
+        .from("papers")
+        .select("abstract, title")
+        .eq("id", paperId)
+        .single();
+
+      contextText = paper?.abstract
+        ? `Title: ${paper.title || "Untitled"}\n\nAbstract: ${paper.abstract}`
+        : "No content available for this paper.";
     }
 
-    if (!chunks || chunks.length === 0) {
-      throw new Error("No matching chunks found for this paper");
-    }
-
-    // 5. Build prompt
-    const contextText = chunks
-      .map((c: { page_numbers: number[]; content: string }) =>
-        `[Page ${c.page_numbers.join(",")}] ${c.content}`
-      )
-      .join("\n\n");
-
+    // 4. Build prompt
     const prompt = composeSummaryPrompt(subPersona, contextText);
 
-    // 6. Call GPT-4o-mini
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // 5. Call Lovable AI Gateway
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openaiApiKey}`,
+        Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-2.5-flash",
         temperature: 0.3,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -154,7 +213,7 @@ Deno.serve(async (req) => {
     const aiData = await aiResponse.json();
     const rawContent = aiData.choices?.[0]?.message?.content || "";
 
-    // 7. Parse response
+    // 6. Parse response
     let content: Record<string, unknown>;
     try {
       const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, rawContent];
@@ -164,9 +223,12 @@ Deno.serve(async (req) => {
       throw new Error("Failed to parse summary from AI response");
     }
 
-    // 8. Cache the result
-    const sourceChunks = chunks.map((c: { chunk_id: string }) => c.chunk_id);
+    // Ensure disclaimer is present
+    if (!content.disclaimer) {
+      content.disclaimer = "This summary was generated by AI and may contain inaccuracies. Always refer to the original paper for definitive information.";
+    }
 
+    // 7. Cache the result
     const { error: insertError } = await supabase
       .from("generated_content_cache")
       .insert({
@@ -174,7 +236,7 @@ Deno.serve(async (req) => {
         content_type: "summary",
         persona_id: subPersonaId,
         content: content,
-        source_chunks: sourceChunks,
+        source_chunks: [],
       });
 
     if (insertError) {
@@ -190,7 +252,6 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("[generate-summary] Generation failed, falling back to abstract:", err);
 
-    // Fallback: return a generic summary from the paper's abstract
     const { data: paper } = await supabase
       .from("papers")
       .select("abstract, title")
@@ -199,6 +260,7 @@ Deno.serve(async (req) => {
 
     const fallbackContent = {
       narrative_summary: `This paper "${paper?.title || "Untitled"}" presents findings that may be relevant to your work. ${paper?.abstract ? paper.abstract.slice(0, 300) + "..." : "No abstract is available."} Please refer to the full paper for detailed methodology and results.`,
+      disclaimer: "This summary was generated by AI and may contain inaccuracies. Always refer to the original paper for definitive information.",
     };
 
     return new Response(
