@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { PARENT_PERSONA_MAP } from '@/lib/constants';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -96,6 +97,8 @@ const PaperSidebar = ({
   onPipelineCartUpdate
 }: PaperSidebarProps) => {
   const navigate = useNavigate();
+  const isResearcher = PARENT_PERSONA_MAP[subPersonaId] === 'Researcher';
+
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     replication: true,
     pipeline: true,
@@ -150,28 +153,29 @@ const PaperSidebar = ({
   if (!isExpanded) {
     return (
       <aside className="hidden lg:flex flex-col items-center w-12 bg-muted/30 border-l border-border py-4 gap-6 sticky top-14 h-[calc(100vh-3.5rem)]">
-        <button
-          onClick={() => handleCollapsedTabClick('replication')}
-          className="flex items-center justify-center">
+        {isResearcher && (
+          <button
+            onClick={() => handleCollapsedTabClick('replication')}
+            className="flex items-center justify-center">
+            <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
+              Replication
+            </span>
+          </button>
+        )}
 
-          <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
-            Replication
-          </span>
-        </button>
-
-        <button
-          onClick={() => handleCollapsedTabClick('pipeline')}
-          className="flex items-center justify-center">
-
-          <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
-            Pipeline
-          </span>
-        </button>
+        {isResearcher && (
+          <button
+            onClick={() => handleCollapsedTabClick('pipeline')}
+            className="flex items-center justify-center">
+            <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
+              Pipeline
+            </span>
+          </button>
+        )}
 
         <button
           onClick={() => handleCollapsedTabClick('assessment')}
           className="flex items-center justify-center">
-
           <span className="text-[10px] font-sans font-medium text-muted-foreground tracking-widest uppercase [writing-mode:vertical-lr] rotate-180 hover:text-foreground transition-colors cursor-pointer">
             Assessment
           </span>
@@ -185,7 +189,7 @@ const PaperSidebar = ({
     <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
       <div className="sticky top-14 space-y-4 p-5">
 
-        {/* ── 1. Replication Assistant card ── */}
+        {isResearcher && (
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
           <Collapsible open={openSections.replication} onOpenChange={() => toggleSection('replication')}>
             <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
@@ -221,8 +225,9 @@ const PaperSidebar = ({
             </CollapsibleContent>
           </Collapsible>
         </div>
+        )}
 
-        {/* ── 2. Analytical Pipeline card ── */}
+        {isResearcher && (
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
           <Collapsible open={openSections.pipeline} onOpenChange={() => toggleSection('pipeline')}>
             <CollapsibleTrigger className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-sans font-semibold text-foreground hover:bg-muted/40 transition-colors">
@@ -258,6 +263,7 @@ const PaperSidebar = ({
             </CollapsibleContent>
           </Collapsible>
         </div>
+        )}
 
         {/* ── 3. Multidimensional Assessment card ── */}
         <div className="rounded-xl border border-border bg-card shadow-md overflow-hidden">
