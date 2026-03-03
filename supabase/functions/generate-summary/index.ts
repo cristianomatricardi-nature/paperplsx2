@@ -198,16 +198,7 @@ Deno.serve(async (req) => {
       .single();
 
     const fallbackContent = {
-      summary_points: [
-        `This paper "${paper?.title || "Untitled"}" presents findings that may be relevant to your work.`,
-        paper?.abstract
-          ? `Abstract: ${paper.abstract.slice(0, 150)}...`
-          : "No abstract available for this paper.",
-        "Please refer to the full paper for detailed methodology and results.",
-        "A personalized summary could not be generated at this time.",
-      ],
-      relevance_score: 3,
-      why_this_matters: "This paper may contain insights relevant to your area of interest.",
+      narrative_summary: `This paper "${paper?.title || "Untitled"}" presents findings that may be relevant to your work. ${paper?.abstract ? paper.abstract.slice(0, 300) + "..." : "No abstract is available."} Please refer to the full paper for detailed methodology and results.`,
     };
 
     return new Response(

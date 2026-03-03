@@ -93,21 +93,16 @@ export function composeSummaryPrompt(
   sections.push(`PAPER CONTEXT (retrieved from the paper):\n${contextText}`);
 
   // 5. Summary Task
-  sections.push(`TASK: Generate a "Key Insights" summary with exactly 4 bullet points. Each bullet point must:
-1. Be tailored to what THIS reader cares about most
-2. Include a page reference in parentheses, e.g., (p. 5)
-3. Be concise (max 30 words per bullet)
-4. Use the language style specified above
-
-Also generate:
-- A relevance_score (1-5 stars) indicating how relevant this paper is to the reader's role
-- A one-sentence "why_this_matters" statement for this reader
+  sections.push(`TASK: Write a personalized narrative summary of 150-200 words as a single flowing paragraph. The summary should:
+1. Walk through the entire paper from motivation to key findings to implications
+2. Be tailored to what THIS reader cares about most
+3. Use the language style specified above
+4. Include page references in parentheses where relevant, e.g., (p. 5)
+5. Read as natural prose — no bullet points, no numbered lists
 
 Return JSON:
 {
-  "summary_points": ["point 1 (p. X)", "point 2 (p. Y)", "point 3 (p. Z)", "point 4 (p. W)"],
-  "relevance_score": 4,
-  "why_this_matters": "sentence"
+  "narrative_summary": "Your 150-200 word flowing paragraph here..."
 }`);
 
   return sections.join("\n\n");
