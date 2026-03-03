@@ -20,7 +20,7 @@ interface InfographicPanelProps {
 
 interface DebugPayload {
   step0_input?: string;
-  step0_result?: { policy_relevant: boolean; reason: string; evidence_landscape: string };
+  step0_result?: { policy_relevance_score: number; reason: string; evidence_landscape: string };
   script_prompt?: string;
   script_result?: {
     header: string;
@@ -51,20 +51,24 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
   const [showDebug, setShowDebug] = useState(false);
   const [showFullRes, setShowFullRes] = useState(false);
   const [notRelevant, setNotRelevant] = useState<string | null>(null);
+  const [relevanceScore, setRelevanceScore] = useState<number | null>(null);
   const { isAdmin } = useUserRole();
 
   const handleGenerate = async () => {
     setGenerating(true);
     setGenError(null);
     setNotRelevant(null);
+    setRelevanceScore(null);
     try {
       const result = await generatePolicyInfographic(paperId, paperTitle ?? 'Research Paper', infographicSpec, subPersonaId);
 
-      // Handle policy relevance gate
+      // Handle policy relevance gate (score ≤ 5 = not relevant)
       if (result?.policy_relevant === false) {
+        const score = result.policy_relevance_score ?? 0;
+        setRelevanceScore(score);
         setNotRelevant(result.reason ?? 'This research does not have clear policy implications.');
         if (result.debug) setDebugData(result.debug);
-        toast.info('No policy relevance detected');
+        toast.info(`Policy relevance score: ${score}/10 — below threshold`);
         return;
       }
 
@@ -100,13 +104,20 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
           {/* Policy not relevant card */}
           {notRelevant && (
             <div className="rounded-md border border-muted bg-muted/40 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-sans font-semibold text-foreground">
-                <ShieldX className="h-4 w-4 text-muted-foreground" />
-                No Policy Relevance Detected
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-sans font-semibold text-foreground">
+                  <ShieldX className="h-4 w-4 text-muted-foreground" />
+                  No Policy Relevance Detected
+                </div>
+                {relevanceScore !== null && (
+                  <span className="text-xs font-mono font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">
+                    {relevanceScore}/10
+                  </span>
+                )}
               </div>
               <p className="text-xs font-sans text-muted-foreground leading-relaxed">{notRelevant}</p>
               <p className="text-xs font-sans text-muted-foreground italic">
-                The AI assessed this research and determined it does not have meaningful policy implications. No infographic was generated.
+                Policy relevance score {relevanceScore ?? '?'}/10 (threshold: 6). No infographic was generated.
               </p>
             </div>
           )}
@@ -210,7 +221,8 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
                     Uses <span className="font-semibold text-primary">{debugData?.model_step0 ?? 'openai/gpt-5'}</span> to critically assess whether this research has genuine policy implications before generating an infographic.
                   </p>
                   <div className="flex gap-2 text-[11px] font-mono text-muted-foreground pt-1">
-                    <span>Relevant: <span className="font-semibold">{debugData?.step0_result?.policy_relevant ? 'Yes' : 'No'}</span></span>
+                    <span>Score: <span className="font-semibold">{debugData?.step0_result?.policy_relevance_score ?? '?'}/10</span></span>
+                    <span>Gate: <span className="font-semibold">{(debugData?.step0_result?.policy_relevance_score ?? 0) >= 6 ? 'PASS' : 'BLOCKED'}</span></span>
                   </div>
                 </div>
 

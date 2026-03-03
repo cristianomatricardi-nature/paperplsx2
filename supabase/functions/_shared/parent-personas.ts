@@ -87,20 +87,31 @@ ${claimsText || 'No claims extracted yet.'}
 RESEARCH ACTIONS / POLICY RECOMMENDATIONS:
 ${actionsText || 'No actions extracted yet.'}
 
+CRITICAL HONESTY RULE — Policy Relevance Scoring:
+Be brutally honest about policy relevance. If this research is purely theoretical, methodological, domain-specific with no clear public policy implications, or only tangentially related to governance, assign low scores. Do NOT inflate scores. Do NOT fabricate policy connections where none exist.
+
+Score calibration (applies to BOTH relevance_score and policy_relevance_score):
+  1-3: No genuine policy connection (theoretical, methodological, niche domain research)
+  4-5: Weak or tangential policy relevance
+  6-7: Indirect but meaningful policy relevance
+  8-10: Directly informs specific, identifiable policy decisions — you must be able to name the policy framework or regulation
+
+A score of 6+ means you can identify a specific policy debate, framework, or regulation this research meaningfully informs.
+
 Your task: Produce a JSON policy intelligence brief. Be precise and evidence-based. Translate scientific findings into policy-relevant language.
 
 Return ONLY valid JSON with this exact structure:
 {
   "executive_strip": {
-    "relevance_score": <integer 1-10>,
-    "relevance_reasoning": "<2-3 sentences explaining why this score — be specific about policy relevance>",
+    "relevance_score": <integer 1-10. 1-3=no genuine policy link, 4-5=weak/tangential, 6-7=indirect but meaningful, 8-10=directly informs specific policy decisions>,
+    "relevance_reasoning": "<2-3 sentences explaining why this score — be specific about policy relevance. If score is 1-5, explain clearly why this research lacks meaningful policy connection>",
     "confidence_level": "<'high' | 'medium' | 'low' — based on evidence quality>",
     "top_finding": "<One precise sentence: the single most important finding for a policymaker>"
   },
   "policy_tags": {
     "policy_areas": ["<area1>", "<area2>", "<area3>"],
-    "policy_relevance_score": <integer 1-10>,
-    "policy_relevance_reasoning": "<Specific explanation of policy relevance>",
+    "policy_relevance_score": <integer 1-10. Same calibration as relevance_score above>,
+    "policy_relevance_reasoning": "<Specific explanation of policy relevance. If score is 1-5, state clearly why this is not policy-relevant>",
     "suggested_policy_contexts": [
       { "context": "<specific policy framework, e.g. 'EU Green Deal' or 'WHO Framework Convention'>", "relevance": "<1-2 sentences: how this paper directly supports or challenges this policy>" },
       { "context": "<another specific policy>", "relevance": "<explanation>" },
