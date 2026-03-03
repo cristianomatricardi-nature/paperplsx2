@@ -188,7 +188,13 @@ Research: ${researchActions.join("; ") || "None identified"}
     const step0Data = await callAI(lovableApiKey, "openai/gpt-5", [
       {
         role: "system",
-        content: `You are a critical policy analyst. Assess whether this research has genuine, meaningful policy implications. Be brutally honest — if the research is purely theoretical, methodological, or has no clear connection to public policy decisions, say so. Do not fabricate policy connections. Honesty is more valuable than generating content.`,
+         content: `You are a critical policy analyst. Assess whether this research has genuine, meaningful policy implications. Be brutally honest — if the research is purely theoretical, methodological, or has no clear connection to public policy decisions, say so. Do not fabricate policy connections. Honesty is more valuable than generating content.
+
+POLICY RELEVANCE SCORE CALIBRATION (1-10):
+1-3: No genuine policy connection. Purely theoretical, methodological, or domain-specific with no public policy implications.
+4-5: Weak or tangential policy relevance. Could be stretched to relate to policy but no direct connection.
+6-7: Indirect but meaningful policy relevance. Informs policy-adjacent decisions or provides evidence for ongoing policy debates.
+8-10: Directly informs specific, identifiable policy decisions, regulations, or frameworks. You can name the policy.`,
       },
       { role: "user", content: step0Input },
     ], {
@@ -200,11 +206,11 @@ Research: ${researchActions.join("; ") || "None identified"}
           parameters: {
             type: "object",
             properties: {
-              policy_relevant: { type: "boolean", description: "Whether this research has genuine policy implications" },
-              reason: { type: "string", description: "One-paragraph explanation of why this is or isn't policy-relevant" },
+              policy_relevance_score: { type: "integer", description: "1-10 score. 1-3=no genuine policy link, 4-5=weak/tangential, 6-7=indirect but meaningful, 8-10=directly informs specific policy decisions" },
+              reason: { type: "string", description: "One-paragraph explanation of why this score was given" },
               evidence_landscape: { type: "string", description: "Brief summary of the broader evidence/policy context this research sits within" },
             },
-            required: ["policy_relevant", "reason", "evidence_landscape"],
+            required: ["policy_relevance_score", "reason", "evidence_landscape"],
             additionalProperties: false,
           },
         },
@@ -215,13 +221,15 @@ Research: ${researchActions.join("; ") || "None identified"}
     const step0Result = extractToolArgs(step0Data);
     if (!step0Result) throw new Error("Step 0 failed to return structured output");
 
-    console.log("[generate-policy-infographic] Step 0 — policy_relevant:", step0Result.policy_relevant);
+    const policyScore = step0Result.policy_relevance_score ?? 0;
+    console.log("[generate-policy-infographic] Step 0 — policy_relevance_score:", policyScore);
 
-    // Policy Relevance Gate
-    if (!step0Result.policy_relevant) {
+    // Policy Relevance Gate: score ≤ 5 → no infographic
+    if (policyScore <= 5) {
       return new Response(JSON.stringify({
         success: true,
         policy_relevant: false,
+        policy_relevance_score: policyScore,
         reason: step0Result.reason,
         debug: {
           step0_input: step0Input,
@@ -423,6 +431,7 @@ Vibe: Clean, academic, highly organized, and modern.`;
     return new Response(JSON.stringify({
       success: true,
       policy_relevant: true,
+      policy_relevance_score: policyScore,
       image_url: storedUrl,
       debug: {
         step0_input: step0Input,
