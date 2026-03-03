@@ -161,7 +161,6 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
-        temperature: 0.2,
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       }),
