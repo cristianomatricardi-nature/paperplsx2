@@ -3,7 +3,7 @@ import { AlertCircle, RefreshCw, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import PersonaSelector from '@/components/paper-view/PersonaSelector';
+import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import LearningObjectivesPanel from './LearningObjectivesPanel';
 import SimplifiedExplanation from './SimplifiedExplanation';
 import KeyConceptsGrid from './KeyConceptsGrid';
@@ -26,7 +26,7 @@ const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPe
 
   return (
     <div className="space-y-5">
-      <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
 
       {loading && (
         <div className="space-y-4 pt-2">

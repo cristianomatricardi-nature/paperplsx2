@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import PersonaSelector from '@/components/paper-view/PersonaSelector';
+import PersonalizedSummaryCard from '@/components/paper-view/PersonalizedSummaryCard';
 import EvidenceDashboardStrip from './EvidenceDashboardStrip';
 import PolicyTagsRow from './PolicyTagsRow';
 import PolicyBriefCard from './PolicyBriefCard';
@@ -33,9 +33,7 @@ const PolicyMakerView = ({
 
   return (
     <div className="space-y-4">
-      {/* Persona selector — reused as-is */}
-      <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
-
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
       {/* Loading state */}
       {loading && (
         <div className="space-y-4 pt-2">
