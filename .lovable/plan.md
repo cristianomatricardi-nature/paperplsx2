@@ -1,20 +1,24 @@
 
-# Conditionally Show Sidebar Sections by Persona
 
-## Goal
-Show Replication Assistant and Analytical Pipeline cards only for the **Researcher** parent persona. All other personas (Policy Maker, Funding Agency, Educator, Industry R&D, AI Agent) see only the Multidimensional Assessment card.
+# Personalized Summary Card — Narrative Format, No Scores
 
 ## Changes
 
-### `src/components/paper-view/PaperSidebar.tsx`
+### 1. `supabase/functions/_shared/prompt-composers.ts` — `composeSummaryPrompt`
+Update the TASK section to request a `narrative_summary` (150-200 word flowing paragraph walking through the paper) instead of `summary_points`. Remove `relevance_score` and `why_this_matters` from the JSON schema entirely. New output format:
+```json
+{ "narrative_summary": "..." }
+```
 
-1. **Import `PARENT_PERSONA_MAP`** from `@/lib/constants`
-2. **Derive `isResearcher`** from `subPersonaId`:
-   ```
-   const isResearcher = PARENT_PERSONA_MAP[subPersonaId] === 'Researcher';
-   ```
-3. **Collapsed state** (lines 150-181): Conditionally render the "Replication" and "Pipeline" vertical tab buttons only when `isResearcher` is true. The "Assessment" button always shows.
-4. **Expanded state** (lines 184-409): Wrap the Replication Assistant card (lines 189-223) and Analytical Pipeline card (lines 226-260) in `{isResearcher && (...)}` so they only render for Researcher personas. The Multidimensional Assessment card remains visible for all personas.
+### 2. `src/components/paper-view/PersonalizedSummaryCard.tsx`
+- Update `SummaryContent` interface: replace `summary_points`, `relevance_score`, `why_this_matters` with just `narrative_summary: string`
+- Rename heading from "Key Insights for {persona}" to "Personalized Summary"
+- Replace bullet list with a single `<p>` rendering the narrative text with page-reference highlighting
+- Remove relevance stars rendering and the `renderStars` function entirely
+- Backward compatibility: if old cached `summary_points` exists, join into a paragraph
+
+### 3. `supabase/functions/generate-summary/index.ts`
+- Update fallback content to use `narrative_summary` instead of `summary_points`, remove `relevance_score` and `why_this_matters`
 
 ### No other file changes needed
-The `subPersonaId` prop is already passed to `PaperSidebar` from `PaperViewPage`.
+
