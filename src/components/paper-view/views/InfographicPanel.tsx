@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ImageIcon, Sparkles, AlertCircle, Code } from 'lucide-react';
+import { ImageIcon, Sparkles, AlertCircle, Code, ShieldX } from 'lucide-react';
 import { generatePolicyInfographic } from '@/lib/api';
 import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -19,13 +19,28 @@ interface InfographicPanelProps {
 }
 
 interface DebugPayload {
-  prompt_text: string;
-  model: string;
+  step0_input?: string;
+  step0_result?: { policy_relevant: boolean; reason: string; evidence_landscape: string };
+  script_prompt?: string;
+  script_result?: {
+    header: string;
+    evidence_landscape: string;
+    key_findings: { label: string; value: string; icon_hint?: string }[];
+    recommendations: string[];
+    key_takeaway: string;
+    source_citation: string;
+    disclaimer?: string;
+  };
+  image_prompt?: string;
+  persona_variables?: Record<string, any>;
+  model_step0?: string;
+  model_step1?: string;
+  model_step2?: string;
   modules_used: { M1: any; M2: any; M5: any };
-  pdf_included: boolean;
-  claims_extracted: any[];
-  metrics_extracted: any[];
-  actions_extracted: { policy: string[]; research: string[] };
+  pdf_included?: boolean;
+  claims_extracted?: any[];
+  metrics_extracted?: any[];
+  actions_extracted?: { policy: string[]; research: string[] };
 }
 
 const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }: InfographicPanelProps) => {
@@ -35,13 +50,24 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
   const [debugData, setDebugData] = useState<DebugPayload | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [showFullRes, setShowFullRes] = useState(false);
+  const [notRelevant, setNotRelevant] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
 
   const handleGenerate = async () => {
     setGenerating(true);
     setGenError(null);
+    setNotRelevant(null);
     try {
       const result = await generatePolicyInfographic(paperId, paperTitle ?? 'Research Paper', infographicSpec, subPersonaId);
+
+      // Handle policy relevance gate
+      if (result?.policy_relevant === false) {
+        setNotRelevant(result.reason ?? 'This research does not have clear policy implications.');
+        if (result.debug) setDebugData(result.debug);
+        toast.info('No policy relevance detected');
+        return;
+      }
+
       if (result?.image_url) {
         setImageUrl(result.image_url);
         if (result.debug) setDebugData(result.debug);
@@ -71,7 +97,21 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col gap-3">
-          {!imageUrl && (
+          {/* Policy not relevant card */}
+          {notRelevant && (
+            <div className="rounded-md border border-muted bg-muted/40 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-sans font-semibold text-foreground">
+                <ShieldX className="h-4 w-4 text-muted-foreground" />
+                No Policy Relevance Detected
+              </div>
+              <p className="text-xs font-sans text-muted-foreground leading-relaxed">{notRelevant}</p>
+              <p className="text-xs font-sans text-muted-foreground italic">
+                The AI assessed this research and determined it does not have meaningful policy implications. No infographic was generated.
+              </p>
+            </div>
+          )}
+
+          {!imageUrl && !notRelevant && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-sans font-medium">Key sections:</p>
               <ul className="space-y-1">
@@ -104,7 +144,9 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
           {generating && (
             <div className="space-y-2">
               <Skeleton className="h-40 w-full rounded-md" />
-              <p className="text-xs text-muted-foreground font-sans text-center">Generating infographic…</p>
+              <p className="text-xs text-muted-foreground font-sans text-center">
+                Generating infographic (3-step pipeline)…
+              </p>
             </div>
           )}
 
@@ -117,14 +159,14 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
 
           <div className="mt-auto pt-2 flex gap-2">
             <Button
-              variant={imageUrl ? 'outline' : 'default'}
+              variant={imageUrl || notRelevant ? 'outline' : 'default'}
               size="sm"
               className="flex-1 gap-1.5"
               onClick={handleGenerate}
               disabled={generating}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              {imageUrl ? 'Regenerate Infographic' : 'Generate Infographic'}
+              {imageUrl ? 'Regenerate' : notRelevant ? 'Re-assess' : 'Generate Infographic'}
             </Button>
 
             {isAdmin && debugData && (
@@ -135,7 +177,7 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
                 onClick={() => setShowDebug(true)}
               >
                 <Code className="h-3.5 w-3.5" />
-                Show Prompt
+                Debug
               </Button>
             )}
           </div>
@@ -146,54 +188,125 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
       <Dialog open={showDebug} onOpenChange={setShowDebug}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-sm font-sans">Generation Debug — {debugData?.model}</DialogTitle>
+            <DialogTitle className="text-sm font-sans">
+              Three-Step Pipeline Debug
+            </DialogTitle>
           </DialogHeader>
-          <Tabs defaultValue="prompt" className="flex-1 flex flex-col min-h-0">
+          <Tabs defaultValue="evidence" className="flex-1 flex flex-col min-h-0">
             <TabsList className="w-full justify-start">
-              <TabsTrigger value="prompt">Prompt</TabsTrigger>
+              <TabsTrigger value="evidence">Evidence</TabsTrigger>
+              <TabsTrigger value="script">Script</TabsTrigger>
+              <TabsTrigger value="persona">Persona</TabsTrigger>
+              <TabsTrigger value="image">Image Prompt</TabsTrigger>
               <TabsTrigger value="modules">Modules</TabsTrigger>
-              <TabsTrigger value="assets">Assets</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="prompt" className="flex-1 min-h-0">
+            {/* Step 0 — Evidence / Policy Relevance */}
+            <TabsContent value="evidence" className="flex-1 min-h-0">
               <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
-                {/* Pipeline explanation */}
                 <div className="rounded-md bg-muted/60 border border-border/40 p-3 mb-4 space-y-2">
-                  <p className="text-xs font-sans font-semibold text-foreground">How this prompt was composed</p>
+                  <p className="text-xs font-sans font-semibold text-foreground">Step 0 — Policy Relevance Assessment</p>
                   <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                    This prompt was composed automatically from three cached analysis modules:
+                    Uses <span className="font-semibold text-primary">{debugData?.model_step0 ?? 'openai/gpt-5'}</span> to critically assess whether this research has genuine policy implications before generating an infographic.
                   </p>
-                  <ul className="text-xs font-sans text-muted-foreground space-y-1 ml-3 list-disc">
-                    <li><span className="font-semibold text-foreground/80">M1</span> (Overview &amp; Metrics) — core contribution title, up to 5 key metrics</li>
-                    <li><span className="font-semibold text-foreground/80">M2</span> (Claims &amp; Evidence) — up to 4 claims with evidence strength ratings</li>
-                    <li><span className="font-semibold text-foreground/80">M5</span> (Actions &amp; Next Steps) — policy and research action recommendations</li>
-                  </ul>
-                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                    If available, the first page of the paper PDF was rendered and sent as visual context to guide layout and branding.
-                  </p>
-                  <div className="flex flex-wrap gap-3 pt-1 text-[11px] font-mono text-muted-foreground">
-                    <span>Model: <span className="text-primary font-semibold">{debugData?.model}</span></span>
-                    <span>PDF: <span className="font-semibold">{debugData?.pdf_included ? 'Yes' : 'No'}</span></span>
-                    <span>Claims: <span className="font-semibold">{debugData?.claims_extracted?.length ?? 0}</span></span>
-                    <span>Metrics: <span className="font-semibold">{debugData?.metrics_extracted?.length ?? 0}</span></span>
-                    <span>Actions: <span className="font-semibold">{(debugData?.actions_extracted?.policy?.length ?? 0) + (debugData?.actions_extracted?.research?.length ?? 0)}</span></span>
+                  <div className="flex gap-2 text-[11px] font-mono text-muted-foreground pt-1">
+                    <span>Relevant: <span className="font-semibold">{debugData?.step0_result?.policy_relevant ? 'Yes' : 'No'}</span></span>
                   </div>
                 </div>
 
-                <div className="border-t border-border/40 pt-3 mb-2">
-                  <p className="text-[11px] font-sans font-semibold text-foreground/70 uppercase tracking-wide mb-2">
-                    Exact prompt sent to Gemini (verbatim):
+                {debugData?.step0_result && (
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <p className="text-xs font-sans font-semibold text-foreground mb-1">Reason</p>
+                      <p className="text-xs font-sans text-foreground/80 bg-muted/50 rounded p-2">{debugData.step0_result.reason}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-sans font-semibold text-foreground mb-1">Evidence Landscape</p>
+                      <p className="text-xs font-sans text-foreground/80 bg-muted/50 rounded p-2">{debugData.step0_result.evidence_landscape}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-border/40 pt-3">
+                  <p className="text-[11px] font-sans font-semibold text-foreground/70 uppercase tracking-wide mb-2">Step 0 Input</p>
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
+                    {debugData?.step0_input}
+                  </pre>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Step 1 — Script */}
+            <TabsContent value="script" className="flex-1 min-h-0">
+              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
+                <div className="rounded-md bg-muted/60 border border-border/40 p-3 mb-4 space-y-2">
+                  <p className="text-xs font-sans font-semibold text-foreground">Step 1 — Script Generation</p>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    Uses <span className="font-semibold text-primary">{debugData?.model_step1 ?? 'openai/gpt-5.2'}</span> with persona-specific variables to generate a structured infographic script via tool calling.
                   </p>
                 </div>
 
+                {debugData?.script_result && (
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <p className="text-xs font-sans font-semibold text-foreground mb-1">Generated Script</p>
+                      <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
+                        {JSON.stringify(debugData.script_result, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-border/40 pt-3">
+                  <p className="text-[11px] font-sans font-semibold text-foreground/70 uppercase tracking-wide mb-2">Step 1 Prompt</p>
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
+                    {debugData?.script_prompt}
+                  </pre>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Persona Variables */}
+            <TabsContent value="persona" className="flex-1 min-h-0">
+              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
+                <div className="rounded-md bg-muted/60 border border-border/40 p-3 mb-4 space-y-2">
+                  <p className="text-xs font-sans font-semibold text-foreground">Persona Variables</p>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    These variables were injected into Step 1 to adapt the infographic script to the selected sub-persona.
+                  </p>
+                </div>
+
+                {debugData?.persona_variables && (
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
+                    {JSON.stringify(debugData.persona_variables, null, 2)}
+                  </pre>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Step 2 — Image Prompt */}
+            <TabsContent value="image" className="flex-1 min-h-0">
+              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
+                <div className="rounded-md bg-muted/60 border border-border/40 p-3 mb-4 space-y-2">
+                  <p className="text-xs font-sans font-semibold text-foreground">Step 2 — Image Generation</p>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    Uses <span className="font-semibold text-primary">{debugData?.model_step2 ?? 'google/gemini-3-pro-image-preview'}</span> with the script sections, Springer Nature logo reference, and optional PDF page 1.
+                  </p>
+                  <div className="flex gap-3 text-[11px] font-mono text-muted-foreground pt-1">
+                    <span>PDF included: <span className="font-semibold">{debugData?.pdf_included ? 'Yes' : 'No'}</span></span>
+                    <span>Logo: <span className="font-semibold">SN reference image</span></span>
+                  </div>
+                </div>
+
                 <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/90">
-                  {debugData?.prompt_text}
+                  {debugData?.image_prompt}
                 </pre>
               </ScrollArea>
             </TabsContent>
 
+            {/* Raw Modules */}
             <TabsContent value="modules" className="flex-1 min-h-0">
-              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3 space-y-4">
+              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
                 {(['M1', 'M2', 'M5'] as const).map((key) => (
                   <div key={key} className="mb-4">
                     <p className="text-xs font-sans font-semibold text-primary mb-1">{key}</p>
@@ -206,30 +319,22 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
                     )}
                   </div>
                 ))}
-              </ScrollArea>
-            </TabsContent>
 
-            <TabsContent value="assets" className="flex-1 min-h-0">
-              <ScrollArea className="h-[50vh] rounded-md border border-border/40 p-3">
-                <div className="space-y-3">
+                <div className="border-t border-border/40 pt-3 space-y-3">
                   <div>
-                    <p className="text-xs font-sans font-semibold text-foreground mb-1">PDF Page Included</p>
-                    <p className="text-xs text-muted-foreground">{debugData?.pdf_included ? 'Yes — first page sent as image context' : 'No'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Claims Extracted ({debugData?.claims_extracted?.length ?? 0})</p>
+                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Claims ({debugData?.claims_extracted?.length ?? 0})</p>
                     <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
                       {JSON.stringify(debugData?.claims_extracted, null, 2)}
                     </pre>
                   </div>
                   <div>
-                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Metrics Extracted ({debugData?.metrics_extracted?.length ?? 0})</p>
+                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Metrics ({debugData?.metrics_extracted?.length ?? 0})</p>
                     <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
                       {JSON.stringify(debugData?.metrics_extracted, null, 2)}
                     </pre>
                   </div>
                   <div>
-                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Actions Extracted</p>
+                    <p className="text-xs font-sans font-semibold text-foreground mb-1">Actions</p>
                     <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
                       {JSON.stringify(debugData?.actions_extracted, null, 2)}
                     </pre>
