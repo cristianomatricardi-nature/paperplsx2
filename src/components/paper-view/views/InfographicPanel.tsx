@@ -34,6 +34,7 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
   const [genError, setGenError] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<DebugPayload | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showFullRes, setShowFullRes] = useState(false);
   const { isAdmin } = useUserRole();
 
   const handleGenerate = async () => {
@@ -88,7 +89,10 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
           )}
 
           {imageUrl && (
-            <div className="rounded-md overflow-hidden border border-border/40">
+            <div
+              className="rounded-md overflow-hidden border border-border/40 cursor-zoom-in"
+              onClick={() => setShowFullRes(true)}
+            >
               <img
                 src={imageUrl}
                 alt={`Policy infographic: ${infographicSpec.title}`}
@@ -205,6 +209,17 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
               </ScrollArea>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-res image overlay */}
+      <Dialog open={showFullRes} onOpenChange={setShowFullRes}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-2 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <img
+            src={imageUrl ?? ''}
+            alt={`Policy infographic: ${infographicSpec.title}`}
+            className="max-w-full max-h-[85vh] object-contain rounded-md"
+          />
         </DialogContent>
       </Dialog>
     </>
