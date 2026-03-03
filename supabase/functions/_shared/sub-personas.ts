@@ -15,6 +15,7 @@ export interface SubPersona {
   broaderImpactAssessment: boolean;
   disclaimers: string[];
   moduleInstructions: Record<string, string>;
+  summaryModules: string[];
 }
 
 export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
@@ -42,6 +43,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a PhD student or post-doc looking for their next research direction. Present call-to-actions as potential thesis chapters, paper ideas, or collaboration opportunities. Prioritize actions that a junior researcher could realistically pursue. Flag which actions require significant resources vs. which could be done with limited funding.",
       M6: "You are writing science communication assets for a PhD student or post-doc who needs to explain their field to non-specialists (e.g., at a conference, in a grant application, or on social media). Provide analogies they can use, plain-language summaries they can adapt, and social media posts they can customize. Keep the tone accessible but scientifically accurate.",
     },
+    summaryModules: ["M1", "M2", "M3", "M4", "M5"],
   },
 
   pi_tenure: {
@@ -68,6 +70,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a PI who is looking for strategic opportunities. Present call-to-actions in terms of: grant opportunities, collaboration potential, competitive positioning, and lab direction. Prioritize high-impact actions. Flag time-sensitive opportunities.",
       M6: "You are writing science communication assets for a PI who needs to communicate their field to funders, media, and institutional leadership. Provide polished, quotable statements. Include talking points for presentations and media interviews. Focus on impact and significance rather than technical details.",
     },
+    summaryModules: ["M1", "M2", "M3", "M4", "M5"],
   },
 
   think_tank: {
@@ -94,6 +97,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a think tank analyst who needs to translate research into actionable policy recommendations. Present call-to-actions specifically framed for policy: What should policymakers do with this evidence? What regulations or programs could be informed by this? What stakeholders need to be engaged? Include urgency levels.",
       M6: "You are writing science communication assets for a think tank that needs to communicate research findings to policymakers and the public. Provide policy briefs, infographic outlines, and key messages. Use language that resonates with government officials. Include a 'policy implications' summary that could be inserted directly into a policy document.",
     },
+    summaryModules: ["M1", "M2", "M5"],
   },
 
   gov_institution: {
@@ -120,6 +124,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a government official who needs concrete, implementable recommendations. Present call-to-actions as: What specific policy action is recommended? What's the timeline? What's the cost? Who needs to be involved? Use bureaucratic-friendly language and structure.",
       M6: "You are writing communication assets for a government press office. Provide: a 3-sentence press release summary, key talking points for officials, and a public-facing FAQ. Use language appropriate for government communications — formal but accessible.",
     },
+    summaryModules: ["M1", "M2", "M5"],
   },
 
   funder_governmental: {
@@ -146,6 +151,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a program officer who needs to identify follow-up funding priorities. Present call-to-actions as: What should the next funding call prioritize? What infrastructure investments are needed? What interdisciplinary collaborations should be encouraged? Frame in terms of portfolio strategy.",
       M6: "You are writing communication assets for a funding agency's public outreach. Provide: a taxpayer-friendly summary of what this research achieved, key impact numbers for annual reports, and a success story narrative. Emphasize public value and return on investment.",
     },
+    summaryModules: ["M1", "M2", "M5"],
   },
 
   funder_private: {
@@ -172,6 +178,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a private funder looking for the highest-impact next investment. Present call-to-actions ranked by potential impact and feasibility. Include estimated resource requirements. Frame in terms of: What would maximize our mission impact per dollar invested?",
       M6: "You are writing communication assets for a foundation's donor relations and annual report. Provide: a compelling narrative of the research's impact, key numbers for impact reports, and a story that connects the research to real-world beneficiaries. Emphasize human impact and mission progress.",
     },
+    summaryModules: ["M1", "M2", "M5"],
   },
 
   industry_rd: {
@@ -198,6 +205,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for an industry R&D professional looking for opportunities. Present call-to-actions as: What licensing opportunities exist? What talent could we recruit? What partnerships could accelerate commercialization? What IP considerations should we be aware of? Include urgency indicators.",
       M6: "You are writing communication assets for an industry R&D team that needs to present academic findings to business leadership. Provide: a business case summary, ROI projections (if inferable), competitive advantage analysis, and a slide-ready executive summary. Use business language, not academic language.",
     },
+    summaryModules: ["M1", "M2", "M3"],
   },
 
   ai_agent: {
@@ -224,6 +232,7 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "Return structured JSON with keys: research_gaps (array of {gap, priority, feasibility}), collaboration_opportunities (array of strings), funding_angles (array of strings), next_experiments (array of {description, estimated_cost, timeline}). No prose.",
       M6: "Return structured JSON with keys: one_sentence_summary (string), key_finding (string), analogy (string), societal_relevance (string), keywords (array of strings). No prose.",
     },
+    summaryModules: ["M1", "M2", "M3", "M5"],
   },
 
   science_educator: {
@@ -250,5 +259,6 @@ export const SUB_PERSONA_REGISTRY: Record<string, SubPersona> = {
       M5: "You are writing for a science educator who wants to inspire students about future directions in this field. Present next steps as 'What questions are still unanswered?' Frame them as potential science fair projects or research careers. Connect to real-world problems students care about (climate, health, technology).",
       M6: "You are writing science communication assets for an educator who needs multiple ways to explain this research. Provide: a 30-second elevator pitch for students, a longer narrative explanation with analogies, 3 common misconceptions students might have and corrections, and a list of key vocabulary with student-friendly definitions. Include suggestions for multimedia resources (videos, simulations) that could complement a lesson.",
     },
+    summaryModules: ["M2", "M3", "M6"],
   },
 };
