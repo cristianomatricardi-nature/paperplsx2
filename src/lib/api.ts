@@ -48,12 +48,25 @@ export async function downloadPaperPDF(storagePath: string) {
   return data.signedUrl;
 }
 
-export async function fetchPolicyView(paperId: number, subPersonaId: string) {
-  const { data, error } = await supabase.functions.invoke('generate-policy-view', {
-    body: { paper_id: paperId, sub_persona_id: subPersonaId },
+async function longRunningInvoke(functionName: string, body: Record<string, unknown>) {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
+  const { data: { session } } = await supabase.auth.getSession();
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
   });
-  if (error) throw error;
-  return data;
+  if (!response.ok) throw new Error(`Edge function error: ${response.status}`);
+  return response.json();
+}
+
+export async function fetchPolicyView(paperId: number, subPersonaId: string) {
+  return longRunningInvoke('generate-policy-view', { paper_id: paperId, sub_persona_id: subPersonaId });
 }
 
 export async function generatePolicyInfographic(
@@ -82,17 +95,9 @@ export async function matchPolicyContent(
 }
 
 export async function fetchFunderView(paperId: number, subPersonaId: string) {
-  const { data, error } = await supabase.functions.invoke('generate-funder-view', {
-    body: { paper_id: paperId, sub_persona_id: subPersonaId },
-  });
-  if (error) throw error;
-  return data;
+  return longRunningInvoke('generate-funder-view', { paper_id: paperId, sub_persona_id: subPersonaId });
 }
 
 export async function fetchEducatorView(paperId: number, subPersonaId: string) {
-  const { data, error } = await supabase.functions.invoke('generate-educator-view', {
-    body: { paper_id: paperId, sub_persona_id: subPersonaId },
-  });
-  if (error) throw error;
-  return data;
+  return longRunningInvoke('generate-educator-view', { paper_id: paperId, sub_persona_id: subPersonaId });
 }
