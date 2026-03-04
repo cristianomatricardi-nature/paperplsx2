@@ -196,19 +196,22 @@ POLICY RELEVANCE SCORE CALIBRATION (1-10):
 
   // Gate: score ≤ 5 → not relevant
   if (policyScore <= 5) {
-    await supabase.from("infographic_jobs").update({
+    const { error: nrError } = await supabase.from("infographic_jobs").update({
       status: "not_relevant",
       policy_relevance_score: policyScore,
       reason: step0Result.reason,
-      debug: {
-        step0_input: step0Input,
-        step0_result: step0Result,
-        persona_variables: personaVars,
-        claims_extracted: claims,
-        metrics_extracted: metrics,
-        actions_extracted: { policy: policyActions, research: researchActions },
-      },
     }).eq("id", jobId);
+    if (nrError) {
+      console.error("[generate-policy-infographic] not_relevant update failed:", nrError);
+    }
+    // Best-effort debug
+    try {
+      await supabase.from("infographic_jobs").update({
+        debug: { step0_result: step0Result, claims_count: claims.length, metrics_count: metrics.length },
+      }).eq("id", jobId);
+    } catch (e) {
+      console.warn("[generate-policy-infographic] not_relevant debug update failed:", e);
+    }
     return;
   }
 
@@ -389,23 +392,32 @@ Vibe: Clean, academic, highly organized, and modern.`;
   console.log("[generate-policy-infographic] Upload complete:", storedUrl);
 
   // Update job with results (minimal debug — no full module content)
-  await supabase.from("infographic_jobs").update({
+  const { error: updateError } = await supabase.from("infographic_jobs").update({
     status: "complete",
     image_url: storedUrl,
     policy_relevance_score: policyScore,
-    debug: {
-      step0_result: step0Result,
-      script_result: script,
-      image_prompt: imagePrompt,
-      persona_variables: personaVars,
-      model_step0: "openai/gpt-5",
-      model_step1: "openai/gpt-5.2",
-      model_step2: "google/gemini-3-pro-image-preview",
-      claims_extracted: claims,
-      metrics_extracted: metrics,
-      actions_extracted: { policy: policyActions, research: researchActions },
-    },
   }).eq("id", jobId);
+
+  if (updateError) {
+    console.error("[generate-policy-infographic] CRITICAL: job update failed:", updateError);
+    throw new Error(`Job update failed: ${updateError.message}`);
+  }
+  console.log("[generate-policy-infographic] Job marked complete");
+
+  // Best-effort debug update (non-critical)
+  try {
+    const debugPayload = JSON.parse(JSON.stringify({
+      step0_result: step0Result,
+      script_sections: Object.keys(script || {}),
+      persona: subPersonaId,
+      models: ["openai/gpt-5", "openai/gpt-5.2", "google/gemini-3-pro-image-preview"],
+      claims_count: claims.length,
+      metrics_count: metrics.length,
+    }));
+    await supabase.from("infographic_jobs").update({ debug: debugPayload }).eq("id", jobId);
+  } catch (debugErr) {
+    console.warn("[generate-policy-infographic] Debug update failed (non-critical):", debugErr);
+  }
 }
 
 // ── Main handler ──
