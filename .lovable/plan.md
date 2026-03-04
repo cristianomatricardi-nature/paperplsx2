@@ -1,36 +1,26 @@
 
 
-# Restructure Policy Maker View UI
+# Clean Up Policy Tags in Summary Card
 
-## Summary
+## Problem
 
-Slim down the Evidence Dashboard Strip, move policy tags into the summary card, replace standalone Infographic/Brief cards with two square action buttons, and put the `relevance_reasoning` into a hovering tooltip on the relevance score.
+The policy tags section currently mixes two different things:
+1. **Policy areas** — short topic labels like "Ocean and coastal management", "Climate mitigation" (these are good)
+2. **Suggested policy contexts** — long program/initiative names like "U.S. Federal Ocean Acidification Research And Monitoring (FOARAM) Act..." (these are NOT policy areas, they're programs/initiatives and they clutter the UI)
 
-## Changes
+Both are rendered as badges in the same row, making it confusing and space-heavy.
 
-### 1. `EvidenceDashboardStrip.tsx`
-- **Remove** the confidence bar (lines 37-48) and `relevance_reasoning` paragraph (lines 56-59)
-- **Add** a `Tooltip` on the relevance score that shows `relevance_reasoning` on hover
-- Keep: relevance score (big number) + `top_finding` paragraph
+## Solution
 
-### 2. `PersonalizedSummaryCard.tsx`
-- Add optional `policyTags` prop (type from `PolicyViewPayload['policy_tags']`)
-- Render interactive policy area badges (with popover behavior from current `PolicyTagsRow`) between the narrative text and the disclaimer
-- Reuse the same popover-on-badge pattern already in `PolicyTagsRow`
+**Remove the `suggested_policy_contexts` badges entirely from the policy areas row.** Keep only the actual `policy_areas` badges (the short topic labels).
 
-### 3. `PolicyMakerView.tsx` — Major restructure
-New layout order:
-1. `PersonalizedSummaryCard` (now receives `policyTags`)
-2. `EvidenceDashboardStrip` (slimmed)
-3. **Two square action buttons** side-by-side: "Generate Infographic" (ImageIcon) + "Generate Policy Brief" (FileText icon)
-   - Each button triggers generation (reusing existing `handleGenerate` logic from InfographicPanel and dialog-open from PolicyBriefCard)
-   - Once generated, a small clickable thumbnail/icon appears below the respective button to open the result (infographic → full-res dialog, brief → brief dialog)
-4. `PolicyContentMatcher`
+The policy contexts data is still useful — it's already shown in the popover when hovering a policy area badge (via the `getContextForArea` matching logic). So the information isn't lost, it's just not cluttering the main view anymore.
 
-Remove standalone `PolicyTagsRow`, `InfographicPanel` card, and `PolicyBriefCard` card from the flow. Keep their **dialog components** (full-res image dialog, debug dialog, brief dialog) — just move the trigger logic into the new buttons section.
+## Change
 
-### 4. Files Changed
-1. `src/components/paper-view/views/EvidenceDashboardStrip.tsx` — Remove confidence bar + relevance_reasoning; add tooltip on score
-2. `src/components/paper-view/PersonalizedSummaryCard.tsx` — Add policyTags prop with interactive badges
-3. `src/components/paper-view/views/PolicyMakerView.tsx` — Restructure layout: merged summary, slim strip, action buttons with inline result icons
+**File: `src/components/paper-view/PersonalizedSummaryCard.tsx`**
+- Remove lines 153-177 (the `policyTags.suggested_policy_contexts.map(...)` block that renders the outline badges with arrows)
+- Keep the `policy_areas` badges with their existing hover popovers
+
+Result: A clean row showing only "Policy areas: `Ocean and coastal management` `Climate mitigation` `Fisheries and aquaculture`" — short, scannable, focused.
 
