@@ -1,69 +1,36 @@
 
 
-# Fix Debug Data in Three-Step Pipeline Debug Dialog
+# Restructure Policy Maker View UI
 
-## Problem
+## Summary
 
-The debug dialog in `InfographicPanel.tsx` expects rich data (`script_result`, `persona_variables`, `image_prompt`, `modules_used`, `claims_extracted`, etc.), but the edge function (line 422-433) only saves a minimal debug payload:
+Slim down the Evidence Dashboard Strip, move policy tags into the summary card, replace standalone Infographic/Brief cards with two square action buttons, and put the `relevance_reasoning` into a hovering tooltip on the relevance score.
 
-```json
-{
-  "step0_result": {...},
-  "script_sections": ["header", "evidence_landscape", ...],  // just keys, not values!
-  "persona": "think_tank",
-  "models": [...],
-  "claims_count": 4,
-  "metrics_count": 3
-}
-```
+## Changes
 
-The actual script, persona variables, image prompt, and module data are all discarded.
+### 1. `EvidenceDashboardStrip.tsx`
+- **Remove** the confidence bar (lines 37-48) and `relevance_reasoning` paragraph (lines 56-59)
+- **Add** a `Tooltip` on the relevance score that shows `relevance_reasoning` on hover
+- Keep: relevance score (big number) + `top_finding` paragraph
 
-## Root Cause
+### 2. `PersonalizedSummaryCard.tsx`
+- Add optional `policyTags` prop (type from `PolicyViewPayload['policy_tags']`)
+- Render interactive policy area badges (with popover behavior from current `PolicyTagsRow`) between the narrative text and the disclaimer
+- Reuse the same popover-on-badge pattern already in `PolicyTagsRow`
 
-The debug payload was intentionally stripped down in a previous fix to prevent the JSONB update from failing. But it was stripped too aggressively — removing the data you actually need to debug.
+### 3. `PolicyMakerView.tsx` — Major restructure
+New layout order:
+1. `PersonalizedSummaryCard` (now receives `policyTags`)
+2. `EvidenceDashboardStrip` (slimmed)
+3. **Two square action buttons** side-by-side: "Generate Infographic" (ImageIcon) + "Generate Policy Brief" (FileText icon)
+   - Each button triggers generation (reusing existing `handleGenerate` logic from InfographicPanel and dialog-open from PolicyBriefCard)
+   - Once generated, a small clickable thumbnail/icon appears below the respective button to open the result (infographic → full-res dialog, brief → brief dialog)
+4. `PolicyContentMatcher`
 
-## Solution
+Remove standalone `PolicyTagsRow`, `InfographicPanel` card, and `PolicyBriefCard` card from the flow. Keep their **dialog components** (full-res image dialog, debug dialog, brief dialog) — just move the trigger logic into the new buttons section.
 
-Expand the debug payload in the edge function to include the three things you requested, while keeping it safe from the previous JSONB crash by writing it in a separate best-effort update (already in place):
-
-### Edge Function (`generate-policy-infographic/index.ts`)
-
-Update the debug payload (line 422-433) to include:
-
-1. **Script tab**: Store the full `script` object (the structured JSON from Step 1 — header, key_findings, recommendations, etc.)
-2. **Persona tab**: Store the `personaVars` object (contentGoal, statisticsDisplay, jargonLevel, etc.)
-3. **Modules tab**: Store summaries of M1, M2, M5 module content, plus the extracted claims, metrics, and actions arrays
-4. **Also include**: `step0_input`, `script_prompt` (the Step 1 prompt text), and `image_prompt`
-
-To avoid the JSONB size issue that caused previous failures, truncate module content to first 2000 chars each.
-
-```typescript
-const debugPayload = {
-  step0_input: step0Input,
-  step0_result: step0Result,
-  model_step0: "openai/gpt-5",
-  script_prompt: step1Prompt.slice(0, 3000),
-  script_result: script,
-  model_step1: "openai/gpt-5.2",
-  image_prompt: imagePrompt.slice(0, 3000),
-  model_step2: "google/gemini-3-pro-image-preview",
-  persona_variables: personaVars,
-  modules_used: {
-    M1: JSON.stringify(m1 ?? null).slice(0, 2000),
-    M2: JSON.stringify(m2 ?? null).slice(0, 2000),
-    M5: JSON.stringify(m5 ?? null).slice(0, 2000),
-  },
-  claims_extracted: claims,
-  metrics_extracted: metrics,
-  actions_extracted: { policy: policyActions, research: researchActions },
-};
-```
-
-### Frontend — No structural changes needed
-
-The `InfographicPanel.tsx` debug tabs already render all these fields correctly. Once the edge function stores the full debug payload, the Script, Persona, and Modules tabs will populate automatically.
-
-### Files Changed
-1. `supabase/functions/generate-policy-infographic/index.ts` — Expand the debug payload to include full script result, persona variables, module data, and prompts (with size truncation for safety)
+### 4. Files Changed
+1. `src/components/paper-view/views/EvidenceDashboardStrip.tsx` — Remove confidence bar + relevance_reasoning; add tooltip on score
+2. `src/components/paper-view/PersonalizedSummaryCard.tsx` — Add policyTags prop with interactive badges
+3. `src/components/paper-view/views/PolicyMakerView.tsx` — Restructure layout: merged summary, slim strip, action buttons with inline result icons
 
