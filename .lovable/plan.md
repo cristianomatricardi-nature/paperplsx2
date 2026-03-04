@@ -1,38 +1,58 @@
 
 
-# Fix: Infographic Generation Failing at Step 2 (Image)
+# Fix: Infographic Generation "Failed to send a request"
+
+## Architecture of the 3-Step Pipeline
+
+```text
+Client (InfographicPanel.tsx)
+  │
+  └─► generatePolicyInfographic() in api.ts
+        │
+        └─► supabase.functions.invoke()  ← ⚠️ DEFAULT TIMEOUT (~60s)
+              │
+              └─► Edge Function: generate-policy-infographic/index.ts
+                    │
+                    ├── Step 0: GPT-5 (policy relevance)      ~10-15s
+                    ├── Step 1: GPT-5.2 (script generation)   ~10-15s
+                    ├── PDF rendering (skipped — getDocument not available in Deno)
+                    └── Step 2: Gemini 3 Pro Image Preview    ~20-30s
+                                                              ─────────
+                                                     Total:  ~40-60s+
+```
 
 ## Root Cause
 
-The logs show clearly:
+**Same timeout issue as the policy view.** `generatePolicyInfographic()` in `api.ts` uses `supabase.functions.invoke()` which has a short default timeout. The 3-step pipeline (3 sequential AI calls) takes 40-60+ seconds, causing the client to abort.
 
-```
-Invalid URL format: https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures//SN_logo_RGB (2).jpg
-```
+The `longRunningInvoke` helper already exists in the file but is not used for this function.
 
-The `SN_LOGO_URL` constant on line 9-10 has two problems:
-1. **Double slash** in the path: `.../paper-figures//SN_logo_RGB...`
-2. **Spaces in filename**: `SN_logo_RGB (2).jpg` — Gemini's API rejects URLs with unencoded spaces
-
-When this URL is passed to `google/gemini-3-pro-image-preview` as an `image_url`, the API returns a 400 error, which crashes Step 2.
+The logs confirm: Step 0 succeeds, Step 1 succeeds, PDF skip is handled, then **shutdown** — Step 2 never completes because the connection is dropped.
 
 ## Fix
 
-### `supabase/functions/generate-policy-infographic/index.ts`
+### `src/lib/api.ts` — Switch `generatePolicyInfographic` to use `longRunningInvoke`
 
-**Line 9-10**: Fix the `SN_LOGO_URL` constant — remove the double slash and URL-encode the spaces:
+Replace the current `supabase.functions.invoke()` call with the existing `longRunningInvoke` helper:
 
 ```typescript
-const SN_LOGO_URL =
-  "https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures/SN_logo_RGB%20(2).jpg";
+export async function generatePolicyInfographic(
+  paperId: number,
+  paperTitle: string,
+  infographicSpec: { title: string; sections: string[]; key_visual_description: string },
+  subPersonaId?: string,
+) {
+  return longRunningInvoke('generate-policy-infographic', {
+    paper_id: paperId,
+    paper_title: paperTitle,
+    infographic_spec: infographicSpec,
+    sub_persona_id: subPersonaId,
+  });
+}
 ```
 
-Alternatively, if the logo file doesn't exist at that path, we should rename the uploaded file to remove spaces (e.g., `SN_logo_RGB.jpg`). But the URL fix alone should resolve the 400 error.
-
-### Redeploy
-
-Redeploy `generate-policy-infographic` after the fix.
+This gives the function a 120-second timeout instead of the default ~60s.
 
 ### Files changed
-1. `supabase/functions/generate-policy-infographic/index.ts` — fix logo URL (1 line)
+1. `src/lib/api.ts` — `generatePolicyInfographic` uses `longRunningInvoke` (5 lines changed)
 
