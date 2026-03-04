@@ -457,6 +457,7 @@ Vibe: Clean, academic, highly organized, and modern.`;
         model_step1: "openai/gpt-5.2",
         model_step2: "google/gemini-3-pro-image-preview",
         pdf_included: false,
+        modules_used: { M1: m1 ?? null, M2: m2 ?? null, M5: m5 ?? null },
         claims_extracted: claims,
         metrics_extracted: metrics,
         actions_extracted: { policy: policyActions, research: researchActions },
