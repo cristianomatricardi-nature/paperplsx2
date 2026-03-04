@@ -1,88 +1,62 @@
 
 
-# Structural Fix: Fire-and-Poll Pattern for Infographic Generation
+# Fix: Infographic Job Status Never Updates
 
-## Problem
+## Root Cause
 
-The edge function completes all 3 AI steps successfully but crashes during the post-processing phase (base64 decode → storage upload → response serialization). The function never returns a response to the client, causing "Failed to fetch".
+The edge function's `runPipeline` successfully:
+1. Runs Step 0 (score: 8) 
+2. Runs Step 1 (script generated)
+3. Runs Step 2 (image generated + uploaded)
 
-Root causes:
-- Byte-by-byte base64 decoding of a multi-MB image hits the edge runtime's 2s CPU time limit
-- If storage upload fails, the fallback embeds the entire base64 image in the JSON response (5-10MB+)
-- The debug payload includes full module content and prompts, bloating the response
+But the final `supabase.from("infographic_jobs").update({...}).eq("id", jobId)` on line 392 **silently fails** -- the `{ error }` return is never checked or logged. The row stays `processing` forever.
 
-## Solution: Fire-and-Poll with Background Processing
+The likely cause: the `debug` JSONB payload contains problematic content (e.g., the `image_prompt` has multi-line strings with special characters, or the `script_result` has nested objects that exceed JSONB limits). The update fails, returns an error object, but no one reads it.
 
-### Database: New `infographic_jobs` table
+## Fix
 
-```sql
-create table public.infographic_jobs (
-  id uuid primary key default gen_random_uuid(),
-  paper_id bigint not null,
-  sub_persona_id text not null,
-  status text not null default 'processing', -- processing, complete, failed, not_relevant
-  image_url text,
-  policy_relevance_score integer,
-  reason text,
-  debug jsonb,
-  error text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-alter table public.infographic_jobs enable row level security;
-create policy "Users can read own jobs" on public.infographic_jobs for select to authenticated using (true);
-create policy "Service can manage jobs" on public.infographic_jobs for all to service_role using (true);
-```
+### `supabase/functions/generate-policy-infographic/index.ts`
 
-### Edge Function Changes (`generate-policy-infographic/index.ts`)
+Two changes:
 
-1. **Return immediately** with a job ID after creating the job record
-2. **Use `EdgeRuntime.waitUntil()`** to run the pipeline in background
-3. **Store results in `infographic_jobs`** instead of returning them in the response
-4. **Fix base64 decode**: Use efficient chunk-based approach instead of byte-by-byte loop
-5. **Never fall back to inline base64** — if upload fails, store an error
-6. **Strip debug payload**: Only store essential debug info, not full module content
+1. **Add error checking and logging** to both update calls (the "complete" update on line 392 and the "not_relevant" update on line 210).
+
+2. **Separate the update into two calls**: first update `status`/`image_url`/`policy_relevance_score` (critical data), then try to add `debug` separately. If the debug update fails, log it but don't crash — the job still completes.
 
 ```typescript
-// Return immediately
-return new Response(JSON.stringify({ job_id: job.id }), { headers: corsHeaders });
+// Line 392-408: Replace with:
+const { error: updateError } = await supabase.from("infographic_jobs").update({
+  status: "complete",
+  image_url: storedUrl,
+  policy_relevance_score: policyScore,
+}).eq("id", jobId);
 
-// Background work via waitUntil
-EdgeRuntime.waitUntil(async () => {
-  // ... run steps 0, 1, 2 ...
-  // ... upload to storage ...
-  await supabase.from("infographic_jobs").update({
-    status: "complete", image_url: storedUrl, debug: minimalDebug
-  }).eq("id", job.id);
-});
-```
-
-### Frontend Changes
-
-**`src/lib/api.ts`** — New polling function:
-```typescript
-export async function generatePolicyInfographic(...) {
-  // Start the job (fast, returns job_id)
-  const { job_id } = await supabase.functions.invoke('generate-policy-infographic', { body: ... });
-  // Poll for completion
-  return pollInfographicJob(job_id);
+if (updateError) {
+  console.error("[generate-policy-infographic] CRITICAL: job update failed:", updateError);
+  throw new Error(`Job update failed: ${updateError.message}`);
 }
+console.log("[generate-policy-infographic] Job marked complete");
 
-async function pollInfographicJob(jobId: string): Promise<any> {
-  const { data } = await supabase.from('infographic_jobs')
-    .select('*').eq('id', jobId).single();
-  if (data.status === 'complete' || data.status === 'not_relevant') return data;
-  if (data.status === 'failed') throw new Error(data.error);
-  await new Promise(r => setTimeout(r, 3000));
-  return pollInfographicJob(jobId);
+// Best-effort debug update (non-critical)
+try {
+  const debugPayload = JSON.parse(JSON.stringify({
+    step0_result: step0Result,
+    script_sections: Object.keys(script || {}),
+    persona: subPersonaId,
+    models: ["openai/gpt-5", "openai/gpt-5.2", "google/gemini-3-pro-image-preview"],
+    claims_count: claims.length,
+    metrics_count: metrics.length,
+  }));
+  await supabase.from("infographic_jobs").update({ debug: debugPayload }).eq("id", jobId);
+} catch (debugErr) {
+  console.warn("[generate-policy-infographic] Debug update failed (non-critical):", debugErr);
 }
 ```
 
-**`src/components/paper-view/views/InfographicPanel.tsx`** — Update `handleGenerate` to work with the new polling-based API. The component already has loading/error states that work well with this pattern.
+3. **Same pattern for the "not_relevant" update** (~line 210): add error checking.
+
+4. **Add a log after the catch in `EdgeRuntime.waitUntil`** to confirm error handling fires.
 
 ### Files Changed
-1. **New migration** — Create `infographic_jobs` table with RLS
-2. **`supabase/functions/generate-policy-infographic/index.ts`** — Restructure to fire-and-poll with `EdgeRuntime.waitUntil()`
-3. **`src/lib/api.ts`** — Replace direct invoke with start + poll pattern
-4. **`src/components/paper-view/views/InfographicPanel.tsx`** — Adapt to new response shape from polling
+1. `supabase/functions/generate-policy-infographic/index.ts` — Add error checking to all `.update()` calls, separate critical updates from debug payload
 
