@@ -48,7 +48,7 @@ export async function downloadPaperPDF(storagePath: string) {
   return data.signedUrl;
 }
 
-async function longRunningInvoke(functionName: string, body: Record<string, unknown>) {
+async function longRunningInvoke(functionName: string, body: Record<string, unknown>, timeoutMs = 120_000) {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
   const { data: { session } } = await supabase.auth.getSession();
   const response = await fetch(url, {
@@ -59,7 +59,7 @@ async function longRunningInvoke(functionName: string, body: Record<string, unkn
       'Authorization': `Bearer ${session?.access_token}`,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) throw new Error(`Edge function error: ${response.status}`);
   return response.json();
@@ -80,7 +80,7 @@ export async function generatePolicyInfographic(
     paper_title: paperTitle,
     infographic_spec: infographicSpec,
     sub_persona_id: subPersonaId,
-  });
+  }, 300_000);
 }
 
 export async function matchPolicyContent(
