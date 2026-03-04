@@ -151,3 +151,35 @@ export async function fetchFunderView(paperId: number, subPersonaId: string) {
 export async function fetchEducatorView(paperId: number, subPersonaId: string) {
   return longRunningInvoke('generate-educator-view', { paper_id: paperId, sub_persona_id: subPersonaId });
 }
+
+export async function generateAudioHook(paperId: number, subPersonaId: string) {
+  const { data, error } = await supabase.functions.invoke('generate-audio-hook', {
+    body: { paper_id: paperId, sub_persona_id: subPersonaId },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function pollAudioHookJob(jobId: string, maxAttempts = 60): Promise<any> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data, error } = await supabase
+      .from('audio_hook_jobs' as any)
+      .select('*')
+      .eq('id', jobId)
+      .single();
+
+    if (error) throw error;
+    if (!data) throw new Error('Job not found');
+
+    const job = data as any;
+    if (job.status === 'complete') {
+      return { status: 'complete', audio_url: job.audio_url, script: job.script, call_to_actions: job.call_to_actions };
+    }
+    if (job.status === 'failed') {
+      throw new Error(job.error || 'Audio hook generation failed');
+    }
+
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  throw new Error('Audio hook generation timed out');
+}

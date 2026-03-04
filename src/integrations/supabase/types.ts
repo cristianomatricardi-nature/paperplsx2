@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      audio_hook_jobs: {
+        Row: {
+          audio_url: string | null
+          call_to_actions: Json | null
+          created_at: string | null
+          error: string | null
+          id: string
+          paper_id: number
+          script: string | null
+          status: string
+          sub_persona_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          call_to_actions?: Json | null
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          paper_id: number
+          script?: string | null
+          status?: string
+          sub_persona_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          call_to_actions?: Json | null
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          paper_id?: number
+          script?: string | null
+          status?: string
+          sub_persona_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_hook_jobs_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chunks: {
         Row: {
           chunk_id: string
