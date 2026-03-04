@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,42 +15,42 @@ const PERSONA_AUDIO_CONFIG: Record<string, {
   phd_postdoc: {
     modules: ["M1", "M2", "M3", "M5"],
     hookFocus: "Deep methods, reproducibility, and how to build on this work",
-    ctaStyle: "Suggest: (1) reproduce a specific protocol, (2) combine with their dataset, (3) share with supervisor/PI",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Try the Replication Assistant — drag the M3 protocol cards to check if your lab can reproduce this', 'Use the AI Agent to cross-reference with your own dataset', 'Share this Paper++ link with your supervisor for feedback'",
   },
   pi_tenure: {
     modules: ["M1", "M2", "M5"],
     hookFocus: "Strategic positioning, grant opportunities, collaboration potential",
-    ctaStyle: "Suggest: (1) write a collaboration proposal, (2) use in next grant application, (3) contact corresponding author",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Use the AI Agent to draft a collaboration proposal based on this paper', 'Explore the Analytical Pipeline to map this into your grant framework', 'Check the Author Enrichment panel to find collaboration contacts'",
   },
   think_tank: {
     modules: ["M1", "M2", "M5"],
     hookFocus: "Policy evidence quality and actionable implications",
-    ctaStyle: "Suggest: (1) cite in next policy brief, (2) commission a follow-up analysis",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Download the policy infographic for your next brief', 'Use the Policy Content Matcher to align this evidence with your draft', 'Ask the AI Agent to summarize implications for your policy area'",
   },
   gov_institution: {
     modules: ["M1", "M5"],
     hookFocus: "Decision-ready bottom line and scale of impact",
-    ctaStyle: "Suggest: (1) brief your minister/director, (2) request a departmental review",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Use the Confidence Scorecard to assess evidence strength', 'Export the executive summary for your briefing', 'Ask the AI Agent to contextualize this for your department'",
   },
   funder_governmental: {
     modules: ["M1", "M2", "M5"],
     hookFocus: "ROI, portfolio fit, and accountability metrics",
-    ctaStyle: "Suggest: (1) flag for next funding round, (2) compare against portfolio benchmarks",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Open the Funder Dashboard to compare against your portfolio', 'Use the AI Agent to run an impact assessment', 'Flag this paper for your next funding round review'",
   },
   funder_private: {
     modules: ["M1", "M2", "M5"],
     hookFocus: "Mission alignment, scalability potential, and impact-per-dollar",
-    ctaStyle: "Suggest: (1) add to pipeline review, (2) commission due diligence report",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Add this to your pipeline review via the Funder Dashboard', 'Use the AI Agent for a due diligence check', 'Explore the Analytical Pipeline for scalability indicators'",
   },
   industry_rd: {
     modules: ["M1", "M2", "M3"],
     hookFocus: "Commercial potential, technology readiness, and IP landscape",
-    ctaStyle: "Suggest: (1) initiate licensing discussion, (2) scout the research team for talent",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Open the Analytical Pipeline to assess technology readiness', 'Use the Replication Assistant to estimate scale-up requirements', 'Ask the AI Agent about IP and licensing considerations'",
   },
   science_educator: {
     modules: ["M2", "M3", "M6"],
     hookFocus: "Teaching hooks, student engagement, and classroom applicability",
-    ctaStyle: "Suggest: (1) design a lesson plan, (2) create a classroom demo, (3) share with department",
+    ctaStyle: "Guide them to Paper++ tools: e.g. 'Generate a lesson plan from the Educator View', 'Create a classroom demo using the Methods module', 'Use the AI Agent to simplify key concepts for your students'",
   },
 };
 
@@ -60,16 +59,15 @@ const PERSONA_TONE: Record<string, {
   jargonLevel: string;
   languageStyle: string;
   depthPreference: string;
-  numberPolicy: string;
 }> = {
-  phd_postdoc: { jargonLevel: "define_all", languageStyle: "Clear, educational, encouraging", depthPreference: "exhaustive", numberPolicy: "explained_raw" },
-  pi_tenure: { jargonLevel: "assume_domain", languageStyle: "Expert-level, concise, strategic", depthPreference: "exhaustive", numberPolicy: "all_raw" },
-  think_tank: { jargonLevel: "no_jargon", languageStyle: "Analytical but accessible, policy-oriented", depthPreference: "balanced", numberPolicy: "inferred_only" },
-  gov_institution: { jargonLevel: "no_jargon", languageStyle: "Jargon-free, executive-summary style", depthPreference: "executive", numberPolicy: "decision_ready" },
-  funder_governmental: { jargonLevel: "no_jargon", languageStyle: "Formal, accountability-oriented", depthPreference: "balanced", numberPolicy: "decision_ready" },
-  funder_private: { jargonLevel: "no_jargon", languageStyle: "Strategic, mission-driven", depthPreference: "balanced", numberPolicy: "inferred_only" },
-  industry_rd: { jargonLevel: "business_terms", languageStyle: "Business-oriented, ROI-focused", depthPreference: "balanced", numberPolicy: "inferred_only" },
-  science_educator: { jargonLevel: "define_all", languageStyle: "Engaging, pedagogical, enthusiastic", depthPreference: "balanced", numberPolicy: "narrative_only" },
+  phd_postdoc: { jargonLevel: "define_all", languageStyle: "Clear, encouraging, like a knowledgeable colleague", depthPreference: "exhaustive" },
+  pi_tenure: { jargonLevel: "assume_domain", languageStyle: "Expert-level, strategic, concise", depthPreference: "exhaustive" },
+  think_tank: { jargonLevel: "no_jargon", languageStyle: "Analytical but conversational, policy-oriented", depthPreference: "balanced" },
+  gov_institution: { jargonLevel: "no_jargon", languageStyle: "Jargon-free, direct, executive tone", depthPreference: "executive" },
+  funder_governmental: { jargonLevel: "no_jargon", languageStyle: "Formal but warm, accountability-oriented", depthPreference: "balanced" },
+  funder_private: { jargonLevel: "no_jargon", languageStyle: "Strategic, mission-driven, persuasive", depthPreference: "balanced" },
+  industry_rd: { jargonLevel: "business_terms", languageStyle: "Business-oriented, pragmatic", depthPreference: "balanced" },
+  science_educator: { jargonLevel: "define_all", languageStyle: "Engaging, pedagogical, enthusiastic", depthPreference: "balanced" },
 };
 
 // ── Helpers ──
@@ -156,9 +154,6 @@ async function runPipeline(
     .join("\n\n");
 
   // ═══ STEP 1 — Script Generation (OpenAI GPT-5) ═══
-  const wordLimit = tone.depthPreference === "exhaustive" ? "80-100" :
-                    tone.depthPreference === "executive" ? "40-60" : "60-80";
-
   const scriptPrompt = `You are creating a spoken audio hook for a scientific paper. This will be read aloud as a ~30-second audio clip.
 
 PAPER TITLE: ${paperTitle}
@@ -167,7 +162,6 @@ PERSONA: ${subPersonaId}
 - Jargon level: ${tone.jargonLevel}
 - Language style: ${tone.languageStyle}
 - Depth: ${tone.depthPreference}
-- Number policy: ${tone.numberPolicy}
 
 HOOK FOCUS: ${config.hookFocus}
 CTA STYLE: ${config.ctaStyle}
@@ -175,22 +169,28 @@ CTA STYLE: ${config.ctaStyle}
 MODULE DATA:
 ${moduleContext}
 
-PURPOSE: Generate a concise, actionable brief that frames the work's importance and value for this specific reader. The hook should make them want to explore the full Paper++ analysis.
+PURPOSE: Generate a concise audio brief structured in 4 sections. You're a knowledgeable assistant — sound like a colleague giving advice, not reading a report.
 
-RULES:
-- The hook_script must be ${wordLimit} words — this maps to ~30 seconds of speech
-- Write in second person ("you") to directly address the reader
-- The tone must match the persona's language style exactly
-- End the hook with a natural transition to the CTAs
-- CTAs must be specific and actionable (not generic)
-- The spoken_text combines hook + CTAs into a natural flowing script for TTS`;
+STRUCTURE — Generate exactly 4 sections:
+1. "what" — What did this paper find? (1-2 sentences, lead with the claim, mention at most 1 key number only if it strengthens the point)
+2. "why" — Why does it matter for YOU specifically? (1-2 sentences, connect to the persona's work/goals)
+3. "how" — How did they do it? (1 sentence, method in plain language)
+4. "what_can_i_do" — What can you do next? (1-2 sentences, guide to specific Paper++ tools)
 
-  console.log("[generate-audio-hook] Step 1 — generating script for", subPersonaId);
+TONE RULES:
+- Be conversational and persuasive, like a smart colleague
+- Minimal numbers — at most 1-2 across the whole script, only when they make the claim more convincing
+- Focus on the significance and what it means for the listener
+- No bullet points or formatting — pure spoken prose
+- Each section flows naturally into the next
+- Total across all 4 sections: 60-75 words maximum`;
+
+  console.log("[generate-audio-hook] Step 1 — generating structured script for", subPersonaId);
 
   const scriptData = await callAI(lovableApiKey, "openai/gpt-5", [
     {
       role: "system",
-      content: `You write compelling, persona-specific spoken audio hooks for scientific papers. Your output will be converted to speech. Write naturally — avoid bullet markers, special characters, or formatting. Use conversational connectors between ideas.`,
+      content: `You write compelling, persona-specific spoken audio hooks for scientific papers. Your output will be converted to speech. Write naturally — no bullets, no special characters. Sound like a knowledgeable colleague giving practical advice.`,
     },
     { role: "user", content: scriptPrompt },
   ], {
@@ -198,27 +198,33 @@ RULES:
       type: "function",
       function: {
         name: "create_audio_hook",
-        description: "Return the spoken hook script and call-to-action bullets",
+        description: "Return the structured spoken hook sections and call-to-action bullets",
         parameters: {
           type: "object",
           properties: {
-            hook_script: {
-              type: "string",
-              description: "The main hook narrative (60-100 words). Written for spoken delivery.",
+            sections: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string", enum: ["what", "why", "how", "what_can_i_do"] },
+                  text: { type: "string", description: "The spoken text for this section" },
+                },
+                required: ["id", "text"],
+              },
+              minItems: 4,
+              maxItems: 4,
+              description: "Exactly 4 sections in order: what, why, how, what_can_i_do",
             },
             call_to_actions: {
               type: "array",
               items: { type: "string" },
-              description: "2-3 specific, actionable next steps for this persona",
+              description: "2-3 specific, actionable next steps guiding to Paper++ tools",
               minItems: 2,
               maxItems: 3,
             },
-            spoken_text: {
-              type: "string",
-              description: "The complete text to be spoken aloud: hook + natural CTA transition. Should flow as one continuous spoken piece (~30 seconds).",
-            },
           },
-          required: ["hook_script", "call_to_actions", "spoken_text"],
+          required: ["sections", "call_to_actions"],
           additionalProperties: false,
         },
       },
@@ -227,22 +233,24 @@ RULES:
   });
 
   const scriptResult = extractToolArgs(scriptData);
-  if (!scriptResult) throw new Error("Step 1 failed: no structured script output");
+  if (!scriptResult?.sections?.length) throw new Error("Step 1 failed: no structured script output");
 
-  console.log("[generate-audio-hook] Step 1 complete — spoken_text length:", scriptResult.spoken_text?.length);
+  // Concatenate sections into full spoken text
+  const spokenText = scriptResult.sections.map((s: any) => s.text).join(" ");
+  console.log("[generate-audio-hook] Step 1 complete — spoken_text length:", spokenText.length, "words:", spokenText.split(/\s+/).length);
 
   // Update job with script (intermediate state)
   await supabase.from("audio_hook_jobs").update({
-    script: scriptResult.spoken_text,
+    script: spokenText,
     call_to_actions: scriptResult.call_to_actions,
   }).eq("id", jobId);
 
-  // ═══ STEP 2 — TTS via ElevenLabs ═══
-  console.log("[generate-audio-hook] Step 2 — calling ElevenLabs TTS...");
+  // ═══ STEP 2 — TTS via ElevenLabs with-timestamps endpoint ═══
+  console.log("[generate-audio-hook] Step 2 — calling ElevenLabs TTS with timestamps...");
 
-  const voiceId = "JBFqnCBsd6RMkjVDRZzb"; // George — authoritative, clear
+  const voiceId = "JBFqnCBsd6RMkjVDRZzb"; // George
   const ttsResponse = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`,
     {
       method: "POST",
       headers: {
@@ -250,12 +258,12 @@ RULES:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: scriptResult.spoken_text,
+        text: spokenText,
         model_id: "eleven_multilingual_v2",
         voice_settings: {
-          stability: 0.6,
+          stability: 0.4,
           similarity_boost: 0.75,
-          style: 0.3,
+          style: 0.35,
           use_speaker_boost: true,
           speed: 1.0,
         },
@@ -269,14 +277,76 @@ RULES:
     throw new Error(`ElevenLabs TTS failed: ${ttsResponse.status}`);
   }
 
-  const audioBuffer = await ttsResponse.arrayBuffer();
-  console.log("[generate-audio-hook] Step 2 — got audio, size:", audioBuffer.byteLength);
+  const ttsResult = await ttsResponse.json();
+  // with-timestamps returns: { audio_base64, alignment: { characters, character_start_times_seconds, character_end_times_seconds } }
+  const audioBase64 = ttsResult.audio_base64;
+  const alignment = ttsResult.alignment;
 
-  // ── Upload MP3 to storage ──
+  if (!audioBase64) throw new Error("No audio_base64 in ElevenLabs response");
+
+  console.log("[generate-audio-hook] Step 2 — got audio + alignment data");
+
+  // ── Compute section boundaries from alignment ──
+  const sectionLabels: Record<string, string> = {
+    what: "What",
+    why: "Why",
+    how: "How",
+    what_can_i_do: "What can I do",
+  };
+
+  let charOffset = 0;
+  const sectionTimings: any[] = [];
+
+  for (const section of scriptResult.sections) {
+    const sectionText = section.text;
+    // Find the start position in the full spoken text
+    const startIdx = spokenText.indexOf(sectionText, charOffset);
+    const endIdx = startIdx + sectionText.length - 1;
+
+    let startMs = 0;
+    let endMs = 0;
+
+    if (alignment?.character_start_times_seconds && startIdx >= 0) {
+      // Find start time: first non-space char in range
+      for (let i = startIdx; i <= endIdx && i < alignment.character_start_times_seconds.length; i++) {
+        if (alignment.character_start_times_seconds[i] !== undefined) {
+          startMs = Math.round(alignment.character_start_times_seconds[i] * 1000);
+          break;
+        }
+      }
+      // Find end time: last char in range
+      for (let i = endIdx; i >= startIdx; i--) {
+        if (i < alignment.character_end_times_seconds.length && alignment.character_end_times_seconds[i] !== undefined) {
+          endMs = Math.round(alignment.character_end_times_seconds[i] * 1000);
+          break;
+        }
+      }
+    }
+
+    sectionTimings.push({
+      id: section.id,
+      label: sectionLabels[section.id] || section.id,
+      start_ms: startMs,
+      end_ms: endMs,
+    });
+
+    charOffset = startIdx >= 0 ? startIdx + sectionText.length : charOffset;
+  }
+
+  console.log("[generate-audio-hook] Section timings:", JSON.stringify(sectionTimings));
+
+  // ── Decode base64 and upload MP3 ──
+  // Decode base64 to Uint8Array
+  const binaryStr = atob(audioBase64);
+  const audioBytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    audioBytes[i] = binaryStr.charCodeAt(i);
+  }
+
   const fileName = `audio-hooks/${paperId}_${subPersonaId}.mp3`;
   const { error: uploadError } = await supabase.storage
     .from("paper-figures")
-    .upload(fileName, audioBuffer, {
+    .upload(fileName, audioBytes.buffer, {
       contentType: "audio/mpeg",
       upsert: true,
     });
@@ -291,10 +361,12 @@ RULES:
 
   console.log("[generate-audio-hook] Upload complete:", audioUrl);
 
-  // ── Mark job complete ──
+  // ── Mark job complete with timestamps + sections ──
   const { error: updateError } = await supabase.from("audio_hook_jobs").update({
     status: "complete",
     audio_url: audioUrl,
+    timestamps: alignment,
+    sections: sectionTimings,
   }).eq("id", jobId);
 
   if (updateError) {
@@ -334,14 +406,19 @@ Deno.serve(async (req) => {
     // Check for existing job
     const { data: existing } = await supabase
       .from("audio_hook_jobs")
-      .select("id, status, audio_url")
+      .select("id, status, audio_url, sections")
       .eq("paper_id", paper_id)
       .eq("sub_persona_id", sub_persona_id)
       .maybeSingle();
 
     if (existing) {
       if (existing.status === "complete" || existing.status === "processing") {
-        return new Response(JSON.stringify({ job_id: existing.id, status: existing.status, audio_url: existing.audio_url }), {
+        return new Response(JSON.stringify({
+          job_id: existing.id,
+          status: existing.status,
+          audio_url: existing.audio_url,
+          sections: existing.sections,
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -374,12 +451,10 @@ Deno.serve(async (req) => {
       }).eq("id", job.id);
     });
 
-    // Use waitUntil to keep the function alive
     // @ts-ignore - EdgeRuntime.waitUntil is available in Supabase Edge Functions
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
       EdgeRuntime.waitUntil(pipelinePromise);
     } else {
-      // Fallback: await directly (may timeout for very long pipelines)
       await pipelinePromise;
     }
 
