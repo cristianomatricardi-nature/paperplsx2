@@ -173,7 +173,7 @@ export async function pollAudioHookJob(jobId: string, maxAttempts = 60): Promise
 
     const job = data as any;
     if (job.status === 'complete') {
-      return { status: 'complete', audio_url: job.audio_url, script: job.script, call_to_actions: job.call_to_actions };
+      return { status: 'complete', audio_url: job.audio_url, script: job.script, call_to_actions: job.call_to_actions, sections: job.sections, timestamps: job.timestamps };
     }
     if (job.status === 'failed') {
       throw new Error(job.error || 'Audio hook generation failed');

@@ -1,14 +1,15 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { fetchSummary, generateAudioHook, pollAudioHookJob } from '@/lib/api';
-import { SUB_PERSONA_REGISTRY } from '@/types/modules';
 import type { SubPersonaId } from '@/types/modules';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { AlertCircle, Volume2, Loader2, Pause, Play } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import PersonaSelector from './PersonaSelector';
+import AudioPlayerBar from './AudioPlayerBar';
+import SectionProgressStrip from './SectionProgressStrip';
+import type { AudioSection } from './SectionProgressStrip';
 import type { PolicyViewPayload } from '@/hooks/usePolicyView';
 
 interface SummaryContent {
@@ -18,6 +19,12 @@ interface SummaryContent {
 }
 
 type AudioState = 'idle' | 'generating' | 'ready' | 'playing';
+
+interface AudioCacheEntry {
+  url: string;
+  sections?: AudioSection[];
+  timestamps?: any;
+}
 
 interface PersonalizedSummaryCardProps {
   paperId: number;
@@ -36,16 +43,21 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
 
   // Audio state
   const [audioState, setAudioState] = useState<AudioState>('idle');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [sections, setSections] = useState<AudioSection[]>([]);
+  const [timestamps, setTimestamps] = useState<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCacheRef = useRef<Record<string, string>>({}); // subPersonaId -> audio_url
+  const audioCacheRef = useRef<Record<string, AudioCacheEntry>>({});
+  const rafRef = useRef<number>(0);
 
+  // ── Summary loading ──
   const loadSummary = useCallback(async () => {
     if (cacheRef.current[subPersonaId]) {
       setContent(cacheRef.current[subPersonaId]);
       setError(false);
       return;
     }
-
     setLoading(true);
     setError(false);
     try {
@@ -61,24 +73,45 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
     }
   }, [paperId, subPersonaId]);
 
-  useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
 
-  // Reset audio state when persona changes
+  // ── Audio time tracking via RAF ──
+  const startTimeTracking = useCallback(() => {
+    const tick = () => {
+      if (audioRef.current) {
+        setCurrentTime(audioRef.current.currentTime);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const stopTimeTracking = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  // Reset audio on persona change
   useEffect(() => {
+    stopTimeTracking();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-    if (audioCacheRef.current[subPersonaId]) {
+    setCurrentTime(0);
+    setDuration(0);
+    const cached = audioCacheRef.current[subPersonaId];
+    if (cached) {
       setAudioState('ready');
+      setSections(cached.sections || []);
+      setTimestamps(cached.timestamps || null);
     } else {
       setAudioState('idle');
+      setSections([]);
+      setTimestamps(null);
     }
-  }, [subPersonaId]);
+  }, [subPersonaId, stopTimeTracking]);
 
-  // Auto-trigger audio generation when summary loads
+  // Auto-trigger audio generation
   useEffect(() => {
     if (content && !audioCacheRef.current[subPersonaId] && audioState === 'idle') {
       triggerAudioGeneration();
@@ -94,14 +127,20 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
     try {
       const result = await generateAudioHook(paperId, subPersonaId);
       if (result.status === 'complete' && result.audio_url) {
-        audioCacheRef.current[subPersonaId] = result.audio_url;
+        const entry: AudioCacheEntry = { url: result.audio_url, sections: result.sections, timestamps: result.timestamps };
+        audioCacheRef.current[subPersonaId] = entry;
+        setSections(entry.sections || []);
+        setTimestamps(entry.timestamps || null);
         setAudioState('ready');
         return;
       }
       if (result.job_id) {
         const completed = await pollAudioHookJob(result.job_id);
         if (completed.audio_url) {
-          audioCacheRef.current[subPersonaId] = completed.audio_url;
+          const entry: AudioCacheEntry = { url: completed.audio_url, sections: completed.sections, timestamps: completed.timestamps };
+          audioCacheRef.current[subPersonaId] = entry;
+          setSections(entry.sections || []);
+          setTimestamps(entry.timestamps || null);
           setAudioState('ready');
         } else {
           setAudioState('idle');
@@ -114,32 +153,49 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
   }, [paperId, subPersonaId]);
 
   const handlePlayPause = useCallback(() => {
-    const url = audioCacheRef.current[subPersonaId];
-    if (!url) return;
+    const cached = audioCacheRef.current[subPersonaId];
+    if (!cached?.url) return;
 
     if (audioState === 'playing' && audioRef.current) {
       audioRef.current.pause();
+      stopTimeTracking();
       setAudioState('ready');
       return;
     }
 
-    if (!audioRef.current || audioRef.current.src !== url) {
-      audioRef.current = new Audio(url);
-      audioRef.current.onended = () => setAudioState('ready');
-      audioRef.current.onerror = () => setAudioState('ready');
+    if (!audioRef.current || audioRef.current.src !== cached.url) {
+      audioRef.current = new Audio(cached.url);
+      audioRef.current.onended = () => {
+        stopTimeTracking();
+        setAudioState('ready');
+      };
+      audioRef.current.onerror = () => {
+        stopTimeTracking();
+        setAudioState('ready');
+      };
+      audioRef.current.onloadedmetadata = () => {
+        if (audioRef.current) setDuration(audioRef.current.duration);
+      };
     }
 
     audioRef.current.play();
+    startTimeTracking();
     setAudioState('playing');
-  }, [audioState, subPersonaId]);
+  }, [audioState, subPersonaId, startTimeTracking, stopTimeTracking]);
 
+  const handleSeek = useCallback((time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  }, []);
+
+  // ── Render helpers ──
   const renderWithPageRefs = (text: string) => {
     const parts = text.split(/(\(p\.\s*\d+(?:\s*[-–,]\s*\d+)*\))/g);
     return parts.map((part, i) =>
       /^\(p\./.test(part) ? (
-        <span key={i} className="text-primary font-medium cursor-pointer hover:underline">
-          {part}
-        </span>
+        <span key={i} className="text-primary font-medium cursor-pointer hover:underline">{part}</span>
       ) : (
         <span key={i}>{part}</span>
       ),
@@ -158,46 +214,16 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
                area.toLowerCase().includes(ctx.context.toLowerCase().split(' ')[0])
     );
 
-  const renderAudioButton = () => {
-    if (audioState === 'generating') {
-      return (
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" disabled>
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </Button>
-      );
-    }
-    if (audioState === 'ready') {
-      return (
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handlePlayPause} title="Play audio summary">
-          <Play className="h-4 w-4 text-primary" />
-        </Button>
-      );
-    }
-    if (audioState === 'playing') {
-      return (
-        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handlePlayPause} title="Pause audio">
-          <Pause className="h-4 w-4 text-primary" />
-        </Button>
-      );
-    }
-    // idle — show muted icon (will auto-trigger)
-    return (
-      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-40" disabled title="Audio generating...">
-        <Volume2 className="h-4 w-4" />
-      </Button>
-    );
-  };
+  const showPlayer = audioState === 'ready' || audioState === 'playing';
+  const showGenerating = audioState === 'generating';
 
   return (
     <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm rounded-xl">
       {/* Header row */}
       <div className="flex items-center justify-between p-5 pb-3">
-        <div className="flex items-center gap-2">
-          <h2 className="font-sans text-xl font-semibold text-foreground">
-            Personalized Summary
-          </h2>
-          {renderAudioButton()}
-        </div>
+        <h2 className="font-sans text-xl font-semibold text-foreground">
+          Personalized Summary
+        </h2>
         <PersonaSelector value={subPersonaId} onChange={onPersonaChange} allowedPersonas={allowedPersonas} />
       </div>
 
@@ -224,6 +250,34 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
               {renderWithPageRefs(getNarrative(content))}
             </p>
 
+            {/* Audio Player */}
+            {showGenerating && (
+              <div className="mt-4 space-y-1.5">
+                <Skeleton className="h-10 w-full rounded-lg" />
+                <Skeleton className="h-4 w-full rounded" />
+              </div>
+            )}
+
+            {showPlayer && (
+              <div className="mt-4">
+                <AudioPlayerBar
+                  audioState={audioState}
+                  currentTime={currentTime}
+                  duration={duration}
+                  timestamps={timestamps}
+                  onPlayPause={handlePlayPause}
+                  onSeek={handleSeek}
+                />
+                {sections.length > 0 && (
+                  <SectionProgressStrip
+                    sections={sections}
+                    currentTime={currentTime}
+                    onSeek={handleSeek}
+                  />
+                )}
+              </div>
+            )}
+
             {/* Policy tags badges */}
             {policyTags && policyTags.policy_areas.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t border-border/40">
@@ -237,10 +291,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
                       <Popover key={area} open={openTag === area} onOpenChange={(o) => setOpenTag(o ? area : null)}>
                         <PopoverTrigger asChild>
                           <button>
-                            <Badge
-                              variant="secondary"
-                              className="cursor-pointer font-sans text-xs hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
-                            >
+                            <Badge variant="secondary" className="cursor-pointer font-sans text-xs hover:bg-primary hover:text-primary-foreground transition-colors capitalize">
                               {area}
                             </Badge>
                           </button>

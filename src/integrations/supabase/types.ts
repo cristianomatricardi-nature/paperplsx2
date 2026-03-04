@@ -23,8 +23,10 @@ export type Database = {
           id: string
           paper_id: number
           script: string | null
+          sections: Json | null
           status: string
           sub_persona_id: string
+          timestamps: Json | null
         }
         Insert: {
           audio_url?: string | null
@@ -34,8 +36,10 @@ export type Database = {
           id?: string
           paper_id: number
           script?: string | null
+          sections?: Json | null
           status?: string
           sub_persona_id: string
+          timestamps?: Json | null
         }
         Update: {
           audio_url?: string | null
@@ -45,8 +49,10 @@ export type Database = {
           id?: string
           paper_id?: number
           script?: string | null
+          sections?: Json | null
           status?: string
           sub_persona_id?: string
+          timestamps?: Json | null
         }
         Relationships: [
           {
