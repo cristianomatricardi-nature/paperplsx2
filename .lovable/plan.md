@@ -1,42 +1,69 @@
 
 
-# Reduce Text in Policy Infographic
+# Fix Debug Data in Three-Step Pipeline Debug Dialog
 
-## Where to act
+## Problem
 
-**Both Step 1 and Step 2** — they work together:
+The debug dialog in `InfographicPanel.tsx` expects rich data (`script_result`, `persona_variables`, `image_prompt`, `modules_used`, `claims_extracted`, etc.), but the edge function (line 422-433) only saves a minimal debug payload:
 
-- **Step 1 (Script Generation)** controls *what text is produced*. Currently it generates long-form fields: `header`, `evidence_landscape`, `key_findings` (with verbose `value` strings), `recommendations`, `key_takeaway`, `source_citation`, and `disclaimer`. The system prompt says "be concise" but doesn't enforce hard limits.
+```json
+{
+  "step0_result": {...},
+  "script_sections": ["header", "evidence_landscape", ...],  // just keys, not values!
+  "persona": "think_tank",
+  "models": [...],
+  "claims_count": 4,
+  "metrics_count": 3
+}
+```
 
-- **Step 2 (Image Prompt)** controls *how text is rendered visually*. Currently it asks the image model to render all that text verbatim — header, context bar, findings, recommendations, footer, disclaimer — resulting in a text-heavy image.
+The actual script, persona variables, image prompt, and module data are all discarded.
 
-**Step 0 is irrelevant** — it only gates relevance (score 1-10), no text generation.
+## Root Cause
 
-## Changes
+The debug payload was intentionally stripped down in a previous fix to prevent the JSONB update from failing. But it was stripped too aggressively — removing the data you actually need to debug.
 
-### Step 1 — Constrain the script schema and prompt
+## Solution
 
-1. **Add strict character limits** in the system prompt:
-   - Header: ≤10 words
-   - Evidence landscape: ≤15 words (one-liner context)
-   - Key findings: max 3 items, each `label` ≤4 words, `value` ≤6 words (numbers preferred)
-   - Recommendations: max 2, each ≤8 words
-   - Key takeaway: ≤12 words
-   - Source citation: ≤15 words
-   - Remove `disclaimer` entirely from the schema (or make it ≤10 words)
+Expand the debug payload in the edge function to include the three things you requested, while keeping it safe from the previous JSONB crash by writing it in a separate best-effort update (already in place):
 
-2. **Update the system prompt** to emphasize: "Policy makers scan, not read. Maximize numbers and icons. Minimize prose. Every field must be scannable in under 2 seconds."
+### Edge Function (`generate-policy-infographic/index.ts`)
 
-### Step 2 — Shift the image prompt toward visual elements
+Update the debug payload (line 422-433) to include:
 
-1. **Rewrite the image prompt** to emphasize:
-   - Large data-viz elements (big numbers, progress bars, icon grids)
-   - Minimal text labels — short phrases only
-   - 60% visual / 40% text ratio
-   - Remove the "Context Bar" as a text block — fold into a subtle subtitle
-   - Render findings as icon + number pairs, not sentences
-   - Recommendations as icon bullets, not full sentences
+1. **Script tab**: Store the full `script` object (the structured JSON from Step 1 — header, key_findings, recommendations, etc.)
+2. **Persona tab**: Store the `personaVars` object (contentGoal, statisticsDisplay, jargonLevel, etc.)
+3. **Modules tab**: Store summaries of M1, M2, M5 module content, plus the extracted claims, metrics, and actions arrays
+4. **Also include**: `step0_input`, `script_prompt` (the Step 1 prompt text), and `image_prompt`
 
-### Files changed
-1. `supabase/functions/generate-policy-infographic/index.ts` — Update Step 1 system prompt with word limits + scan-first instructions; update Step 2 image prompt to prioritize visuals over text
+To avoid the JSONB size issue that caused previous failures, truncate module content to first 2000 chars each.
+
+```typescript
+const debugPayload = {
+  step0_input: step0Input,
+  step0_result: step0Result,
+  model_step0: "openai/gpt-5",
+  script_prompt: step1Prompt.slice(0, 3000),
+  script_result: script,
+  model_step1: "openai/gpt-5.2",
+  image_prompt: imagePrompt.slice(0, 3000),
+  model_step2: "google/gemini-3-pro-image-preview",
+  persona_variables: personaVars,
+  modules_used: {
+    M1: JSON.stringify(m1 ?? null).slice(0, 2000),
+    M2: JSON.stringify(m2 ?? null).slice(0, 2000),
+    M5: JSON.stringify(m5 ?? null).slice(0, 2000),
+  },
+  claims_extracted: claims,
+  metrics_extracted: metrics,
+  actions_extracted: { policy: policyActions, research: researchActions },
+};
+```
+
+### Frontend — No structural changes needed
+
+The `InfographicPanel.tsx` debug tabs already render all these fields correctly. Once the edge function stores the full debug payload, the Script, Persona, and Modules tabs will populate automatically.
+
+### Files Changed
+1. `supabase/functions/generate-policy-infographic/index.ts` — Expand the debug payload to include full script result, persona variables, module data, and prompts (with size truncation for safety)
 
