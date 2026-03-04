@@ -420,12 +420,23 @@ Vibe: Dashboard-like, scannable in 5 seconds, executive-ready.`;
   // Best-effort debug update (non-critical)
   try {
     const debugPayload = JSON.parse(JSON.stringify({
+      step0_input: step0Input,
       step0_result: step0Result,
-      script_sections: Object.keys(script || {}),
-      persona: subPersonaId,
-      models: ["openai/gpt-5", "openai/gpt-5.2", "google/gemini-3-pro-image-preview"],
-      claims_count: claims.length,
-      metrics_count: metrics.length,
+      model_step0: "openai/gpt-5",
+      script_prompt: step1Prompt.slice(0, 3000),
+      script_result: script,
+      model_step1: "openai/gpt-5.2",
+      image_prompt: imagePrompt.slice(0, 3000),
+      model_step2: "google/gemini-3-pro-image-preview",
+      persona_variables: personaVars,
+      modules_used: {
+        M1: JSON.stringify(m1 ?? null).slice(0, 2000),
+        M2: JSON.stringify(m2 ?? null).slice(0, 2000),
+        M5: JSON.stringify(m5 ?? null).slice(0, 2000),
+      },
+      claims_extracted: claims,
+      metrics_extracted: metrics,
+      actions_extracted: { policy: policyActions, research: researchActions },
     }));
     await supabase.from("infographic_jobs").update({ debug: debugPayload }).eq("id", jobId);
   } catch (debugErr) {
