@@ -149,29 +149,6 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
                     </Badge>
                   );
                 })}
-
-                {policyTags.suggested_policy_contexts.map((ctx) => (
-                  <Popover
-                    key={ctx.context}
-                    open={openTag === ctx.context}
-                    onOpenChange={(o) => setOpenTag(o ? ctx.context : null)}
-                  >
-                    <PopoverTrigger asChild>
-                      <button>
-                        <Badge
-                          variant="outline"
-                          className="cursor-pointer font-sans text-xs border-primary/40 text-primary hover:bg-primary/10 transition-colors"
-                        >
-                          {ctx.context} →
-                        </Badge>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-3" align="start">
-                      <p className="text-xs font-semibold font-sans text-foreground mb-1">{ctx.context}</p>
-                      <p className="text-xs text-muted-foreground font-sans leading-relaxed">{ctx.relevance}</p>
-                    </PopoverContent>
-                  </Popover>
-                ))}
               </div>
             )}
 
