@@ -358,55 +358,68 @@ logo — use it as-is.
 
 Vibe: Clean, academic, highly organized, and modern.`;
 
-    // Build content parts
+    // Fetch SN logo as base64 to avoid external URL issues
+    let logoBase64: string | null = null;
+    try {
+      const logoRes = await fetch(SN_LOGO_URL);
+      if (logoRes.ok) {
+        const logoBuf = await logoRes.arrayBuffer();
+        const logoBytes = new Uint8Array(logoBuf);
+        const CHUNK_SIZE = 8192;
+        let binary = "";
+        for (let i = 0; i < logoBytes.length; i += CHUNK_SIZE) {
+          const chunk = logoBytes.subarray(i, i + CHUNK_SIZE);
+          binary += String.fromCharCode.apply(null, Array.from(chunk));
+        }
+        logoBase64 = `data:image/jpeg;base64,${btoa(binary)}`;
+      }
+    } catch (e) {
+      console.warn("[generate-policy-infographic] Logo fetch failed:", e);
+    }
+
+    // Build content parts with inline base64 logo
     const contentParts: any[] = [
       { type: "text", text: imagePrompt },
-      { type: "image_url", image_url: { url: SN_LOGO_URL } },
     ];
-
-    // Optional: PDF page 1 as visual context
-    let pdfIncluded = false;
-    try {
-      const { data: paper } = await supabase
-        .from("papers")
-        .select("storage_path")
-        .eq("id", paperId)
-        .single();
-
-      if (paper?.storage_path) {
-        const { data: fileData } = await supabase.storage
-          .from("research-papers")
-          .download(paper.storage_path);
-
-        if (fileData) {
-          const arrayBuf = await fileData.arrayBuffer();
-          const { getDocument } = await import("npm:pdfjs-serverless@0.5.1");
-          const pdf = await getDocument(new Uint8Array(arrayBuf));
-          const page = await pdf.getPage(1);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-          const ctx = canvas.getContext("2d")!;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          const blob = await canvas.convertToBlob({ type: "image/png" });
-          const buf = await blob.arrayBuffer();
-          const pdfBase64 = `data:image/png;base64,${btoa(String.fromCharCode(...new Uint8Array(buf)))}`;
-          contentParts.push({ type: "image_url", image_url: { url: pdfBase64 } });
-          pdfIncluded = true;
-        }
-      }
-    } catch (pdfErr) {
-      console.warn("[generate-policy-infographic] PDF rendering skipped:", pdfErr);
+    if (logoBase64) {
+      contentParts.push({ type: "image_url", image_url: { url: logoBase64 } });
     }
+
+    console.log("[generate-policy-infographic] Step 2 — calling image model...");
 
     const step2Data = await callAI(lovableApiKey, "google/gemini-3-pro-image-preview", [
       { role: "user", content: contentParts },
-    ], { modalities: ["image", "text"] });
+    ], {});
 
-    const imageData = step2Data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    console.log("[generate-policy-infographic] Step 2 — response keys:",
+      JSON.stringify(Object.keys(step2Data?.choices?.[0]?.message ?? {})));
+
+    // Parse image from response — try multiple formats
+    let imageData: string | null = null;
+    const msg = step2Data.choices?.[0]?.message;
+    // Format 1: .images array
+    imageData = msg?.images?.[0]?.image_url?.url ?? msg?.images?.[0]?.url;
+    // Format 2: .content array with image parts
+    if (!imageData && Array.isArray(msg?.content)) {
+      const imgPart = msg.content.find((p: any) =>
+        p.type === "image_url" || p.type === "image"
+      );
+      imageData = imgPart?.image_url?.url ?? imgPart?.image?.url ?? imgPart?.url;
+    }
+    // Format 3: inline_data
+    if (!imageData && Array.isArray(msg?.content)) {
+      const inlinePart = msg.content.find((p: any) => p.inline_data);
+      if (inlinePart?.inline_data) {
+        imageData = `data:${inlinePart.inline_data.mime_type};base64,${inlinePart.inline_data.data}`;
+      }
+    }
+
     if (!imageData) {
       console.error("[generate-policy-infographic] No image in response:", JSON.stringify(step2Data).slice(0, 500));
       throw new Error("No image returned from AI model");
     }
+
+    console.log("[generate-policy-infographic] Step 2 — finished, image obtained.");
 
     // ── Upload to storage ──
     const base64Content = imageData.replace(/^data:image\/\w+;base64,/, "");
@@ -443,8 +456,7 @@ Vibe: Clean, academic, highly organized, and modern.`;
         model_step0: "openai/gpt-5",
         model_step1: "openai/gpt-5.2",
         model_step2: "google/gemini-3-pro-image-preview",
-        modules_used: { M1: m1 ?? null, M2: m2 ?? null, M5: m5 ?? null },
-        pdf_included: pdfIncluded,
+        pdf_included: false,
         claims_extracted: claims,
         metrics_extracted: metrics,
         actions_extracted: { policy: policyActions, research: researchActions },
