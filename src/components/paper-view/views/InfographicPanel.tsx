@@ -322,7 +322,7 @@ const InfographicPanel = ({ paperId, paperTitle, infographicSpec, subPersonaId }
                 {(['M1', 'M2', 'M5'] as const).map((key) => (
                   <div key={key} className="mb-4">
                     <p className="text-xs font-sans font-semibold text-primary mb-1">{key}</p>
-                    {debugData?.modules_used[key] ? (
+                    {debugData?.modules_used?.[key] ? (
                       <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 bg-muted/50 rounded p-2">
                         {JSON.stringify(debugData.modules_used[key], null, 2)}
                       </pre>
