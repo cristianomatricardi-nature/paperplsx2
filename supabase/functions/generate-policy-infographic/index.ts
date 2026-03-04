@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SN_LOGO_URL =
-  "https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures//SN_logo_RGB (2).jpg";
+  "https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures/SN_logo_RGB%20(2).jpg";
 
 // ── Sub-persona variable registry (policy-relevant subset) ──
 const PERSONA_VARIABLES: Record<string, {
