@@ -1,33 +1,40 @@
 
 
-# Fix: Add `policy_view` to Cache Content Type Constraint
+# Fix: Client-Side Timeout for Policy View
 
-## Problem
+## Root Cause
 
-The `generated_content_cache` table has a check constraint that only allows `content_type` values of `'module'` or `'summary'`. The `generate-policy-view` function tries to insert with `content_type = 'policy_view'`, which is rejected by the constraint. This means:
+The `generate-policy-view` edge function works correctly — data is cached for paper 42 + think_tank. The "Failed to send a request" error is a **client-side timeout**: `supabase.functions.invoke()` uses the browser's default fetch timeout (~60s), and on first generation the function takes longer (it generates 3 missing modules inline + one GPT-5 call).
 
-1. Policy view content is never cached
-2. Every request triggers a full AI regeneration (slow, expensive)
-3. Repeated calls can timeout, causing the "Failed to send a request to the Edge Function" error
-
-The logs confirm this: `new row for relation "generated_content_cache" violates check constraint "generated_content_cache_content_type_check"`.
+Once cached, subsequent calls return instantly. But the first call can timeout on the client side even though the server succeeds.
 
 ## Fix
 
-### Database migration
+Replace `supabase.functions.invoke()` with raw `fetch` + `AbortSignal.timeout(120_000)` for the three long-running view functions in `src/lib/api.ts`:
 
-Update the check constraint to include `'policy_view'` (and while we're at it, any other content types that may be needed like `'educator_view'`, `'funder_view'`):
+### `src/lib/api.ts` — 3 functions updated
 
-```sql
-ALTER TABLE generated_content_cache 
-  DROP CONSTRAINT generated_content_cache_content_type_check;
-
-ALTER TABLE generated_content_cache 
-  ADD CONSTRAINT generated_content_cache_content_type_check 
-  CHECK (content_type = ANY (ARRAY['module', 'summary', 'policy_view', 'educator_view', 'funder_view']));
+```typescript
+export async function fetchPolicyView(paperId: number, subPersonaId: string) {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-policy-view`;
+  const { data: { session } } = await supabase.auth.getSession();
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify({ paper_id: paperId, sub_persona_id: subPersonaId }),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!response.ok) throw new Error(`Edge function error: ${response.status}`);
+  return response.json();
+}
 ```
 
-### No code changes needed
+Same pattern for `fetchFunderView` and `fetchEducatorView`.
 
-The edge function code is already correct — it was already fixed (temperature removed) and deploys are up to date. The only issue is the database constraint blocking caching.
+### Files changed
+1. `src/lib/api.ts` — `fetchPolicyView`, `fetchFunderView`, `fetchEducatorView` use raw fetch with 120s timeout
 
