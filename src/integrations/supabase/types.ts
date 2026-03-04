@@ -149,6 +149,56 @@ export type Database = {
           },
         ]
       }
+      infographic_jobs: {
+        Row: {
+          created_at: string
+          debug: Json | null
+          error: string | null
+          id: string
+          image_url: string | null
+          paper_id: number
+          policy_relevance_score: number | null
+          reason: string | null
+          status: string
+          sub_persona_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          debug?: Json | null
+          error?: string | null
+          id?: string
+          image_url?: string | null
+          paper_id: number
+          policy_relevance_score?: number | null
+          reason?: string | null
+          status?: string
+          sub_persona_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          debug?: Json | null
+          error?: string | null
+          id?: string
+          image_url?: string | null
+          paper_id?: number
+          policy_relevance_score?: number | null
+          reason?: string | null
+          status?: string
+          sub_persona_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "infographic_jobs_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paper_api_keys: {
         Row: {
           api_key_hash: string

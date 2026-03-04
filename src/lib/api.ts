@@ -75,12 +75,61 @@ export async function generatePolicyInfographic(
   infographicSpec: { title: string; sections: string[]; key_visual_description: string },
   subPersonaId?: string,
 ) {
-  return longRunningInvoke('generate-policy-infographic', {
-    paper_id: paperId,
-    paper_title: paperTitle,
-    infographic_spec: infographicSpec,
-    sub_persona_id: subPersonaId,
-  }, 300_000);
+  // Fire: start job (returns immediately with job_id)
+  const { data, error } = await supabase.functions.invoke('generate-policy-infographic', {
+    body: {
+      paper_id: paperId,
+      paper_title: paperTitle,
+      infographic_spec: infographicSpec,
+      sub_persona_id: subPersonaId,
+    },
+  });
+  if (error) throw error;
+  if (!data?.job_id) throw new Error('Failed to start infographic job');
+
+  // Poll: wait for completion
+  return pollInfographicJob(data.job_id);
+}
+
+async function pollInfographicJob(jobId: string, maxAttempts = 120): Promise<any> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { data, error } = await supabase
+      .from('infographic_jobs' as any)
+      .select('*')
+      .eq('id', jobId)
+      .single();
+
+    if (error) throw error;
+    if (!data) throw new Error('Job not found');
+
+    const job = data as any;
+
+    if (job.status === 'complete') {
+      return {
+        success: true,
+        policy_relevant: true,
+        policy_relevance_score: job.policy_relevance_score,
+        image_url: job.image_url,
+        debug: job.debug,
+      };
+    }
+    if (job.status === 'not_relevant') {
+      return {
+        success: true,
+        policy_relevant: false,
+        policy_relevance_score: job.policy_relevance_score,
+        reason: job.reason,
+        debug: job.debug,
+      };
+    }
+    if (job.status === 'failed') {
+      throw new Error(job.error || 'Infographic generation failed');
+    }
+
+    // Still processing — wait 3s
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  throw new Error('Infographic generation timed out');
 }
 
 export async function matchPolicyContent(
