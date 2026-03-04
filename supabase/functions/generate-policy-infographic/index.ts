@@ -243,14 +243,26 @@ Create an infographic script with clear, concise text for each section.
 `;
 
   const step1Data = await callAI(lovableApiKey, "openai/gpt-5.2", [
-    { role: "system", content: "You create structured infographic scripts for policy communication of scientific research. Be concise and precise." },
+    { role: "system", content: `You create ultra-concise infographic scripts for policy communication of scientific research.
+
+CRITICAL: Policy makers SCAN, they do NOT read. Maximize numbers and icons. Minimize prose. Every field must be scannable in under 2 seconds.
+
+STRICT WORD LIMITS — violating these means failure:
+- header: ≤10 words. Punchy, action-oriented.
+- evidence_landscape: ≤15 words. One-liner context sentence.
+- key_findings: MAXIMUM 3 items. Each label ≤4 words. Each value ≤6 words — prefer numbers, percentages, ratios over prose.
+- recommendations: MAXIMUM 2 items. Each ≤8 words. Start with a verb.
+- key_takeaway: ≤12 words. The single most important conclusion.
+- source_citation: ≤15 words. Author(s), journal, year only.
+
+NO disclaimer field. NO full sentences in findings. Numbers > words. Always.` },
     { role: "user", content: step1Prompt },
   ], {
     tools: [{
       type: "function",
       function: {
         name: "create_infographic_script",
-        description: "Return structured infographic script sections",
+        description: "Return structured infographic script sections with minimal text",
         parameters: {
           type: "object",
           properties: {
@@ -268,11 +280,11 @@ Create an infographic script with clear, concise text for each section.
                 required: ["label", "value"],
                 additionalProperties: false,
               },
+              maxItems: 3,
             },
-            recommendations: { type: "array", items: { type: "string" } },
+            recommendations: { type: "array", items: { type: "string" }, maxItems: 2 },
             key_takeaway: { type: "string" },
             source_citation: { type: "string" },
-            disclaimer: { type: "string" },
           },
           required: ["header", "evidence_landscape", "key_findings", "recommendations", "key_takeaway", "source_citation"],
           additionalProperties: false,
@@ -288,36 +300,37 @@ Create an infographic script with clear, concise text for each section.
 
   // ═══ STEP 2 — Image Generation ═══
   const findingsText = (script.key_findings ?? [])
-    .map((f: any, i: number) => `  ${i + 1}. "${f.label}: ${f.value}"${f.icon_hint ? ` [icon: ${f.icon_hint}]` : ""}`)
+    .map((f: any, i: number) => `  ${i + 1}. icon:${f.icon_hint ?? "chart"} → BIG number/stat "${f.value}" with tiny label "${f.label}"`)
     .join("\n");
 
   const recsText = (script.recommendations ?? [])
-    .map((r: string, i: number) => `  ${i + 1}. "${r}"`)
+    .map((r: string, i: number) => `  ${i + 1}. icon-bullet → "${r}"`)
     .join("\n");
 
-  const imagePrompt = `A professional, single-page infographic-style visual explainer
-with a clean, top-to-bottom schematic flow.
+  const imagePrompt = `A DATA-DRIVEN single-page policy infographic. 60% visuals, 40% text.
 
-Layout: Distinct sections separated by clean lines.
-Content to render:
-- Top Header: "${script.header}"
-- Context Bar: "${script.evidence_landscape}"
-- Central Section: data viz boxes with key findings, flat vector icons:
+LAYOUT (top to bottom):
+1. HEADER BAR: "${script.header}" in bold. Subtitle in small text: "${script.evidence_landscape}"
+2. KEY DATA (largest section ~50% of page): ${(script.key_findings ?? []).length} large data-viz cards side by side. Each card has:
+   - A large flat vector ICON at top
+   - A BIG bold number/statistic as the focal point
+   - A tiny 3-4 word label below
 ${findingsText}
-- Highlighted Box: "${script.key_takeaway}"
-- Action Strip: recommendations:
+3. TAKEAWAY BANNER: highlighted strip with "${script.key_takeaway}"
+4. ACTION ICONS: ${(script.recommendations ?? []).length} icon-bullet pairs, minimal text:
 ${recsText}
-- Footer: "${script.source_citation}"${script.disclaimer ? `\n  Disclaimer: "${script.disclaimer}"` : ""}
+5. FOOTER: small text "${script.source_citation}"
 
-Style: Use Merriweather Sans typography for all text.
-Strictly follow a five-color palette: Universal Blue, Deep Teal Blue,
-Orange, Green, and Purple. Flat vector icons only;
-no photographic elements.
+VISUAL RULES:
+- Data cards should dominate — big numbers, bold icons, minimal labels
+- NO paragraphs, NO sentences longer than 8 words anywhere
+- Use large flat vector icons (no photos)
+- Five-color palette only: Universal Blue, Deep Teal Blue, Orange, Green, Purple
+- Merriweather Sans typography
+- Generous whitespace between sections
+- Bottom-right corner: Springer Nature logo exactly as in the reference image
 
-Logo placement: In the bottom-right corner, reproduce the Springer
-Nature logo exactly as shown in the attached reference image.
-
-Vibe: Clean, academic, highly organized, and modern.`;
+Vibe: Dashboard-like, scannable in 5 seconds, executive-ready.`;
 
   // Fetch SN logo as base64
   let logoBase64: string | null = null;
