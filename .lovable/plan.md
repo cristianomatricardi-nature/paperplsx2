@@ -1,62 +1,42 @@
 
 
-# Fix: Infographic Job Status Never Updates
+# Reduce Text in Policy Infographic
 
-## Root Cause
+## Where to act
 
-The edge function's `runPipeline` successfully:
-1. Runs Step 0 (score: 8) 
-2. Runs Step 1 (script generated)
-3. Runs Step 2 (image generated + uploaded)
+**Both Step 1 and Step 2** — they work together:
 
-But the final `supabase.from("infographic_jobs").update({...}).eq("id", jobId)` on line 392 **silently fails** -- the `{ error }` return is never checked or logged. The row stays `processing` forever.
+- **Step 1 (Script Generation)** controls *what text is produced*. Currently it generates long-form fields: `header`, `evidence_landscape`, `key_findings` (with verbose `value` strings), `recommendations`, `key_takeaway`, `source_citation`, and `disclaimer`. The system prompt says "be concise" but doesn't enforce hard limits.
 
-The likely cause: the `debug` JSONB payload contains problematic content (e.g., the `image_prompt` has multi-line strings with special characters, or the `script_result` has nested objects that exceed JSONB limits). The update fails, returns an error object, but no one reads it.
+- **Step 2 (Image Prompt)** controls *how text is rendered visually*. Currently it asks the image model to render all that text verbatim — header, context bar, findings, recommendations, footer, disclaimer — resulting in a text-heavy image.
 
-## Fix
+**Step 0 is irrelevant** — it only gates relevance (score 1-10), no text generation.
 
-### `supabase/functions/generate-policy-infographic/index.ts`
+## Changes
 
-Two changes:
+### Step 1 — Constrain the script schema and prompt
 
-1. **Add error checking and logging** to both update calls (the "complete" update on line 392 and the "not_relevant" update on line 210).
+1. **Add strict character limits** in the system prompt:
+   - Header: ≤10 words
+   - Evidence landscape: ≤15 words (one-liner context)
+   - Key findings: max 3 items, each `label` ≤4 words, `value` ≤6 words (numbers preferred)
+   - Recommendations: max 2, each ≤8 words
+   - Key takeaway: ≤12 words
+   - Source citation: ≤15 words
+   - Remove `disclaimer` entirely from the schema (or make it ≤10 words)
 
-2. **Separate the update into two calls**: first update `status`/`image_url`/`policy_relevance_score` (critical data), then try to add `debug` separately. If the debug update fails, log it but don't crash — the job still completes.
+2. **Update the system prompt** to emphasize: "Policy makers scan, not read. Maximize numbers and icons. Minimize prose. Every field must be scannable in under 2 seconds."
 
-```typescript
-// Line 392-408: Replace with:
-const { error: updateError } = await supabase.from("infographic_jobs").update({
-  status: "complete",
-  image_url: storedUrl,
-  policy_relevance_score: policyScore,
-}).eq("id", jobId);
+### Step 2 — Shift the image prompt toward visual elements
 
-if (updateError) {
-  console.error("[generate-policy-infographic] CRITICAL: job update failed:", updateError);
-  throw new Error(`Job update failed: ${updateError.message}`);
-}
-console.log("[generate-policy-infographic] Job marked complete");
+1. **Rewrite the image prompt** to emphasize:
+   - Large data-viz elements (big numbers, progress bars, icon grids)
+   - Minimal text labels — short phrases only
+   - 60% visual / 40% text ratio
+   - Remove the "Context Bar" as a text block — fold into a subtle subtitle
+   - Render findings as icon + number pairs, not sentences
+   - Recommendations as icon bullets, not full sentences
 
-// Best-effort debug update (non-critical)
-try {
-  const debugPayload = JSON.parse(JSON.stringify({
-    step0_result: step0Result,
-    script_sections: Object.keys(script || {}),
-    persona: subPersonaId,
-    models: ["openai/gpt-5", "openai/gpt-5.2", "google/gemini-3-pro-image-preview"],
-    claims_count: claims.length,
-    metrics_count: metrics.length,
-  }));
-  await supabase.from("infographic_jobs").update({ debug: debugPayload }).eq("id", jobId);
-} catch (debugErr) {
-  console.warn("[generate-policy-infographic] Debug update failed (non-critical):", debugErr);
-}
-```
-
-3. **Same pattern for the "not_relevant" update** (~line 210): add error checking.
-
-4. **Add a log after the catch in `EdgeRuntime.waitUntil`** to confirm error handling fires.
-
-### Files Changed
-1. `supabase/functions/generate-policy-infographic/index.ts` — Add error checking to all `.update()` calls, separate critical updates from debug payload
+### Files changed
+1. `supabase/functions/generate-policy-infographic/index.ts` — Update Step 1 system prompt with word limits + scan-first instructions; update Step 2 image prompt to prioritize visuals over text
 
