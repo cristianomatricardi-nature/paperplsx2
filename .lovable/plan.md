@@ -1,40 +1,38 @@
 
 
-# Fix: Client-Side Timeout for Policy View
+# Fix: Infographic Generation Failing at Step 2 (Image)
 
 ## Root Cause
 
-The `generate-policy-view` edge function works correctly — data is cached for paper 42 + think_tank. The "Failed to send a request" error is a **client-side timeout**: `supabase.functions.invoke()` uses the browser's default fetch timeout (~60s), and on first generation the function takes longer (it generates 3 missing modules inline + one GPT-5 call).
+The logs show clearly:
 
-Once cached, subsequent calls return instantly. But the first call can timeout on the client side even though the server succeeds.
+```
+Invalid URL format: https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures//SN_logo_RGB (2).jpg
+```
+
+The `SN_LOGO_URL` constant on line 9-10 has two problems:
+1. **Double slash** in the path: `.../paper-figures//SN_logo_RGB...`
+2. **Spaces in filename**: `SN_logo_RGB (2).jpg` — Gemini's API rejects URLs with unencoded spaces
+
+When this URL is passed to `google/gemini-3-pro-image-preview` as an `image_url`, the API returns a 400 error, which crashes Step 2.
 
 ## Fix
 
-Replace `supabase.functions.invoke()` with raw `fetch` + `AbortSignal.timeout(120_000)` for the three long-running view functions in `src/lib/api.ts`:
+### `supabase/functions/generate-policy-infographic/index.ts`
 
-### `src/lib/api.ts` — 3 functions updated
+**Line 9-10**: Fix the `SN_LOGO_URL` constant — remove the double slash and URL-encode the spaces:
 
 ```typescript
-export async function fetchPolicyView(paperId: number, subPersonaId: string) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-policy-view`;
-  const { data: { session } } = await supabase.auth.getSession();
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${session?.access_token}`,
-    },
-    body: JSON.stringify({ paper_id: paperId, sub_persona_id: subPersonaId }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!response.ok) throw new Error(`Edge function error: ${response.status}`);
-  return response.json();
-}
+const SN_LOGO_URL =
+  "https://xgqfevxrifleenymsfhv.supabase.co/storage/v1/object/public/paper-figures/SN_logo_RGB%20(2).jpg";
 ```
 
-Same pattern for `fetchFunderView` and `fetchEducatorView`.
+Alternatively, if the logo file doesn't exist at that path, we should rename the uploaded file to remove spaces (e.g., `SN_logo_RGB.jpg`). But the URL fix alone should resolve the 400 error.
+
+### Redeploy
+
+Redeploy `generate-policy-infographic` after the fix.
 
 ### Files changed
-1. `src/lib/api.ts` — `fetchPolicyView`, `fetchFunderView`, `fetchEducatorView` use raw fetch with 120s timeout
+1. `supabase/functions/generate-policy-infographic/index.ts` — fix logo URL (1 line)
 
