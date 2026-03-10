@@ -1,28 +1,24 @@
 
 
-## Dynamic Waveform Audio Player (NotebookLM-style)
+## Adopt Nature.com Article Proportions
 
-Replace the current static bar waveform with an animated, colorful waveform that has bars bouncing in real-time during playback.
+The Nature.com layout doesn't span the full browser width. Instead, it uses a centered container (~1200px max-width) with generous side margins, and the content-to-sidebar ratio is roughly 65:35 with a clear gap between them.
 
-### What changes
+### Changes
 
-**`AudioPlayerBar.tsx`** — Full rewrite of the waveform visualization:
-- Bars animate with randomized bounce heights using CSS keyframes when playing (each bar gets a unique animation delay for organic movement)
-- Gradient coloring: bars transition from a vibrant purple/indigo on the left to a teal/cyan on the right (similar to NotebookLM)
-- Past bars (before playhead) are fully colored; future bars are muted/translucent
-- When paused, bars freeze at their current pseudo-random heights
-- When idle/generating, bars show a subtle idle pulse animation
-- Use `requestAnimationFrame` for smooth playhead tracking (already in place)
+**`src/pages/PaperViewPage.tsx`**
+- Wrap the main grid in a centered container with `max-width: 1200px` and horizontal auto margins
+- Keep the top bar full-width for the sticky nav feel
+- Change the grid from `grid-cols-12` (8:4) to a more Nature-like layout: main content area gets ~65% and sidebar ~35%, using `grid-cols-[1fr_320px]` (fixed sidebar width like Nature.com)
+- Remove `max-w-2xl mx-auto` from the inner content div — the container constraint handles width now
+- Add more breathing room with proper padding
 
-**`tailwind.config.ts`** — Add a `waveform-bounce` keyframe:
-- A keyframe that scales bars vertically between ~0.3 and 1.0 with easing
-- Each bar gets `animation-delay: i * 0.05s` for a wave-like stagger effect
+**`src/components/paper-view/PaperSidebar.tsx`**
+- Adjust the sidebar to work within the new fixed-width column (no longer col-span-4 of full width)
+- The sidebar content already fits well at ~300-320px
 
-### Design details
-- ~50 thin bars with 2px gap, rounded tops
-- Color gradient via interpolated HSL per bar index (e.g., HSL 260→180)
-- Playing state: bars bounce with staggered delays, filled bars use full opacity, unfilled bars use 0.2 opacity
-- Paused/ready state: bars static at varied heights, played portion colored
-- Generating state: skeleton shimmer (existing behavior kept)
-- Smooth playhead glow effect on the current bar
+### Visual result
+- Content no longer stretches edge-to-edge
+- Centered reading experience matching Nature.com's academic journal feel
+- Sidebar stays proportional and doesn't feel oversized
 
