@@ -232,13 +232,16 @@ const PaperViewPage = () => {
       </div>
 
       {/* Main grid */}
-      <div className={cn('grid min-h-[calc(100vh-3.5rem)]', sidebarOpen ? 'grid-cols-12' : 'flex')}>
+      <div className={cn(
+        'mx-auto w-full max-w-[1200px] grid min-h-[calc(100vh-3.5rem)]',
+        sidebarOpen ? 'grid-cols-1 lg:grid-cols-[1fr_320px]' : 'grid-cols-1'
+      )}>
         {/* Main content area */}
         <div className={cn(
-          sidebarOpen ? 'col-span-12 lg:col-span-8 px-4 md:px-8 py-8' : 'flex-1 px-4 md:px-8 py-8',
+          'px-4 md:px-8 lg:px-10 py-8',
           authorsMode && 'bg-muted/20 border-t-2 border-t-primary/30'
         )}>
-          <div className="max-w-2xl mx-auto">
+          <div>
           <PaperHeader
             title={title}
             authors={authors}

@@ -177,7 +177,7 @@ const PaperSidebar = ({
 
   /* ---------- expanded state ---------- */
   return (
-    <aside className="col-span-12 lg:col-span-4 bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
+    <aside className="bg-muted/30 border-l border-border min-h-full animate-slide-in-right">
       <div className="sticky top-14 space-y-4 p-5">
 
         {isResearcher && (
