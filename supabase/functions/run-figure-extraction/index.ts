@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getDocument } from "https://esm.sh/pdfjs-serverless@0.5.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +15,6 @@ interface TextFigure {
   figure_type?: string;
   data_series?: string[];
   image_url?: string | null;
-  bounding_box?: { x: number; y: number; width: number; height: number };
 }
 
 interface Section {
@@ -67,49 +65,23 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-/** Render a single PDF page to PNG base64 using pdfjs-serverless */
-async function renderPageToPng(pdfBytes: Uint8Array, pageNumber: number, scale = 2): Promise<string | null> {
-  try {
-    const doc = await getDocument(pdfBytes);
-    const page = await doc.getPage(pageNumber);
-    const viewport = page.getViewport({ scale });
-
-    // pdfjs-serverless provides OffscreenCanvas support in serverless environments
-    const canvas = new OffscreenCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      console.error(`[figure-extraction] Failed to get 2d context for page ${pageNumber}`);
-      return null;
-    }
-
-    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
-    const blob = await canvas.convertToBlob({ type: "image/png" });
-    const arrayBuffer = await blob.arrayBuffer();
-    return uint8ToBase64(new Uint8Array(arrayBuffer));
-  } catch (err) {
-    console.error(`[figure-extraction] Failed to render page ${pageNumber}:`, err);
-    return null;
-  }
-}
-
-/** Build the Gemini prompt for a specific page */
-function buildGeminiPrompt(figuresOnPage: TextFigure[], sections: Section[]): string {
-  const figureListing = figuresOnPage
-    .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}"`)
+/** Build the Gemini prompt */
+function buildGeminiPrompt(figures: TextFigure[], sections: Section[]): string {
+  const figureListing = figures
+    .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}", page: ${f.page_number}`)
     .join("\n");
 
-  // Include section text excerpts for citation scanning
   const sectionText = sections
     .slice(0, 20)
     .map((s) => `[Section "${s.heading}" (pages ${s.page_numbers.join(",")})]: ${s.content.slice(0, 500)}`)
     .join("\n\n");
 
-  return `You are analyzing a page from a scientific paper. This page contains the following figures:
+  return `You are analyzing a scientific paper PDF. The paper contains the following figures identified during text extraction:
 
 ${figureListing}
 
 Your tasks:
-1. **Crop each figure**: Use Python code_execution to crop each figure from the page image. Return the cropped image as base64 PNG. If a figure has sub-panels (e.g., "a", "b", "c"), also crop each sub-panel individually.
+1. **Extract each figure**: Use Python code_execution to extract/crop each figure from the PDF pages. Return the cropped image as base64 PNG. If a figure has sub-panels (e.g., "a", "b", "c"), also crop each sub-panel individually.
 
 2. **Describe visually**: For each figure, provide a detailed visual_description of what you see (axes, trends, data patterns, colors, chart types).
 
@@ -144,21 +116,24 @@ Return a JSON array (no markdown fences, no extra text):
 ]
 
 Rules:
-- Use Python (PIL/Pillow) via code_execution to crop figures from the page image
+- Use Python (PIL/Pillow) via code_execution to crop figures from the rendered PDF pages
 - Sub-panels are labeled parts within a figure (a, b, c, etc.) — detect them visually
 - If no sub-panels exist, return an empty sub_panels array
 - Return ONLY the JSON array
-- All base64 strings should be raw base64 without data URI prefix`;
+- All base64 strings should be raw base64 without data URI prefix
+- If you cannot crop a figure, still return the entry with visual_description and citations but omit full_image_base64`;
 }
 
-/** Call Gemini 3 Flash Preview with page image + code_execution */
-async function callGeminiForPage(
+/** Call Gemini with the full PDF as inline_data */
+async function callGemini(
   googleApiKey: string,
-  pageBase64: string,
-  figuresOnPage: TextFigure[],
+  pdfBase64: string,
+  figures: TextFigure[],
   sections: Section[],
 ): Promise<GeminiFigureResult[]> {
-  const prompt = buildGeminiPrompt(figuresOnPage, sections);
+  const prompt = buildGeminiPrompt(figures, sections);
+
+  console.log(`[figure-extraction] Calling Gemini with ${figures.length} figures to extract`);
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
@@ -168,7 +143,7 @@ async function callGeminiForPage(
       body: JSON.stringify({
         contents: [{
           parts: [
-            { inline_data: { mime_type: "image/png", data: pageBase64 } },
+            { inline_data: { mime_type: "application/pdf", data: pdfBase64 } },
             { text: prompt },
           ],
         }],
@@ -352,59 +327,38 @@ Deno.serve(async (req) => {
     }
 
     const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
+    const pdfBase64 = uint8ToBase64(pdfBytes);
     console.log(`[figure-extraction] PDF: ${pdfBytes.length} bytes, ${figures.length} figures`);
 
-    // 3. Identify unique pages with figures
-    const pageToFigures = new Map<number, TextFigure[]>();
-    for (const fig of figures) {
-      const page = fig.page_number || 1;
-      if (!pageToFigures.has(page)) pageToFigures.set(page, []);
-      pageToFigures.get(page)!.push(fig);
-    }
-
-    console.log(`[figure-extraction] ${pageToFigures.size} unique pages to render`);
-
-    // 4. Build regex-based citation map from sections
+    // 3. Build regex-based citation map from sections
     const regexCitationMap = buildCitationMapFromSections(sections);
 
-    // 5. Process each page
+    // 4. Call Gemini with full PDF
+    const geminiResults = await callGemini(googleApiKey, pdfBase64, figures, sections);
     const allGeminiResults = new Map<string, GeminiFigureResult>();
     let totalUploaded = 0;
 
-    for (const [pageNum, figsOnPage] of pageToFigures) {
-      console.log(`[figure-extraction] Rendering page ${pageNum} (${figsOnPage.length} figures)`);
+    for (const result of geminiResults) {
+      allGeminiResults.set(result.figure_id, result);
 
-      const pageBase64 = await renderPageToPng(pdfBytes, pageNum);
-      if (!pageBase64) {
-        console.warn(`[figure-extraction] Failed to render page ${pageNum}, skipping`);
-        continue;
+      // Upload full figure image
+      if (result.full_image_base64) {
+        const url = await uploadPng(supabase, supabaseUrl, paper_id, `${result.figure_id}.png`, result.full_image_base64);
+        if (url) {
+          result.full_image_base64 = "";
+          (result as any)._image_url = url;
+          totalUploaded++;
+        }
       }
 
-      console.log(`[figure-extraction] Page ${pageNum} rendered, calling Gemini`);
-      const geminiResults = await callGeminiForPage(googleApiKey, pageBase64, figsOnPage, sections);
-
-      for (const result of geminiResults) {
-        allGeminiResults.set(result.figure_id, result);
-
-        // Upload full figure image
-        if (result.full_image_base64) {
-          const url = await uploadPng(supabase, supabaseUrl, paper_id, `${result.figure_id}.png`, result.full_image_base64);
+      // Upload sub-panel images
+      for (const panel of result.sub_panels || []) {
+        if (panel.image_base64) {
+          const url = await uploadPng(supabase, supabaseUrl, paper_id, `${panel.panel_id}.png`, panel.image_base64);
           if (url) {
-            result.full_image_base64 = ""; // Clear to save memory
-            (result as any)._image_url = url;
+            panel.image_base64 = "";
+            (panel as any)._image_url = url;
             totalUploaded++;
-          }
-        }
-
-        // Upload sub-panel images
-        for (const panel of result.sub_panels || []) {
-          if (panel.image_base64) {
-            const url = await uploadPng(supabase, supabaseUrl, paper_id, `${panel.panel_id}.png`, panel.image_base64);
-            if (url) {
-              panel.image_base64 = ""; // Clear
-              (panel as any)._image_url = url;
-              totalUploaded++;
-            }
           }
         }
       }
@@ -412,13 +366,13 @@ Deno.serve(async (req) => {
 
     console.log(`[figure-extraction] Gemini returned ${allGeminiResults.size} figures, uploaded ${totalUploaded} images`);
 
-    // 6. Merge Gemini results with existing figures
+    // 5. Merge Gemini results with existing figures
     const updatedFigures = figures.map((fig) => {
       const gemini = allGeminiResults.get(fig.id);
 
       // Merge regex citations with Gemini citations
       const regexCitations = regexCitationMap.get(fig.id) || [];
-      let mergedCitations = regexCitations;
+      let mergedCitations = [...regexCitations];
 
       if (gemini?.citations) {
         const geminiCitations = gemini.citations.map((c) => ({
@@ -426,7 +380,6 @@ Deno.serve(async (req) => {
           section_id: sections.find((s) => s.heading.toLowerCase().includes(c.section_heading?.toLowerCase() || ""))?.id,
           page_number: c.page_number,
         }));
-        // Deduplicate by snippet prefix
         const existing = new Set(mergedCitations.map((c) => c.text_snippet.slice(0, 50)));
         for (const gc of geminiCitations) {
           if (!existing.has(gc.text_snippet.slice(0, 50))) {
@@ -450,14 +403,13 @@ Deno.serve(async (req) => {
         };
       }
 
-      // No Gemini result — still add regex citations if any
       return {
         ...fig,
         citations: regexCitations.length > 0 ? regexCitations : undefined,
       };
     });
 
-    // 7. Save to structured_papers
+    // 6. Save to structured_papers
     const { error: updateErr } = await supabase
       .from("structured_papers")
       .update({ figures: updatedFigures })

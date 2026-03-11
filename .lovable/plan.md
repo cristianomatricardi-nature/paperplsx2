@@ -1,24 +1,20 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Fix: Figure Extraction Boot Failure + Audio Key
+(Previous plan — implemented)
 
-## Issue 1: `run-figure-extraction` crashes — wrong import
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-`pdfjs-serverless@0.5.1` does not export `getDocument` as a named export. The library's API differs from standard `pdfjs-dist`. Looking at how `run-parser` already uses it successfully will show the correct import pattern.
+### Changes made
 
-**Fix**: Rewrite the PDF-to-PNG rendering in `run-figure-extraction/index.ts` to use the correct `pdfjs-serverless` API (likely a default export or different function name). Since `run-parser` already works with this library, mirror its import pattern.
+| File | Status |
+|------|--------|
+| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
+| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
+| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
+| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
+| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
+| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
 
-If `pdfjs-serverless` cannot render pages to images (it may only support text extraction in Deno), the fallback is to send the raw PDF bytes directly to Gemini as `application/pdf` inline_data — Gemini does accept PDFs natively despite earlier assumptions. This would simplify the pipeline significantly.
-
-**File**: `supabase/functions/run-figure-extraction/index.ts` — fix import on line 2 and the page rendering logic.
-
-## Issue 2: ElevenLabs 401 — invalid API key
-
-The `ELEVENLABS_API_KEY` connector secret has an invalid key. The user needs to reconnect the ElevenLabs connector with a valid API key.
-
-**Action**: Reconnect the ElevenLabs connector to update the API key.
-
-## Issue 3: Figures not in modules
-
-This is a downstream effect of Issue 1. Once figure extraction works and populates `image_url` on figures, `ModuleContentRenderer` and `FigurePlaceholder` will render them. No code changes needed here — the components already handle `image_url` when present.
-
+### Secret added
+- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
