@@ -24,6 +24,11 @@ interface Section {
   page_numbers: number[];
 }
 
+interface PageImage {
+  page_number: number;
+  storage_path: string;
+}
+
 interface GeminiFigureResult {
   figure_id: string;
   caption: string;
@@ -65,8 +70,8 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-/** Build the Gemini prompt */
-function buildGeminiPrompt(figures: TextFigure[], sections: Section[]): string {
+/** Build the Gemini prompt for PNG page images */
+function buildGeminiPrompt(figures: TextFigure[], sections: Section[], pageNumbers: number[]): string {
   const figureListing = figures
     .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}", page: ${f.page_number}`)
     .join("\n");
@@ -76,33 +81,41 @@ function buildGeminiPrompt(figures: TextFigure[], sections: Section[]): string {
     .map((s) => `[Section "${s.heading}" (pages ${s.page_numbers.join(",")})]: ${s.content.slice(0, 500)}`)
     .join("\n\n");
 
-  return `You are analyzing a scientific paper PDF. The paper contains the following figures identified during text extraction:
+  return `You are analyzing PNG images of pages from a scientific paper. Each image is a full page rendered at 2x scale. The pages provided are: ${pageNumbers.join(", ")}.
+
+The paper contains these figures (identified during text extraction):
 
 ${figureListing}
 
 Your tasks:
-1. **Extract each figure**: Use Python code_execution to extract/crop each figure from the PDF pages. Return the cropped image as base64 PNG. If a figure has sub-panels (e.g., "a", "b", "c"), also crop each sub-panel individually.
+
+1. **Crop each figure** from the page images using Python code_execution with PIL/Pillow:
+   - Identify each figure on its page image
+   - Crop the figure region (include the full figure with axes, legends, labels — but NOT the caption text below)
+   - If a figure has sub-panels (a, b, c, etc.), also crop each sub-panel individually
+   - Return each cropped image as base64-encoded PNG
+   - IMPORTANT: The page images are provided in order. Image 1 = page ${pageNumbers[0] || 1}, Image 2 = page ${pageNumbers[1] || "..."}, etc.
 
 2. **Describe visually**: For each figure, provide a detailed visual_description of what you see (axes, trends, data patterns, colors, chart types).
 
-3. **Find citations**: Search the following paper sections for references to each figure (e.g., "Fig. 1", "Figure 1a", "Fig. 1(b)"). Return the surrounding sentence, the section heading, and the page number.
+3. **Find citations**: Search the following paper sections for references to each figure (e.g., "Fig. 1", "Figure 1a"). Return the surrounding sentence, the section heading, and the page number.
 
 Paper sections for citation scanning:
 ${sectionText}
 
-Return a JSON array (no markdown fences, no extra text):
+Return a JSON array (no markdown fences):
 [
   {
     "figure_id": "fig_1",
     "caption": "Figure 1. ...",
     "visual_description": "A bar chart showing...",
-    "full_image_base64": "<base64 PNG of the full figure>",
+    "full_image_base64": "<base64 PNG of the cropped full figure>",
     "sub_panels": [
       {
         "panel_id": "fig_1a",
         "label": "a",
         "description": "SEM micrograph showing...",
-        "image_base64": "<base64 PNG of sub-panel a>"
+        "image_base64": "<base64 PNG of cropped sub-panel a>"
       }
     ],
     "citations": [
@@ -116,78 +129,13 @@ Return a JSON array (no markdown fences, no extra text):
 ]
 
 Rules:
-- Use Python (PIL/Pillow) via code_execution to crop figures from the rendered PDF pages
+- Use Python (PIL/Pillow) via code_execution to crop figures from the page images
+- Each page image corresponds to one page of the PDF
 - Sub-panels are labeled parts within a figure (a, b, c, etc.) — detect them visually
 - If no sub-panels exist, return an empty sub_panels array
-- Return ONLY the JSON array
+- Return ONLY the JSON array after all code execution
 - All base64 strings should be raw base64 without data URI prefix
 - If you cannot crop a figure, still return the entry with visual_description and citations but omit full_image_base64`;
-}
-
-/** Call Gemini with the full PDF as inline_data */
-async function callGemini(
-  googleApiKey: string,
-  pdfBase64: string,
-  figures: TextFigure[],
-  sections: Section[],
-): Promise<GeminiFigureResult[]> {
-  const prompt = buildGeminiPrompt(figures, sections);
-
-  console.log(`[figure-extraction] Calling Gemini with ${figures.length} figures to extract`);
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: "application/pdf", data: pdfBase64 } },
-            { text: prompt },
-          ],
-        }],
-        tools: [{ code_execution: {} }],
-        generationConfig: {
-          temperature: 0.2,
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
-    return [];
-  }
-
-  const data = await response.json();
-
-  // Extract text from response parts
-  let rawText = "";
-  const candidates = data.candidates || [];
-  for (const candidate of candidates) {
-    const parts = candidate.content?.parts || [];
-    for (const part of parts) {
-      if (part.text) rawText += part.text;
-    }
-  }
-
-  if (!rawText.trim()) {
-    console.warn("[figure-extraction] Empty response from Gemini");
-    return [];
-  }
-
-  // Parse JSON
-  try {
-    const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(jsonStr);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
-  } catch (err) {
-    console.error("[figure-extraction] Failed to parse Gemini response:", err, rawText.slice(0, 500));
-    return [];
-  }
 }
 
 /** Upload a base64 PNG to storage and return the public URL */
@@ -249,6 +197,96 @@ function buildCitationMapFromSections(sections: Section[]): Map<string, { text_s
   return citationMap;
 }
 
+/** Call Gemini with page PNG images + code_execution */
+async function callGemini(
+  googleApiKey: string,
+  pageImageData: { page_number: number; base64: string }[],
+  figures: TextFigure[],
+  sections: Section[],
+): Promise<GeminiFigureResult[]> {
+  const pageNumbers = pageImageData.map((p) => p.page_number);
+  const prompt = buildGeminiPrompt(figures, sections, pageNumbers);
+
+  console.log(`[figure-extraction] Calling Gemini with ${pageImageData.length} page PNGs, ${figures.length} figures`);
+
+  // Build parts: all page images as inline_data, then the prompt
+  const parts: any[] = [];
+  for (const page of pageImageData) {
+    parts.push({
+      inline_data: {
+        mime_type: "image/png",
+        data: page.base64,
+      },
+    });
+  }
+  parts.push({ text: prompt });
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        tools: [{ code_execution: {} }],
+        generationConfig: {
+          temperature: 0.2,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
+    return [];
+  }
+
+  const data = await response.json();
+
+  // Extract text from response parts (look for the final text part after code execution)
+  let rawText = "";
+  const candidates = data.candidates || [];
+  for (const candidate of candidates) {
+    const parts = candidate.content?.parts || [];
+    for (const part of parts) {
+      if (part.text) rawText = part.text; // Take the last text part (after code_execution)
+    }
+  }
+
+  if (!rawText.trim()) {
+    console.warn("[figure-extraction] Empty response from Gemini");
+    // Try to find executable_code output
+    for (const candidate of candidates) {
+      const parts = candidate.content?.parts || [];
+      for (const part of parts) {
+        if (part.executableCode) {
+          console.log("[figure-extraction] Found executable code but no text output");
+        }
+        if (part.codeExecutionResult?.output) {
+          rawText = part.codeExecutionResult.output;
+        }
+      }
+    }
+  }
+
+  if (!rawText.trim()) {
+    console.warn("[figure-extraction] No usable output from Gemini");
+    return [];
+  }
+
+  // Parse JSON
+  try {
+    const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch (err) {
+    console.error("[figure-extraction] Failed to parse Gemini response:", err, rawText.slice(0, 500));
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -260,12 +298,25 @@ Deno.serve(async (req) => {
     const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { paper_id } = await req.json();
+    const body = await req.json();
+    const { paper_id, page_images } = body as {
+      paper_id: number;
+      page_images?: PageImage[];
+    };
 
     if (!paper_id) {
       return new Response(
         JSON.stringify({ error: "paper_id is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // If no page_images provided (called from orchestrator), just return — extraction deferred to client
+    if (!page_images || page_images.length === 0) {
+      console.log(`[figure-extraction] No page_images for paper ${paper_id} — deferring to client`);
+      return new Response(
+        JSON.stringify({ success: true, deferred: true, message: "Extraction deferred to client-side rendering" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -294,47 +345,45 @@ Deno.serve(async (req) => {
     }
 
     if (!googleApiKey) {
-      console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping figure extraction");
+      console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping");
       return new Response(
         JSON.stringify({ success: true, figures_extracted: 0, message: "GOOGLE_API_KEY not configured" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 2. Download PDF
-    const { data: paper, error: paperErr } = await supabase
-      .from("papers")
-      .select("storage_path")
-      .eq("id", paper_id)
-      .single();
+    // 2. Download page PNGs from storage
+    const pageImageData: { page_number: number; base64: string }[] = [];
 
-    if (paperErr || !paper?.storage_path) {
-      return new Response(
-        JSON.stringify({ error: "Paper or storage path not found", details: paperErr?.message }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    for (const pi of page_images) {
+      const { data: imgData, error: dlErr } = await supabase.storage
+        .from("paper-figures")
+        .download(pi.storage_path);
+
+      if (dlErr || !imgData) {
+        console.warn(`[figure-extraction] Failed to download page image ${pi.storage_path}:`, dlErr?.message);
+        continue;
+      }
+
+      const bytes = new Uint8Array(await imgData.arrayBuffer());
+      const base64 = uint8ToBase64(bytes);
+      pageImageData.push({ page_number: pi.page_number, base64 });
     }
 
-    const { data: pdfData, error: dlErr } = await supabase.storage
-      .from("research-papers")
-      .download(paper.storage_path);
-
-    if (dlErr || !pdfData) {
+    if (pageImageData.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Failed to download PDF", details: dlErr?.message }),
+        JSON.stringify({ error: "Failed to download any page images" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
-    const pdfBase64 = uint8ToBase64(pdfBytes);
-    console.log(`[figure-extraction] PDF: ${pdfBytes.length} bytes, ${figures.length} figures`);
+    console.log(`[figure-extraction] Downloaded ${pageImageData.length} page PNGs, ${figures.length} figures`);
 
-    // 3. Build regex-based citation map from sections
+    // 3. Build regex-based citation map
     const regexCitationMap = buildCitationMapFromSections(sections);
 
-    // 4. Call Gemini with full PDF
-    const geminiResults = await callGemini(googleApiKey, pdfBase64, figures, sections);
+    // 4. Call Gemini with page PNGs + code_execution
+    const geminiResults = await callGemini(googleApiKey, pageImageData, figures, sections);
     const allGeminiResults = new Map<string, GeminiFigureResult>();
     let totalUploaded = 0;
 

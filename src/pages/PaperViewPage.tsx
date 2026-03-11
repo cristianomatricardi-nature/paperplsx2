@@ -22,6 +22,7 @@ import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
 import type { AuthorEnrichments } from '@/components/paper-view/AuthorEnrichmentPanel';
 import type { ReplicationCartItem } from '@/components/paper-view/ReplicationCart';
+import { useFigureExtraction } from '@/hooks/useFigureExtraction';
 
 const PaperViewPage = () => {
   const { paperId } = useParams();
@@ -172,6 +173,10 @@ const PaperViewPage = () => {
   const publicationDate = (paper?.publication_date as string) ?? null;
   const doi = (paper?.doi as string) ?? null;
   const storagePath = (paper?.storage_path as string) ?? null;
+
+  // Trigger figure extraction for figures missing image_url
+  const structuredFigures = structured?.figures ?? null;
+  useFigureExtraction(numericId, structuredFigures, storagePath);
 
   if (loading) {
     return (
