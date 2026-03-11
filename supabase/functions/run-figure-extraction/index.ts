@@ -60,9 +60,13 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Decode base64 to Uint8Array */
+/** Decode base64 to Uint8Array, sanitizing data URI prefixes and whitespace */
 function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+  // Strip data URI prefix if present
+  const cleaned = base64
+    .replace(/^data:image\/[a-z]+;base64,/i, "")
+    .replace(/\s/g, "");
+  const binaryString = atob(cleaned);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -148,6 +152,11 @@ async function uploadPng(
 ): Promise<string | null> {
   try {
     const bytes = base64ToUint8Array(base64Data);
+    // Validate minimum PNG size (8-byte header)
+    if (bytes.length < 8) {
+      console.warn(`[figure-extraction] Skipping ${filename}: decoded size too small (${bytes.length} bytes)`);
+      return null;
+    }
     const path = `${paperId}/${filename}`;
 
     const { error } = await supabase.storage
@@ -197,7 +206,57 @@ function buildCitationMapFromSections(sections: Section[]): Map<string, { text_s
   return citationMap;
 }
 
-/** Call Gemini with page PNG images + code_execution */
+/** Retry wrapper with exponential backoff + jitter for transient errors */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: { maxAttempts?: number; baseDelay?: number; label?: string } = {},
+): Promise<T> {
+  const { maxAttempts = 4, baseDelay = 2000, label = "operation" } = opts;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === maxAttempts) break;
+      const jitter = Math.random() * 1000;
+      const delay = baseDelay * Math.pow(2, attempt - 1) + jitter;
+      console.warn(`[figure-extraction] ${label} attempt ${attempt}/${maxAttempts} failed, retrying in ${Math.round(delay)}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
+/** Robustly extract a JSON array from mixed text/code_execution output */
+function extractJsonArray(raw: string): GeminiFigureResult[] | null {
+  // Strip markdown fences
+  let cleaned = raw.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+
+  // Try direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed;
+    // Handle { extracted_figures: [...] } wrapper
+    if (parsed && typeof parsed === "object") {
+      for (const key of Object.keys(parsed)) {
+        if (Array.isArray(parsed[key])) return parsed[key];
+      }
+    }
+    return null;
+  } catch {
+    // Try to find a JSON array in the text
+    const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (arrayMatch) {
+      try {
+        return JSON.parse(arrayMatch[0]);
+      } catch { /* fall through */ }
+    }
+    return null;
+  }
+}
+
+/** Call Gemini with page PNG images + code_execution, with retries */
 async function callGemini(
   googleApiKey: string,
   pageImageData: { page_number: number; base64: string }[],
@@ -221,70 +280,70 @@ async function callGemini(
   }
   parts.push({ text: prompt });
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        tools: [{ code_execution: {} }],
-        generationConfig: {
-          temperature: 0.2,
-        },
-      }),
+  const requestBody = JSON.stringify({
+    contents: [{ parts }],
+    tools: [{ code_execution: {} }],
+    generationConfig: {
+      temperature: 0.2,
     },
-  );
+  });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
-    return [];
-  }
+  // Retry wrapper for the actual API call
+  const data = await withRetry(async () => {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      },
+    );
 
-  const data = await response.json();
+    if (response.status === 503 || response.status === 429) {
+      const errText = await response.text();
+      console.warn(`[figure-extraction] Gemini ${response.status}: ${errText.slice(0, 200)}`);
+      throw new Error(`Gemini API returned ${response.status}`);
+    }
 
-  // Extract text from response parts (look for the final text part after code execution)
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    return await response.json();
+  }, { maxAttempts: 4, baseDelay: 3000, label: "Gemini API" });
+
+  // Extract text from response parts
   let rawText = "";
   const candidates = data.candidates || [];
   for (const candidate of candidates) {
-    const parts = candidate.content?.parts || [];
-    for (const part of parts) {
-      if (part.text) rawText = part.text; // Take the last text part (after code_execution)
-    }
-  }
-
-  if (!rawText.trim()) {
-    console.warn("[figure-extraction] Empty response from Gemini");
-    // Try to find executable_code output
-    for (const candidate of candidates) {
-      const parts = candidate.content?.parts || [];
-      for (const part of parts) {
-        if (part.executableCode) {
-          console.log("[figure-extraction] Found executable code but no text output");
-        }
-        if (part.codeExecutionResult?.output) {
-          rawText = part.codeExecutionResult.output;
+    const cParts = candidate.content?.parts || [];
+    for (const part of cParts) {
+      if (part.text) rawText = part.text;
+      if (part.codeExecutionResult?.output) {
+        // Prefer code execution output if it contains JSON
+        const execOutput = part.codeExecutionResult.output;
+        if (execOutput.includes("[") || execOutput.includes("{")) {
+          rawText = execOutput;
         }
       }
     }
   }
 
   if (!rawText.trim()) {
-    console.warn("[figure-extraction] No usable output from Gemini");
-    return [];
+    console.warn("[figure-extraction] No usable output from Gemini after retries");
+    throw new Error("Gemini returned empty output");
   }
 
-  // Parse JSON
-  try {
-    const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
-    const parsed = JSON.parse(jsonStr);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
-  } catch (err) {
-    console.error("[figure-extraction] Failed to parse Gemini response:", err, rawText.slice(0, 500));
-    return [];
+  // Parse JSON robustly
+  const parsed = extractJsonArray(rawText);
+  if (!parsed || parsed.length === 0) {
+    console.error("[figure-extraction] Failed to parse Gemini response:", rawText.slice(0, 500));
+    throw new Error("Failed to parse figure results from Gemini");
   }
+
+  return parsed;
 }
 
 Deno.serve(async (req) => {
@@ -311,7 +370,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If no page_images provided (called from orchestrator), just return — extraction deferred to client
     if (!page_images || page_images.length === 0) {
       console.log(`[figure-extraction] No page_images for paper ${paper_id} — deferring to client`);
       return new Response(
@@ -320,7 +378,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Fetch figures and sections from structured_papers
+    // 1. Fetch figures and sections
     const { data: sp, error: spErr } = await supabase
       .from("structured_papers")
       .select("figures, sections")
@@ -347,8 +405,8 @@ Deno.serve(async (req) => {
     if (!googleApiKey) {
       console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping");
       return new Response(
-        JSON.stringify({ success: true, figures_extracted: 0, message: "GOOGLE_API_KEY not configured" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ success: false, retryable: false, message: "GOOGLE_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -382,8 +440,19 @@ Deno.serve(async (req) => {
     // 3. Build regex-based citation map
     const regexCitationMap = buildCitationMapFromSections(sections);
 
-    // 4. Call Gemini with page PNGs + code_execution
-    const geminiResults = await callGemini(googleApiKey, pageImageData, figures, sections);
+    // 4. Call Gemini with retries
+    let geminiResults: GeminiFigureResult[];
+    try {
+      geminiResults = await callGemini(googleApiKey, pageImageData, figures, sections);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[figure-extraction] Gemini failed after retries: ${msg}`);
+      return new Response(
+        JSON.stringify({ success: false, retryable: true, error: msg, images_uploaded: 0 }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const allGeminiResults = new Map<string, GeminiFigureResult>();
     let totalUploaded = 0;
 
@@ -415,11 +484,19 @@ Deno.serve(async (req) => {
 
     console.log(`[figure-extraction] Gemini returned ${allGeminiResults.size} figures, uploaded ${totalUploaded} images`);
 
+    // Treat 0 uploads as failure if we had figures
+    if (totalUploaded === 0 && figures.length > 0) {
+      console.warn("[figure-extraction] Gemini returned results but 0 images were uploaded");
+      return new Response(
+        JSON.stringify({ success: false, retryable: true, error: "No images could be extracted", images_uploaded: 0 }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 5. Merge Gemini results with existing figures
     const updatedFigures = figures.map((fig) => {
       const gemini = allGeminiResults.get(fig.id);
 
-      // Merge regex citations with Gemini citations
       const regexCitations = regexCitationMap.get(fig.id) || [];
       let mergedCitations = [...regexCitations];
 
@@ -484,7 +561,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("[figure-extraction] Unexpected error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: err instanceof Error ? err.message : String(err) }),
+      JSON.stringify({ error: "Internal server error", retryable: false, details: err instanceof Error ? err.message : String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
