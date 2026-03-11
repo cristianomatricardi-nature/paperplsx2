@@ -288,31 +288,29 @@ async function callGemini(
     },
   });
 
-  // Retry wrapper for the actual API call
-  const data = await withRetry(async () => {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: requestBody,
-      },
-    );
+  // Single attempt — client-side hook already handles retries
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: requestBody,
+    },
+  );
 
-    if (response.status === 503 || response.status === 429) {
-      const errText = await response.text();
-      console.warn(`[figure-extraction] Gemini ${response.status}: ${errText.slice(0, 200)}`);
-      throw new Error(`Gemini API returned ${response.status}`);
-    }
+  if (response.status === 503 || response.status === 429) {
+    const errText = await response.text();
+    console.warn(`[figure-extraction] Gemini ${response.status}: ${errText.slice(0, 200)}`);
+    throw new Error(`Gemini API returned ${response.status}`);
+  }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
 
-    return await response.json();
-  }, { maxAttempts: 4, baseDelay: 3000, label: "Gemini API" });
+  const data = await response.json();
 
   // Extract text from response parts
   let rawText = "";
