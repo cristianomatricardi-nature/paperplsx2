@@ -174,9 +174,23 @@ const PaperViewPage = () => {
   const doi = (paper?.doi as string) ?? null;
   const storagePath = (paper?.storage_path as string) ?? null;
 
+  // Refetch structured paper data (called after figure extraction succeeds)
+  const refetchStructuredPaper = useCallback(async () => {
+    if (!numericId) return;
+    const { data } = await supabase
+      .from('structured_papers')
+      .select('*')
+      .eq('paper_id', numericId)
+      .single();
+    if (data) {
+      setStructured(data as unknown as StructuredPaper);
+      setAuthorEnrichments(((data as any).author_enrichments as AuthorEnrichments) ?? {});
+    }
+  }, [numericId]);
+
   // Trigger figure extraction for figures missing image_url
   const structuredFigures = structured?.figures ?? null;
-  useFigureExtraction(numericId, structuredFigures, storagePath);
+  useFigureExtraction(numericId, structuredFigures, storagePath, refetchStructuredPaper);
 
   if (loading) {
     return (
