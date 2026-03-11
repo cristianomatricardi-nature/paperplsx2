@@ -174,6 +174,10 @@ const PaperViewPage = () => {
   const doi = (paper?.doi as string) ?? null;
   const storagePath = (paper?.storage_path as string) ?? null;
 
+  // Trigger figure extraction for figures missing image_url
+  const structuredFigures = structured?.figures ?? null;
+  useFigureExtraction(numericId, structuredFigures, storagePath);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 md:p-10">
