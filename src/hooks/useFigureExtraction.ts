@@ -22,7 +22,10 @@ export function useFigureExtraction(
 ) {
   const { renderPage } = usePaperPdf(storagePath);
   const triggeredRef = useRef(false);
-  const attemptRef = useRef(0);
+  const onSuccessRef = useRef(onSuccess);
+
+  // Keep onSuccess ref current without adding it to callback deps
+  onSuccessRef.current = onSuccess;
 
   const runExtraction = useCallback(async () => {
     if (!paperId || !figures || !storagePath || figures.length === 0) return;
@@ -78,7 +81,6 @@ export function useFigureExtraction(
 
     // Retry loop for the edge function call
     for (let attempt = 1; attempt <= MAX_CLIENT_RETRIES; attempt++) {
-      attemptRef.current = attempt;
       console.log(`[useFigureExtraction] Calling edge function (attempt ${attempt}/${MAX_CLIENT_RETRIES})`);
 
       const { data, error: fnErr } = await supabase.functions.invoke('run-figure-extraction', {
@@ -89,28 +91,25 @@ export function useFigureExtraction(
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
       }
 
-      // Parse response
       const responseData = data as { success?: boolean; retryable?: boolean; images_uploaded?: number } | null;
 
       if (responseData?.success && (responseData.images_uploaded ?? 0) > 0) {
         console.log(`[useFigureExtraction] Success! ${responseData.images_uploaded} images extracted`);
-        onSuccess?.();
+        onSuccessRef.current?.();
         return;
       }
 
-      // Check if retryable
-      const isRetryable = responseData?.retryable === true || fnErr;
+      const isRetryable = responseData?.retryable === true || !!fnErr;
       if (!isRetryable || attempt === MAX_CLIENT_RETRIES) {
         console.warn(`[useFigureExtraction] Giving up after ${attempt} attempts. retryable=${responseData?.retryable}`);
         return;
       }
 
-      // Wait before retry with backoff
       const delay = RETRY_BASE_DELAY * Math.pow(2, attempt - 1) + Math.random() * 2000;
       console.log(`[useFigureExtraction] Retrying in ${Math.round(delay / 1000)}s...`);
       await new Promise((r) => setTimeout(r, delay));
     }
-  }, [paperId, figures, storagePath, renderPage, onSuccess]);
+  }, [paperId, figures, storagePath, renderPage]);
 
   useEffect(() => {
     if (triggeredRef.current || !paperId || !figures || figures.length === 0) return;
