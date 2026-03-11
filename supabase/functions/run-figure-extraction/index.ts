@@ -446,10 +446,19 @@ Deno.serve(async (req) => {
       geminiResults = await callGemini(googleApiKey, pageImageData, figures, sections);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      const isQuotaExceeded = /\b429\b/.test(msg) || /quota/i.test(msg);
+      const retryable = !isQuotaExceeded;
+
       console.error(`[figure-extraction] Gemini failed after retries: ${msg}`);
       return new Response(
-        JSON.stringify({ success: false, retryable: true, error: msg, images_uploaded: 0 }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          success: false,
+          retryable,
+          error: msg,
+          reason: isQuotaExceeded ? "quota_exceeded" : "model_unavailable",
+          images_uploaded: 0,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -484,12 +493,12 @@ Deno.serve(async (req) => {
 
     console.log(`[figure-extraction] Gemini returned ${allGeminiResults.size} figures, uploaded ${totalUploaded} images`);
 
-    // Treat 0 uploads as failure if we had figures
+    // Treat 0 uploads as retryable soft failure (avoid non-2xx to prevent client crashes)
     if (totalUploaded === 0 && figures.length > 0) {
       console.warn("[figure-extraction] Gemini returned results but 0 images were uploaded");
       return new Response(
         JSON.stringify({ success: false, retryable: true, error: "No images could be extracted", images_uploaded: 0 }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 

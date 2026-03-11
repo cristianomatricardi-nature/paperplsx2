@@ -128,6 +128,12 @@ export function useFigureExtraction(
     if (!needsExtraction) return;
 
     triggeredRef.current = true;
-    runExtraction();
+    void runExtraction()
+      .catch((err) => {
+        console.warn('[useFigureExtraction] Unexpected extraction failure:', err);
+      })
+      .finally(() => {
+        triggeredRef.current = false;
+      });
   }, [paperId, figures, runExtraction]);
 }
