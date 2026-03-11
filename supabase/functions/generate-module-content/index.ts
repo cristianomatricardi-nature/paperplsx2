@@ -453,14 +453,54 @@ Deno.serve(async (req) => {
       throw new Error("No matching chunks found for this paper and module");
     }
 
-    // 5. Build prompt with persona adaptation layer + module instructions
+    // 5. Fetch figure citation context for inline placement
+    const { data: spData } = await supabase
+      .from("structured_papers")
+      .select("figures")
+      .eq("paper_id", paperId)
+      .single();
+
+    let figureContext = "";
+    if (spData?.figures && Array.isArray(spData.figures)) {
+      const figs = spData.figures as any[];
+      const relevantFigs = figs.filter((f) =>
+        f.citations?.some((c: any) => {
+          // Match citations to module-relevant sections
+          const chunkPages = chunks.map((ch: any) => ch.page_numbers).flat();
+          return chunkPages.includes(c.page_number);
+        }) || true // Include all figures but prioritize cited ones
+      );
+
+      if (relevantFigs.length > 0) {
+        const figLines = relevantFigs.slice(0, 10).map((f: any) => {
+          const citationInfo = (f.citations || [])
+            .slice(0, 3)
+            .map((c: any) => `  - Cited: "${c.text_snippet}" (p.${c.page_number})`)
+            .join("\n");
+          const subPanelInfo = (f.sub_panels || [])
+            .map((sp: any) => `  - Sub-panel ${sp.label} (${sp.panel_id}): ${sp.description}`)
+            .join("\n");
+          const visualInfo = f.visual_description ? `  - Visual: ${f.visual_description}` : "";
+          return `Figure ${f.id}: "${f.caption}"\n${visualInfo}\n${citationInfo}\n${subPanelInfo}`.trim();
+        });
+
+        figureContext = `\n\nFIGURE PLACEMENT INSTRUCTIONS:
+The following figures are available. Place [FIGURE: fig_X] or [FIGURE: fig_Xa] tokens at the exact locations where the paper originally references them. Use the citation snippets below to determine correct placement.
+
+${figLines.join("\n\n")}
+
+When a figure or sub-panel is referenced in the text you're generating, insert the corresponding [FIGURE: fig_X] token immediately after the relevant sentence.`;
+      }
+    }
+
+    // 6. Build prompt with persona adaptation layer + module instructions
     const contextText = chunks
       .map((c: { page_numbers: number[]; content: string }) =>
         `[Page ${c.page_numbers.join(",")}] ${c.content}`
       )
       .join("\n\n");
 
-    const fullPrompt = composeModulePrompt(subPersona, moduleId, contextText, modulePrompt);
+    const fullPrompt = composeModulePrompt(subPersona, moduleId, contextText + figureContext, modulePrompt);
 
     // 6. Call GPT-4o with temperature 0.2
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {

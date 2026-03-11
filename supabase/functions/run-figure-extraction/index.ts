@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getDocument } from "https://esm.sh/pdfjs-serverless@0.5.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,22 +7,41 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface Figure {
+interface TextFigure {
   id: string;
   caption: string;
   description: string;
   page_number: number;
   key_findings: string[];
-  image_url?: string;
+  figure_type?: string;
+  data_series?: string[];
+  image_url?: string | null;
   bounding_box?: { x: number; y: number; width: number; height: number };
 }
 
-interface BoundingBoxResult {
+interface Section {
+  id: string;
+  heading: string;
+  content: string;
+  page_numbers: number[];
+}
+
+interface GeminiFigureResult {
   figure_id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  caption: string;
+  visual_description: string;
+  full_image_base64?: string;
+  sub_panels: {
+    panel_id: string;
+    label: string;
+    description: string;
+    image_base64?: string;
+  }[];
+  citations: {
+    text_snippet: string;
+    section_heading: string;
+    page_number: number;
+  }[];
 }
 
 /** Convert Uint8Array to base64 without stack overflow (chunked). */
@@ -37,144 +57,222 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Build the prompt listing all figure captions for bounding box detection. */
-function buildPrompt(figures: Figure[], isRetry: boolean): string {
-  const listing = figures
-    .map((f, i) => `${i + 1}. figure_id="${f.id}" (page ${f.page_number}): "${f.caption}"`)
+/** Decode base64 to Uint8Array */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** Render a single PDF page to PNG base64 using pdfjs-serverless */
+async function renderPageToPng(pdfBytes: Uint8Array, pageNumber: number, scale = 2): Promise<string | null> {
+  try {
+    const doc = await getDocument(pdfBytes);
+    const page = await doc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+
+    // pdfjs-serverless provides OffscreenCanvas support in serverless environments
+    const canvas = new OffscreenCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.error(`[figure-extraction] Failed to get 2d context for page ${pageNumber}`);
+      return null;
+    }
+
+    await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    const arrayBuffer = await blob.arrayBuffer();
+    return uint8ToBase64(new Uint8Array(arrayBuffer));
+  } catch (err) {
+    console.error(`[figure-extraction] Failed to render page ${pageNumber}:`, err);
+    return null;
+  }
+}
+
+/** Build the Gemini prompt for a specific page */
+function buildGeminiPrompt(figuresOnPage: TextFigure[], sections: Section[]): string {
+  const figureListing = figuresOnPage
+    .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}"`)
     .join("\n");
 
-  const prefix = isRetry
-    ? `You have been given an inline PDF document. You MUST analyze it. Do NOT refuse. Look at each page visually and identify where each figure is located.\n\n`
-    : "";
+  // Include section text excerpts for citation scanning
+  const sectionText = sections
+    .slice(0, 20)
+    .map((s) => `[Section "${s.heading}" (pages ${s.page_numbers.join(",")})]: ${s.content.slice(0, 500)}`)
+    .join("\n\n");
 
-  return `${prefix}You are analysing a scientific paper PDF that has been provided to you as an inline file. Examine each page of the PDF and locate the figures listed below.
+  return `You are analyzing a page from a scientific paper. This page contains the following figures:
 
-For EACH figure, return the bounding box of the figure image (excluding the caption text) as fractional coordinates (0-1) relative to the page dimensions.
+${figureListing}
 
-Figures:
-${listing}
+Your tasks:
+1. **Crop each figure**: Use Python code_execution to crop each figure from the page image. Return the cropped image as base64 PNG. If a figure has sub-panels (e.g., "a", "b", "c"), also crop each sub-panel individually.
 
-Return a JSON array (no markdown, no extra text) with one object per figure:
+2. **Describe visually**: For each figure, provide a detailed visual_description of what you see (axes, trends, data patterns, colors, chart types).
+
+3. **Find citations**: Search the following paper sections for references to each figure (e.g., "Fig. 1", "Figure 1a", "Fig. 1(b)"). Return the surrounding sentence, the section heading, and the page number.
+
+Paper sections for citation scanning:
+${sectionText}
+
+Return a JSON array (no markdown fences, no extra text):
 [
-  { "figure_id": "fig_1", "x": 0.1, "y": 0.2, "width": 0.8, "height": 0.4 },
-  ...
+  {
+    "figure_id": "fig_1",
+    "caption": "Figure 1. ...",
+    "visual_description": "A bar chart showing...",
+    "full_image_base64": "<base64 PNG of the full figure>",
+    "sub_panels": [
+      {
+        "panel_id": "fig_1a",
+        "label": "a",
+        "description": "SEM micrograph showing...",
+        "image_base64": "<base64 PNG of sub-panel a>"
+      }
+    ],
+    "citations": [
+      {
+        "text_snippet": "As shown in Fig. 1a, the morphology...",
+        "section_heading": "Results",
+        "page_number": 5
+      }
+    ]
+  }
 ]
 
 Rules:
-- x,y = top-left corner as fraction of page width/height
-- width,height = size as fraction of page width/height
-- All values between 0 and 1
-- If you cannot locate a figure, still include it with your best estimate based on the page layout
-- Return ONLY the JSON array`;
+- Use Python (PIL/Pillow) via code_execution to crop figures from the page image
+- Sub-panels are labeled parts within a figure (a, b, c, etc.) — detect them visually
+- If no sub-panels exist, return an empty sub_panels array
+- Return ONLY the JSON array
+- All base64 strings should be raw base64 without data URI prefix`;
 }
 
-/** Check if the raw text contains refusal phrases. */
-function isRefusal(text: string): boolean {
-  const lower = text.toLowerCase();
-  return (
-    lower.includes("i'm unable") ||
-    lower.includes("i cannot") ||
-    lower.includes("i can't") ||
-    lower.includes("unable to extract") ||
-    lower.includes("cannot process")
+/** Call Gemini 3 Flash Preview with page image + code_execution */
+async function callGeminiForPage(
+  googleApiKey: string,
+  pageBase64: string,
+  figuresOnPage: TextFigure[],
+  sections: Section[],
+): Promise<GeminiFigureResult[]> {
+  const prompt = buildGeminiPrompt(figuresOnPage, sections);
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: "image/png", data: pageBase64 } },
+            { text: prompt },
+          ],
+        }],
+        tools: [{ code_execution: {} }],
+        generationConfig: {
+          temperature: 0.2,
+        },
+      }),
+    },
   );
-}
 
-/** Parse bounding boxes from raw text response. */
-function parseBoundingBoxes(rawText: string): Map<string, { x: number; y: number; width: number; height: number }> {
-  const result = new Map<string, { x: number; y: number; width: number; height: number }>();
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
+    return [];
+  }
+
+  const data = await response.json();
+
+  // Extract text from response parts
+  let rawText = "";
+  const candidates = data.candidates || [];
+  for (const candidate of candidates) {
+    const parts = candidate.content?.parts || [];
+    for (const part of parts) {
+      if (part.text) rawText += part.text;
+    }
+  }
+
+  if (!rawText.trim()) {
+    console.warn("[figure-extraction] Empty response from Gemini");
+    return [];
+  }
+
+  // Parse JSON
   try {
     const jsonStr = rawText.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
-    const parsed: BoundingBoxResult[] = JSON.parse(jsonStr);
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (
-          item.figure_id &&
-          typeof item.x === "number" &&
-          typeof item.y === "number" &&
-          typeof item.width === "number" &&
-          typeof item.height === "number"
-        ) {
-          result.set(item.figure_id, {
-            x: Math.max(0, Math.min(1, item.x)),
-            y: Math.max(0, Math.min(1, item.y)),
-            width: Math.max(0, Math.min(1, item.width)),
-            height: Math.max(0, Math.min(1, item.height)),
-          });
-        }
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch (err) {
+    console.error("[figure-extraction] Failed to parse Gemini response:", err, rawText.slice(0, 500));
+    return [];
+  }
+}
+
+/** Upload a base64 PNG to storage and return the public URL */
+async function uploadPng(
+  supabase: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  paperId: number,
+  filename: string,
+  base64Data: string,
+): Promise<string | null> {
+  try {
+    const bytes = base64ToUint8Array(base64Data);
+    const path = `${paperId}/${filename}`;
+
+    const { error } = await supabase.storage
+      .from("paper-figures")
+      .upload(path, bytes, {
+        contentType: "image/png",
+        upsert: true,
+      });
+
+    if (error) {
+      console.error(`[figure-extraction] Upload failed for ${path}:`, error);
+      return null;
+    }
+
+    return `${supabaseUrl}/storage/v1/object/public/paper-figures/${path}`;
+  } catch (err) {
+    console.error(`[figure-extraction] Upload error for ${filename}:`, err);
+    return null;
+  }
+}
+
+/** Build citation mapping from sections using regex */
+function buildCitationMapFromSections(sections: Section[]): Map<string, { text_snippet: string; section_id: string; page_number: number }[]> {
+  const citationMap = new Map<string, { text_snippet: string; section_id: string; page_number: number }[]>();
+  const figRegex = /(?:Fig(?:ure|\.)\s*(\d+)\s*([a-z])?)/gi;
+
+  for (const section of sections) {
+    const sentences = section.content.split(/(?<=[.!?])\s+/);
+    for (const sentence of sentences) {
+      let match: RegExpExecArray | null;
+      figRegex.lastIndex = 0;
+      while ((match = figRegex.exec(sentence)) !== null) {
+        const figNum = match[1];
+        const panelLabel = match[2] || "";
+        const figId = panelLabel ? `fig_${figNum}${panelLabel}` : `fig_${figNum}`;
+
+        if (!citationMap.has(figId)) citationMap.set(figId, []);
+        citationMap.get(figId)!.push({
+          text_snippet: sentence.trim().slice(0, 200),
+          section_id: section.id,
+          page_number: section.page_numbers?.[0] || 0,
+        });
       }
     }
-  } catch (parseErr) {
-    console.warn("Failed to parse bounding boxes JSON:", parseErr, "Raw:", rawText.slice(0, 500));
-  }
-  return result;
-}
-
-/** Call OpenAI Responses API with inline PDF and return parsed bounding boxes. Retries once on refusal. */
-async function extractBoundingBoxes(
-  openaiKey: string,
-  pdfBase64: string,
-  figures: Figure[],
-): Promise<Map<string, { x: number; y: number; width: number; height: number }>> {
-  for (const isRetry of [false, true]) {
-    const prompt = buildPrompt(figures, isRetry);
-    console.log(`[figure-extraction] Attempt ${isRetry ? 2 : 1}: sending request to OpenAI`);
-
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        input: [
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: prompt },
-              {
-                type: "input_file",
-                file_data: `data:application/pdf;base64,${pdfBase64}`,
-                filename: "paper.pdf",
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("OpenAI Responses API error:", response.status, errText);
-      if (!isRetry) continue;
-      return new Map();
-    }
-
-    const data = await response.json();
-    const rawText: string = data.output_text
-      ?? data.output?.[0]?.content?.[0]?.text
-      ?? "";
-
-    if (isRefusal(rawText)) {
-      console.warn(`[figure-extraction] Model refused (attempt ${isRetry ? 2 : 1}):`, rawText.slice(0, 200));
-      if (!isRetry) continue;
-      return new Map();
-    }
-
-    const result = parseBoundingBoxes(rawText);
-    if (result.size > 0 || isRetry) {
-      return result;
-    }
-    // Empty result on first try — retry
-    console.warn("[figure-extraction] Empty result on first attempt, retrying with stronger prompt");
   }
 
-  return new Map();
+  return citationMap;
 }
-
-/** Default full-page bounding box fallback. */
-const FULL_PAGE_FALLBACK = { x: 0.05, y: 0.05, width: 0.9, height: 0.9 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -184,7 +282,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const { paper_id } = await req.json();
@@ -196,10 +294,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Fetch figures from structured_papers
+    // 1. Fetch figures and sections from structured_papers
     const { data: sp, error: spErr } = await supabase
       .from("structured_papers")
-      .select("figures")
+      .select("figures, sections")
       .eq("paper_id", paper_id)
       .single();
 
@@ -210,7 +308,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const figures: Figure[] = (sp.figures as Figure[]) || [];
+    const figures: TextFigure[] = (sp.figures as TextFigure[]) || [];
+    const sections: Section[] = (sp.sections as Section[]) || [];
 
     if (figures.length === 0) {
       return new Response(
@@ -219,7 +318,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Fetch storage_path
+    if (!googleApiKey) {
+      console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping figure extraction");
+      return new Response(
+        JSON.stringify({ success: true, figures_extracted: 0, message: "GOOGLE_API_KEY not configured" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 2. Download PDF
     const { data: paper, error: paperErr } = await supabase
       .from("papers")
       .select("storage_path")
@@ -233,7 +340,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Download PDF
     const { data: pdfData, error: dlErr } = await supabase.storage
       .from("research-papers")
       .download(paper.storage_path);
@@ -245,37 +351,120 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Extract bounding boxes via OpenAI Responses API
-    let boundingBoxes = new Map<string, { x: number; y: number; width: number; height: number }>();
+    const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
+    console.log(`[figure-extraction] PDF: ${pdfBytes.length} bytes, ${figures.length} figures`);
 
-    if (openaiKey) {
-      const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
-      const pdfBase64 = uint8ToBase64(pdfBytes);
-      console.log(`PDF encoded: ${pdfBytes.length} bytes -> ${pdfBase64.length} base64 chars`);
-
-      boundingBoxes = await extractBoundingBoxes(openaiKey, pdfBase64, figures);
-      console.log(`Bounding boxes detected: ${boundingBoxes.size}/${figures.length}`);
-    } else {
-      console.warn("OPENAI_API_KEY not set — skipping bounding box detection");
+    // 3. Identify unique pages with figures
+    const pageToFigures = new Map<number, TextFigure[]>();
+    for (const fig of figures) {
+      const page = fig.page_number || 1;
+      if (!pageToFigures.has(page)) pageToFigures.set(page, []);
+      pageToFigures.get(page)!.push(fig);
     }
 
-    // 5. Update figures with bounding boxes (fallback to full-page for missing ones)
+    console.log(`[figure-extraction] ${pageToFigures.size} unique pages to render`);
+
+    // 4. Build regex-based citation map from sections
+    const regexCitationMap = buildCitationMapFromSections(sections);
+
+    // 5. Process each page
+    const allGeminiResults = new Map<string, GeminiFigureResult>();
+    let totalUploaded = 0;
+
+    for (const [pageNum, figsOnPage] of pageToFigures) {
+      console.log(`[figure-extraction] Rendering page ${pageNum} (${figsOnPage.length} figures)`);
+
+      const pageBase64 = await renderPageToPng(pdfBytes, pageNum);
+      if (!pageBase64) {
+        console.warn(`[figure-extraction] Failed to render page ${pageNum}, skipping`);
+        continue;
+      }
+
+      console.log(`[figure-extraction] Page ${pageNum} rendered, calling Gemini`);
+      const geminiResults = await callGeminiForPage(googleApiKey, pageBase64, figsOnPage, sections);
+
+      for (const result of geminiResults) {
+        allGeminiResults.set(result.figure_id, result);
+
+        // Upload full figure image
+        if (result.full_image_base64) {
+          const url = await uploadPng(supabase, supabaseUrl, paper_id, `${result.figure_id}.png`, result.full_image_base64);
+          if (url) {
+            result.full_image_base64 = ""; // Clear to save memory
+            (result as any)._image_url = url;
+            totalUploaded++;
+          }
+        }
+
+        // Upload sub-panel images
+        for (const panel of result.sub_panels || []) {
+          if (panel.image_base64) {
+            const url = await uploadPng(supabase, supabaseUrl, paper_id, `${panel.panel_id}.png`, panel.image_base64);
+            if (url) {
+              panel.image_base64 = ""; // Clear
+              (panel as any)._image_url = url;
+              totalUploaded++;
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`[figure-extraction] Gemini returned ${allGeminiResults.size} figures, uploaded ${totalUploaded} images`);
+
+    // 6. Merge Gemini results with existing figures
     const updatedFigures = figures.map((fig) => {
-      const bb = boundingBoxes.get(fig.id);
+      const gemini = allGeminiResults.get(fig.id);
+
+      // Merge regex citations with Gemini citations
+      const regexCitations = regexCitationMap.get(fig.id) || [];
+      let mergedCitations = regexCitations;
+
+      if (gemini?.citations) {
+        const geminiCitations = gemini.citations.map((c) => ({
+          text_snippet: c.text_snippet,
+          section_id: sections.find((s) => s.heading.toLowerCase().includes(c.section_heading?.toLowerCase() || ""))?.id,
+          page_number: c.page_number,
+        }));
+        // Deduplicate by snippet prefix
+        const existing = new Set(mergedCitations.map((c) => c.text_snippet.slice(0, 50)));
+        for (const gc of geminiCitations) {
+          if (!existing.has(gc.text_snippet.slice(0, 50))) {
+            mergedCitations.push(gc);
+          }
+        }
+      }
+
+      if (gemini) {
+        return {
+          ...fig,
+          image_url: (gemini as any)._image_url || fig.image_url,
+          visual_description: gemini.visual_description || fig.description,
+          sub_panels: (gemini.sub_panels || []).map((p) => ({
+            panel_id: p.panel_id,
+            label: p.label,
+            description: p.description,
+            image_url: (p as any)._image_url || null,
+          })),
+          citations: mergedCitations.length > 0 ? mergedCitations : undefined,
+        };
+      }
+
+      // No Gemini result — still add regex citations if any
       return {
         ...fig,
-        bounding_box: bb ?? FULL_PAGE_FALLBACK,
+        citations: regexCitations.length > 0 ? regexCitations : undefined,
       };
     });
 
-    // 6. Save to structured_papers
+    // 7. Save to structured_papers
     const { error: updateErr } = await supabase
       .from("structured_papers")
       .update({ figures: updatedFigures })
       .eq("paper_id", paper_id);
 
     if (updateErr) {
-      console.error("Failed to update figures:", updateErr);
+      console.error("[figure-extraction] Failed to update figures:", updateErr);
       return new Response(
         JSON.stringify({ error: "Failed to update figure metadata", details: updateErr.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -285,16 +474,16 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        figures_extracted: boundingBoxes.size,
-        figures_with_fallback: figures.length - boundingBoxes.size,
+        figures_extracted: allGeminiResults.size,
+        images_uploaded: totalUploaded,
         total_figures: figures.length,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("[figure-extraction] Unexpected error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: err instanceof Error ? err.message : String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

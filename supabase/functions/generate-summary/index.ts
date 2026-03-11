@@ -186,8 +186,27 @@ Deno.serve(async (req) => {
         : "No content available for this paper.";
     }
 
+    // Fetch figure context for inline placement
+    let figureContext = "";
+    const { data: spData } = await supabase
+      .from("structured_papers")
+      .select("figures")
+      .eq("paper_id", paperId)
+      .single();
+
+    if (spData?.figures && Array.isArray(spData.figures)) {
+      const figs = (spData.figures as any[]).filter((f: any) => f.citations?.length > 0 || f.visual_description);
+      if (figs.length > 0) {
+        const figLines = figs.slice(0, 8).map((f: any) => {
+          const desc = f.visual_description ? ` — ${f.visual_description}` : "";
+          return `${f.id}: "${f.caption}"${desc}`;
+        });
+        figureContext = `\n\nAvailable figures (use [FIGURE: fig_X] tokens to reference inline):\n${figLines.join("\n")}`;
+      }
+    }
+
     // 4. Build prompt
-    const prompt = composeSummaryPrompt(subPersona, contextText);
+    const prompt = composeSummaryPrompt(subPersona, contextText + figureContext);
 
     // 5. Call Lovable AI Gateway
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
