@@ -56,14 +56,40 @@ function isReproducibilityData(data: unknown): data is Record<string, unknown> {
 }
 
 /**
- * Replace [FIGURE: fig_X] tokens in a string with FigurePlaceholder components.
+ * Replace [FIGURE: fig_X] or [FIGURE: fig_Xa] tokens in a string with FigurePlaceholder components.
+ * Supports sub-panel tokens like [FIGURE: fig_1a] by looking up parent figure's sub_panels.
  */
 function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[] {
   const parts = text.split(/\[FIGURE:\s*(fig_\w+)\]/gi);
   return parts.map((part, i) => {
     if (i % 2 === 1) {
+      // Try exact match first
       const fig = figures.find((f) => f.id === part);
       if (fig) return <FigurePlaceholder key={i} figure={fig} />;
+
+      // Try sub-panel match: e.g. "fig_1a" → parent "fig_1", panel "a"
+      const subMatch = part.match(/^(fig_\d+)([a-z])$/i);
+      if (subMatch) {
+        const parentId = subMatch[1];
+        const panelLabel = subMatch[2].toLowerCase();
+        const parent = figures.find((f) => f.id === parentId);
+        if (parent?.sub_panels) {
+          const panel = parent.sub_panels.find((sp) => sp.label.toLowerCase() === panelLabel);
+          if (panel) {
+            // Create a synthetic figure for the sub-panel
+            const syntheticFig: Figure = {
+              ...parent,
+              id: panel.panel_id,
+              caption: `${parent.caption} (${panel.label})`,
+              description: panel.description,
+              image_url: panel.image_url,
+              sub_panels: undefined,
+            };
+            return <FigurePlaceholder key={i} figure={syntheticFig} />;
+          }
+        }
+      }
+
       return <span key={i} className="text-xs text-muted-foreground italic">[Figure: {part}]</span>;
     }
     return part ? <span key={i}>{part}</span> : null;
