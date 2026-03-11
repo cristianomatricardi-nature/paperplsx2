@@ -83,9 +83,19 @@ export function useFigureExtraction(
     for (let attempt = 1; attempt <= MAX_CLIENT_RETRIES; attempt++) {
       console.log(`[useFigureExtraction] Calling edge function (attempt ${attempt}/${MAX_CLIENT_RETRIES})`);
 
-      const { data, error: fnErr } = await supabase.functions.invoke('run-figure-extraction', {
-        body: { paper_id: paperId, page_images: pageImages },
-      });
+      let data: any = null;
+      let fnErr: any = null;
+
+      try {
+        const result = await supabase.functions.invoke('run-figure-extraction', {
+          body: { paper_id: paperId, page_images: pageImages },
+        });
+        data = result.data;
+        fnErr = result.error;
+      } catch (err) {
+        console.warn(`[useFigureExtraction] Edge function threw (attempt ${attempt}):`, err);
+        fnErr = err;
+      }
 
       if (fnErr) {
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
@@ -101,7 +111,7 @@ export function useFigureExtraction(
 
       const isRetryable = responseData?.retryable === true || !!fnErr;
       if (!isRetryable || attempt === MAX_CLIENT_RETRIES) {
-        console.warn(`[useFigureExtraction] Giving up after ${attempt} attempts. retryable=${responseData?.retryable}`);
+        console.warn(`[useFigureExtraction] Giving up after ${attempt} attempts`);
         return;
       }
 
