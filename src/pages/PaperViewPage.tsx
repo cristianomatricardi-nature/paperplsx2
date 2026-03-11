@@ -22,6 +22,7 @@ import type { Author } from '@/types/database';
 import type { StructuredPaper } from '@/types/structured-paper';
 import type { AuthorEnrichments } from '@/components/paper-view/AuthorEnrichmentPanel';
 import type { ReplicationCartItem } from '@/components/paper-view/ReplicationCart';
+import { useFigureExtraction } from '@/hooks/useFigureExtraction';
 
 const PaperViewPage = () => {
   const { paperId } = useParams();
