@@ -58,6 +58,19 @@ export interface MethodStep {
   critical_notes: string[];
 }
 
+export interface FigureSubPanel {
+  panel_id: string;
+  label: string;
+  description: string;
+  image_url: string | null;
+}
+
+export interface FigureCitation {
+  text_snippet: string;
+  section_id?: string;
+  page_number: number;
+}
+
 export interface Figure {
   id: string;
   caption: string;
@@ -73,6 +86,9 @@ export interface Figure {
     width: number;
     height: number;
   };
+  sub_panels?: FigureSubPanel[];
+  visual_description?: string;
+  citations?: FigureCitation[];
 }
 
 export interface TableData {
