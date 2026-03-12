@@ -1,44 +1,41 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-## Admin-Controlled Default Personas
+(Previous plan — implemented)
 
-### Summary
-Add a "Settings" tab inside the existing Admin Dashboard (`/admin`) — visible only to admins — where you can toggle which sub-personas are active for all new papers. Skip the persona selection page for regular users entirely.
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-### Database
+### Changes made
 
-Create an `app_settings` table (single-row config):
-
-```sql
-CREATE TABLE public.app_settings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  default_personas jsonb NOT NULL DEFAULT '["phd_postdoc","pi_tenure","think_tank","science_educator","ai_agent","funder_private"]'::jsonb,
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
-
--- All authenticated users can read (needed so PaperViewPage can fetch defaults)
-CREATE POLICY "Authenticated can read settings" ON public.app_settings FOR SELECT TO authenticated USING (true);
-
--- Only admins can update
-CREATE POLICY "Admins can update settings" ON public.app_settings FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin'));
-
--- Seed row
-INSERT INTO public.app_settings (default_personas) VALUES ('["phd_postdoc","pi_tenure","think_tank","science_educator","ai_agent","funder_private"]'::jsonb);
-```
-
-### Frontend changes
-
-| File | Change |
+| File | Status |
 |------|--------|
-| `src/pages/AdminPage.tsx` | Wrap existing content in a `Tabs` component with two tabs: **Activity** (current dashboard) and **Settings** (new). Settings tab shows a checkbox grid of all sub-personas from `SUB_PERSONA_REGISTRY`, grouped by parent. Fetches current value from `app_settings` on mount, updates on toggle. Only admins see the page (existing guard). |
-| `src/pages/PaperViewPage.tsx` | Remove `PersonaSelectionStep` render gate, `needsPersonaSelection`, `personasConfirmed`, `savingPersonas` state. When a paper has no/default personas, fetch `app_settings.default_personas` and auto-assign them. |
-| `src/components/researcher-home/UploadSection.tsx` | On new paper creation, fetch `app_settings.default_personas` and set as `selected_personas`. |
+| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
+| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
+| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
+| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
+| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
+| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
 
-### Flow
-```text
-Admin → /admin → Settings tab → toggle persona checkboxes → saved to app_settings
-User uploads paper → reads app_settings.default_personas → sets on paper → skips selection
-User opens paper → personas already set → renders directly
-```
+### Secret added
+- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
 
+## PDF → PNG → Gemini code_execution Pipeline (IMPLEMENTED)
+
+### Problem
+Deno Edge Functions have no OffscreenCanvas and no node-canvas. Gemini code_execution can process PNGs but not PDFs directly.
+
+### Solution: Client-Server Hybrid
+1. Client renders PDF pages to PNG via pdf.js (existing `usePaperPdf`)
+2. Uploads page PNGs to `paper-figures/{id}/page_{n}.png`
+3. Edge function downloads PNGs, sends to Gemini 2.5 Flash with `code_execution`
+4. Gemini uses PIL to crop figures, returns base64 PNGs
+5. Edge function uploads crops, updates `structured_papers.figures` with `image_url`
+
+### Files changed
+
+| File | Status |
+|------|--------|
+| `src/hooks/useFigureExtraction.ts` | ✅ New — detects figures without image_url, renders pages to PNG, uploads, calls edge function |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite — accepts page_images array, downloads PNGs, Gemini + code_execution, crops + uploads |
+| `src/pages/PaperViewPage.tsx` | ✅ Wired useFigureExtraction hook |
+| `orchestrate-pipeline` | ✅ Unchanged — fires run-figure-extraction which now defers if no page_images provided |

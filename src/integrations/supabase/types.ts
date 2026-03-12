@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          default_personas: Json
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          default_personas?: Json
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          default_personas?: Json
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       audio_hook_jobs: {
         Row: {
           audio_url: string | null
