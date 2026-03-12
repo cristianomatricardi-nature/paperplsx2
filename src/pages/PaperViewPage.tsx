@@ -11,7 +11,7 @@ import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import PaperSidebar from '@/components/paper-view/PaperSidebar';
 import PaperHeader from '@/components/paper-view/PaperHeader';
 import AiAgentConsole from '@/components/paper-view/AiAgentConsole';
-import PersonaSelectionStep from '@/components/researcher-home/PersonaSelectionStep';
+
 import ResearcherView from '@/components/paper-view/views/ResearcherView';
 import PolicyMakerView from '@/components/paper-view/views/PolicyMakerView';
 import FunderView from '@/components/paper-view/views/FunderView';

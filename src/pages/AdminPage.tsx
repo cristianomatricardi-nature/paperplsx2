@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText,
   RefreshCw,
@@ -22,8 +23,11 @@ import {
   ChevronRight,
   ArrowLeft,
   Download,
+  Settings,
+  BarChart3,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import DefaultPersonasSettings from '@/components/admin/DefaultPersonasSettings';
 
 interface UserRow {
   id: string;
