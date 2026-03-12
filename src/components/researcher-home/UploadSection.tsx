@@ -236,11 +236,17 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
 
                 {/* Completed / Failed actions */}
                 {isPipelineDone && (
-                  <PersonaSelectionStep
-                    loading={uploading}
-                    onConfirm={async (personas: SubPersonaId[]) => {
+                  <Button
+                    onClick={async () => {
                       setUploading(true);
                       try {
+                        const { data: settings } = await supabase
+                          .from('app_settings' as any)
+                          .select('default_personas')
+                          .limit(1)
+                          .single();
+                        const personas = (settings as any)?.default_personas ??
+                          ['phd_postdoc', 'pi_tenure', 'think_tank', 'science_educator', 'ai_agent', 'funder_private'];
                         await supabase
                           .from('papers')
                           .update({ selected_personas: personas as unknown as any })
@@ -252,7 +258,13 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
                         setUploading(false);
                       }
                     }}
-                  />
+                    disabled={uploading}
+                    className="w-full gap-2"
+                    size="lg"
+                  >
+                    <Eye className="h-4 w-4" />
+                    {uploading ? 'Saving…' : 'View Paper++'}
+                  </Button>
                 )}
 
                 {isPipelineFailed && (
