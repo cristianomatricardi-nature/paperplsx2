@@ -152,7 +152,7 @@ const PublicPaperViewPage = () => {
 
           {structured?.figures && structured.figures.length > 0 && (
             <div className="mt-6">
-              <FiguresSection figures={structured.figures} storagePath={storagePath} />
+              <FiguresSection figures={structured.figures} paperId={numericId!} />
             </div>
           )}
         </div>
