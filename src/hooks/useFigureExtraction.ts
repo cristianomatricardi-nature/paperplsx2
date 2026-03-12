@@ -30,7 +30,7 @@ export function useFigureExtraction(
   const runExtraction = useCallback(async () => {
     if (!paperId || !figures || !storagePath || figures.length === 0) return;
 
-    const needsExtraction = figures.filter((f) => !f.image_url);
+    const needsExtraction = figures.filter((f) => !f.image_url && !f.bounding_box);
     if (needsExtraction.length === 0) return;
 
     const pageNumbers = [...new Set(needsExtraction.map((f) => f.page_number || 1))];
