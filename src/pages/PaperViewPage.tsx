@@ -49,8 +49,6 @@ const PaperViewPage = () => {
   const [subPersonaId, setSubPersonaId] = useState<SubPersonaId>('phd_postdoc');
   const [moduleOrder, setModuleOrder] = useState<ModuleId[]>(MODULE_ORDER_BY_PERSONA['phd_postdoc']);
   const [allowedPersonas, setAllowedPersonas] = useState<SubPersonaId[] | undefined>(undefined);
-  const [personasConfirmed, setPersonasConfirmed] = useState(false);
-  const [savingPersonas, setSavingPersonas] = useState(false);
 
   // Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(true);
