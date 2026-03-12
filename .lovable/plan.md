@@ -19,23 +19,27 @@
 ### Secret added
 - `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
 
-## PDF → PNG → Gemini code_execution Pipeline (IMPLEMENTED)
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
 ### Problem
-Deno Edge Functions have no OffscreenCanvas and no node-canvas. Gemini code_execution can process PNGs but not PDFs directly.
+Previous pipeline asked Gemini code_execution to return base64 cropped images inside JSON. Large payloads caused truncated responses, 503/429 errors, and zero images extracted.
 
-### Solution: Client-Server Hybrid
-1. Client renders PDF pages to PNG via pdf.js (existing `usePaperPdf`)
-2. Uploads page PNGs to `paper-figures/{id}/page_{n}.png`
-3. Edge function downloads PNGs, sends to Gemini 2.5 Flash with `code_execution`
-4. Gemini uses PIL to crop figures, returns base64 PNGs
-5. Edge function uploads crops, updates `structured_papers.figures` with `image_url`
+### Solution: code_execution for coordinates, client-side canvas crop from PNG
 
-### Files changed
+1. Edge function keeps `code_execution` for precise bounding box detection via PIL
+2. Gemini returns **only normalized coordinates (0-1)** and enriched metadata — no base64 images
+3. Client loads page PNGs from public `paper-figures` bucket and crops via canvas
+4. Prompt enhanced to scan paper sections for figure references and build contextual analysis
+
+### Changes
 
 | File | Status |
 |------|--------|
-| `src/hooks/useFigureExtraction.ts` | ✅ New — detects figures without image_url, renders pages to PNG, uploads, calls edge function |
-| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite — accepts page_images array, downloads PNGs, Gemini + code_execution, crops + uploads |
-| `src/pages/PaperViewPage.tsx` | ✅ Wired useFigureExtraction hook |
-| `orchestrate-pipeline` | ✅ Unchanged — fires run-figure-extraction which now defers if no page_images provided |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite: coordinates-only response, contextual analysis prompt, removed all base64/upload logic |
+| `src/types/structured-paper.ts` | ✅ Added `page_image_id` to `bounding_box`, `contextual_analysis` to `Figure`, `explanation` + `bounding_box` to `FigureSubPanel` |
+| `src/components/paper/FigureRenderer.tsx` | ✅ Rewrite: loads PNG from public bucket URL, crops via canvas, no pdf.js dependency |
+| `src/components/paper-view/FigureCard.tsx` | ✅ Updated props: `paperId` instead of `storagePath`, shows `contextual_analysis` in modal |
+| `src/components/paper-view/FiguresSection.tsx` | ✅ Updated props: `paperId` instead of `storagePath` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
