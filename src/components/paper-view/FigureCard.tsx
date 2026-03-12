@@ -6,10 +6,10 @@ import { FigureRenderer } from '@/components/paper/FigureRenderer';
 
 interface FigureCardProps {
   figure: Figure;
-  storagePath: string | null;
+  paperId: number;
 }
 
-const FigureCard = ({ figure, storagePath }: FigureCardProps) => {
+const FigureCard = ({ figure, paperId }: FigureCardProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,9 +26,9 @@ const FigureCard = ({ figure, storagePath }: FigureCardProps) => {
                 loading="lazy"
               />
             </div>
-          ) : figure.bounding_box && storagePath ? (
+          ) : figure.bounding_box ? (
             <div className="w-full aspect-video bg-muted/30 overflow-hidden">
-              <FigureRenderer figure={figure} storagePath={storagePath} scale={1.5} className="w-full h-full" />
+              <FigureRenderer figure={figure} paperId={paperId} scale={1.5} className="w-full h-full" />
             </div>
           ) : (
             <div className="w-full aspect-video bg-muted/40 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
@@ -82,8 +82,8 @@ const FigureCard = ({ figure, storagePath }: FigureCardProps) => {
               alt={figure.caption}
               className="w-full h-auto max-h-[60vh] object-contain rounded-md"
             />
-          ) : figure.bounding_box && storagePath ? (
-            <FigureRenderer figure={figure} storagePath={storagePath} scale={3} className="w-full" />
+          ) : figure.bounding_box ? (
+            <FigureRenderer figure={figure} paperId={paperId} scale={3} className="w-full" />
           ) : (
             <div className="flex items-center justify-center h-48 bg-muted rounded-md text-muted-foreground">
               No image available
@@ -110,6 +110,17 @@ const FigureCard = ({ figure, storagePath }: FigureCardProps) => {
             <p className="text-sm font-sans text-muted-foreground leading-relaxed">
               {figure.description}
             </p>
+          )}
+
+          {figure.contextual_analysis && (
+            <div>
+              <h4 className="text-xs font-sans font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                Contextual Analysis
+              </h4>
+              <p className="text-sm font-sans text-foreground leading-relaxed">
+                {figure.contextual_analysis}
+              </p>
+            </div>
           )}
 
           {figure.key_findings?.length > 0 && (
