@@ -10,8 +10,6 @@ import { toast } from '@/hooks/use-toast';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
 import { supabase } from '@/integrations/supabase/client';
 import PipelineProgressBar from './PipelineProgressBar';
-import PersonaSelectionStep from './PersonaSelectionStep';
-import type { SubPersonaId } from '@/types/modules';
 
 interface UploadSectionProps {
   userId: string;
