@@ -124,7 +124,7 @@ export function useFigureExtraction(
   useEffect(() => {
     if (triggeredRef.current || !paperId || !figures || figures.length === 0) return;
 
-    const needsExtraction = figures.some((f) => !f.image_url);
+    const needsExtraction = figures.some((f) => !f.image_url && !f.bounding_box);
     if (!needsExtraction) return;
 
     triggeredRef.current = true;
