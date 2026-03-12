@@ -252,159 +252,156 @@ const AdminPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Summary grid */}
-        {summary && (
-          <div className="space-y-4">
-            {/* Totals row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard
-                label="Total Users"
-                value={summary.total_users}
-                sub="signed up"
-              />
-              <StatCard
-                label="Total Papers"
-                value={summary.total_papers}
-                sub="uploaded"
-              />
-              <StatCard
-                label="Persona Changed"
-                value={`${summary.pct_persona_changed}%`}
-                sub="of users"
-              />
-              <StatCard
-                label="Protocol Opened"
-                value={`${summary.pct_protocol_opened}%`}
-                sub="of users"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <StatCard
-                label="Replication Used"
-                value={`${summary.pct_replication_used}%`}
-                sub="of users"
-              />
-              <StatCard
-                label="Analysis Used"
-                value={`${summary.pct_analysis_used}%`}
-                sub="of users"
-              />
-            </div>
-          </div>
-        )}
+        <Tabs defaultValue="activity" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="activity" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" />
+              Activity
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1.5">
+              <Settings className="h-4 w-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
-        {/* User activity table */}
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            User Activity
-          </h2>
-          <div className="rounded-xl border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="w-8" />
-                  <TableHead className="font-semibold text-foreground">Name</TableHead>
-                  <TableHead className="font-semibold text-foreground">Email</TableHead>
-                  <TableHead className="font-semibold text-foreground">Signed Up</TableHead>
-                  <TableHead className="font-semibold text-foreground text-center">Papers</TableHead>
-                  <TableHead className="font-semibold text-foreground text-center">Persona Changed</TableHead>
-                  <TableHead className="font-semibold text-foreground text-center">Protocol Opened</TableHead>
-                  <TableHead className="font-semibold text-foreground text-center">Replication Used</TableHead>
-                  <TableHead className="font-semibold text-foreground text-center">Analysis Used</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-12 text-sm">
-                      No users found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user) => {
-                    const isExpanded = expandedRows.has(user.id);
-                    return (
-                      <>
-                        <TableRow
-                          key={user.id}
-                          className="cursor-pointer hover:bg-muted/30"
-                          onClick={() => user.papers.length > 0 && toggleRow(user.id)}
-                        >
-                          <TableCell className="w-8">
-                            {user.papers.length > 0 ? (
-                              isExpanded ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )
-                            ) : null}
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">
-                            {user.full_name || '—'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {user.email}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : '—'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm font-medium">{user.papers.length}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <BoolBadge value={user.persona_changed} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <BoolBadge value={user.protocol_opened} />
-                              {user.protocol_opened && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {user.protocol_open_count}×
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <BoolBadge value={user.replication_used} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <BoolBadge value={user.analysis_used} />
-                          </TableCell>
-                        </TableRow>
-                        {isExpanded && (
-                          <TableRow key={`${user.id}-papers`} className="bg-muted/20">
-                            <TableCell />
-                            <TableCell colSpan={8} className="py-3 pl-4">
-                              <div className="space-y-1">
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                  Papers uploaded
-                                </p>
-                                {user.papers.map((p) => (
-                                  <div key={p.id} className="flex items-center gap-2 text-sm">
-                                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-foreground">{p.title ?? 'Untitled'}</span>
-                                    {p.created_at && (
-                                      <span className="text-muted-foreground text-xs ml-auto">
-                                        {format(new Date(p.created_at), 'MMM d, yyyy')}
-                                      </span>
-                                    )}
+          <TabsContent value="activity">
+            {/* Summary grid */}
+            {summary && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <StatCard label="Total Users" value={summary.total_users} sub="signed up" />
+                  <StatCard label="Total Papers" value={summary.total_papers} sub="uploaded" />
+                  <StatCard label="Persona Changed" value={`${summary.pct_persona_changed}%`} sub="of users" />
+                  <StatCard label="Protocol Opened" value={`${summary.pct_protocol_opened}%`} sub="of users" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <StatCard label="Replication Used" value={`${summary.pct_replication_used}%`} sub="of users" />
+                  <StatCard label="Analysis Used" value={`${summary.pct_analysis_used}%`} sub="of users" />
+                </div>
+              </div>
+            )}
+
+            {/* User activity table */}
+            <div className="mt-8">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                User Activity
+              </h2>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="w-8" />
+                      <TableHead className="font-semibold text-foreground">Name</TableHead>
+                      <TableHead className="font-semibold text-foreground">Email</TableHead>
+                      <TableHead className="font-semibold text-foreground">Signed Up</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Papers</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Persona Changed</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Protocol Opened</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Replication Used</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Analysis Used</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center text-muted-foreground py-12 text-sm">
+                          No users found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user) => {
+                        const isExpanded = expandedRows.has(user.id);
+                        return (
+                          <>
+                            <TableRow
+                              key={user.id}
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => user.papers.length > 0 && toggleRow(user.id)}
+                            >
+                              <TableCell className="w-8">
+                                {user.papers.length > 0 ? (
+                                  isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                  )
+                                ) : null}
+                              </TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                {user.full_name || '—'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {user.email}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : '—'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="text-sm font-medium">{user.papers.length}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <BoolBadge value={user.persona_changed} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <BoolBadge value={user.protocol_opened} />
+                                  {user.protocol_opened && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {user.protocol_open_count}×
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <BoolBadge value={user.replication_used} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <BoolBadge value={user.analysis_used} />
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow key={`${user.id}-papers`} className="bg-muted/20">
+                                <TableCell />
+                                <TableCell colSpan={8} className="py-3 pl-4">
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                      Papers uploaded
+                                    </p>
+                                    {user.papers.map((p) => (
+                                      <div key={p.id} className="flex items-center gap-2 text-sm">
+                                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-foreground">{p.title ?? 'Untitled'}</span>
+                                        {p.created_at && (
+                                          <span className="text-muted-foreground text-xs ml-auto">
+                                            {format(new Date(p.created_at), 'MMM d, yyyy')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="max-w-2xl">
+              <DefaultPersonasSettings />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
       </div>
     </div>
   );

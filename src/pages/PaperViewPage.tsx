@@ -85,21 +85,35 @@ const PaperViewPage = () => {
 
     const load = async () => {
       setLoading(true);
-      const [paperRes, structuredRes] = await Promise.all([
+      const [paperRes, structuredRes, settingsRes] = await Promise.all([
         supabase.from('papers').select('*').eq('id', numericId).single(),
         supabase.from('structured_papers').select('*').eq('paper_id', numericId).single(),
+        supabase.from('app_settings' as any).select('default_personas').limit(1).single(),
       ]);
+
+      const defaultPersonas = ((settingsRes.data as any)?.default_personas as SubPersonaId[]) ??
+        ['phd_postdoc', 'pi_tenure', 'think_tank', 'science_educator', 'ai_agent', 'funder_private'];
 
       if (paperRes.data) {
         setPaper(paperRes.data as Record<string, unknown>);
         setAuthorScores((paperRes.data as any).author_impact_scores ?? null);
-        const sp = (paperRes.data as any).selected_personas as SubPersonaId[] | null;
-        if (sp && sp.length > 0) {
-          setAllowedPersonas(sp);
-          if (!sp.includes(subPersonaId)) {
-            setSubPersonaId(sp[0]);
-            setModuleOrder(MODULE_ORDER_BY_PERSONA[sp[0]]);
-          }
+        let sp = (paperRes.data as any).selected_personas as SubPersonaId[] | null;
+
+        // Auto-assign admin defaults if paper still has the old single-item default
+        const isOldDefault = !sp || (sp.length === 1 && sp[0] === 'phd_postdoc');
+        if (isOldDefault) {
+          sp = defaultPersonas;
+          // Fire-and-forget save
+          supabase
+            .from('papers')
+            .update({ selected_personas: sp as unknown as any })
+            .eq('id', numericId);
+        }
+
+        setAllowedPersonas(sp);
+        if (!sp.includes(subPersonaId)) {
+          setSubPersonaId(sp[0]);
+          setModuleOrder(MODULE_ORDER_BY_PERSONA[sp[0]]);
         }
       }
       if (structuredRes.data) {
