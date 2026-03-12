@@ -31,10 +31,21 @@ const FigureCard = ({ figure, paperId }: FigureCardProps) => {
               <FigureRenderer figure={figure} paperId={paperId} scale={1.5} className="w-full h-full" />
             </div>
           ) : (
-            <div className="w-full aspect-video bg-muted/40 flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-              <span className="text-sm font-sans text-muted-foreground">
-                📊 Figure from page {figure.page_number}
-              </span>
+            <div className="w-full aspect-video bg-muted/40 flex flex-col items-center justify-center gap-1.5 transition-transform duration-200 group-hover:scale-105 px-4">
+              {(figure as any).figure_extraction_status === 'unavailable' ? (
+                <>
+                  <span className="text-xs font-sans text-muted-foreground text-center leading-relaxed">
+                    ⚠️ Figure image extraction is temporarily unavailable due to high API usage.
+                  </span>
+                  <span className="text-[10px] font-sans text-muted-foreground/70 text-center">
+                    Contextual analysis and metadata are still available below.
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm font-sans text-muted-foreground">
+                  📊 Figure from page {figure.page_number}
+                </span>
+              )}
             </div>
           )}
 

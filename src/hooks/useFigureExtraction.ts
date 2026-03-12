@@ -7,12 +7,11 @@ const MAX_CLIENT_RETRIES = 3;
 const RETRY_BASE_DELAY = 5000;
 
 /**
- * Client-side hook that:
- * 1. Detects figures without image_url
- * 2. Renders their PDF pages to PNG via pdf.js
- * 3. Uploads page PNGs to storage
- * 4. Calls run-figure-extraction edge function with page image paths
- * 5. Retries on transient failures; calls onSuccess when images are extracted
+ * Client-side fallback hook that:
+ * 1. Checks if figures already have bounding_box (server extraction succeeded) → do nothing
+ * 2. If not, ensures PNGs exist in storage (renders via pdf.js if missing)
+ * 3. Calls run-figure-extraction edge function as a retry mechanism
+ * 4. Calls onSuccess when images are extracted
  */
 export function useFigureExtraction(
   paperId: number | null,
@@ -30,18 +29,44 @@ export function useFigureExtraction(
   const runExtraction = useCallback(async () => {
     if (!paperId || !figures || !storagePath || figures.length === 0) return;
 
-    const needsExtraction = figures.filter((f) => !f.image_url && !f.bounding_box);
-    if (needsExtraction.length === 0) return;
+    // Check if extraction already succeeded (server-side)
+    const hasAnyBoundingBox = figures.some((f) => f.bounding_box);
+    if (hasAnyBoundingBox) {
+      console.log('[useFigureExtraction] Figures already have bounding boxes, skipping');
+      return;
+    }
 
-    const pageNumbers = [...new Set(needsExtraction.map((f) => f.page_number || 1))];
+    // Check if marked as unavailable (API limit hit) — don't retry
+    const isUnavailable = figures.some((f: any) => f.figure_extraction_status === 'unavailable');
+    if (isUnavailable) {
+      console.log('[useFigureExtraction] Figure extraction marked as unavailable, skipping');
+      return;
+    }
+
+    // Determine which pages need PNGs
+    const pageNumbers = [...new Set(figures.map((f) => f.page_number || 1))];
 
     console.log(
-      `[useFigureExtraction] Rendering ${pageNumbers.length} pages for ${needsExtraction.length} figures`,
+      `[useFigureExtraction] Fallback: checking ${pageNumbers.length} pages for ${figures.length} figures`,
     );
 
+    // Ensure PNGs exist in storage
     const pageImages: { page_number: number; storage_path: string }[] = [];
 
     for (const pageNum of pageNumbers) {
+      const path = `${paperId}/page_${pageNum}.png`;
+
+      // Check if PNG already exists
+      const { data: existing } = await supabase.storage
+        .from('paper-figures')
+        .list(`${paperId}`, { search: `page_${pageNum}.png` });
+
+      if (existing && existing.length > 0) {
+        pageImages.push({ page_number: pageNum, storage_path: path });
+        continue;
+      }
+
+      // PNG missing — render and upload
       try {
         const canvas = await renderPage(pageNum, 2);
         if (!canvas) {
@@ -53,8 +78,6 @@ export function useFigureExtraction(
           canvas.toBlob((b) => resolve(b), 'image/png'),
         );
         if (!blob) continue;
-
-        const path = `${paperId}/page_${pageNum}.png`;
 
         const { error: uploadErr } = await supabase.storage
           .from('paper-figures')
@@ -75,7 +98,7 @@ export function useFigureExtraction(
     }
 
     if (pageImages.length === 0) {
-      console.warn('[useFigureExtraction] No page images uploaded, skipping extraction');
+      console.warn('[useFigureExtraction] No page images available, skipping extraction');
       return;
     }
 
@@ -101,11 +124,17 @@ export function useFigureExtraction(
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
       }
 
-      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number } | null;
+      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number; unavailable?: boolean } | null;
 
       if (responseData?.success && (responseData.figures_extracted ?? 0) > 0) {
         console.log(`[useFigureExtraction] Success! ${responseData.figures_extracted} figures extracted`);
         onSuccessRef.current?.();
+        return;
+      }
+
+      // If unavailable (API limits), don't retry from client either
+      if (responseData?.unavailable) {
+        console.warn('[useFigureExtraction] Extraction unavailable due to API limits');
         return;
       }
 
@@ -124,6 +153,7 @@ export function useFigureExtraction(
   useEffect(() => {
     if (triggeredRef.current || !paperId || !figures || figures.length === 0) return;
 
+    // Only trigger if no figures have bounding boxes (server didn't complete)
     const needsExtraction = figures.some((f) => !f.image_url && !f.bounding_box);
     if (!needsExtraction) return;
 

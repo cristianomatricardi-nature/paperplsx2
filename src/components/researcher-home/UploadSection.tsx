@@ -10,6 +10,53 @@ import { toast } from '@/hooks/use-toast';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
 import { supabase } from '@/integrations/supabase/client';
 import PipelineProgressBar from './PipelineProgressBar';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Use the bundled worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+
+/** Fire-and-forget: render all PDF pages to PNG and upload to paper-figures bucket */
+async function uploadPagePngs(file: File, paperId: number) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const numPages = doc.numPages;
+    console.log(`[UploadSection] Rendering ${numPages} pages to PNG for paper ${paperId}`);
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      try {
+        const page = await doc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob((b) => resolve(b), 'image/png'),
+        );
+        if (!blob) continue;
+
+        const path = `${paperId}/page_${pageNum}.png`;
+        await supabase.storage.from('paper-figures').upload(path, blob, {
+          contentType: 'image/png',
+          upsert: true,
+        });
+        console.log(`[UploadSection] Uploaded page ${pageNum}/${numPages}`);
+      } catch (err) {
+        console.warn(`[UploadSection] Failed to render/upload page ${pageNum}:`, err);
+      }
+    }
+    doc.destroy();
+    console.log(`[UploadSection] All ${numPages} page PNGs uploaded for paper ${paperId}`);
+  } catch (err) {
+    console.warn('[UploadSection] PNG rendering failed (non-fatal):', err);
+  }
+}
 
 interface UploadSectionProps {
   userId: string;
@@ -73,6 +120,8 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
       const newPaperId = result?.paper_id;
       if (newPaperId) {
         setPaperId(newPaperId);
+        // Fire-and-forget: render all PDF pages to PNG in parallel with the pipeline
+        uploadPagePngs(selectedFile, newPaperId);
         toast({ title: 'Pipeline started', description: 'Your paper is now being processed.' });
         onPaperAdded();
       } else {
