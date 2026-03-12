@@ -3,10 +3,10 @@ import FigureCard from './FigureCard';
 
 interface FiguresSectionProps {
   figures: Figure[];
-  storagePath: string | null;
+  paperId: number;
 }
 
-const FiguresSection = ({ figures, storagePath }: FiguresSectionProps) => {
+const FiguresSection = ({ figures, paperId }: FiguresSectionProps) => {
   if (!figures || figures.length === 0) return null;
 
   return (
@@ -17,7 +17,7 @@ const FiguresSection = ({ figures, storagePath }: FiguresSectionProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {figures.map((fig) => (
-          <FigureCard key={fig.id} figure={fig} storagePath={storagePath} />
+          <FigureCard key={fig.id} figure={fig} paperId={paperId} />
         ))}
       </div>
     </section>

@@ -62,7 +62,15 @@ export interface FigureSubPanel {
   panel_id: string;
   label: string;
   description: string;
+  explanation?: string;
   image_url: string | null;
+  bounding_box?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    page_image_id?: string;
+  };
 }
 
 export interface FigureCitation {
@@ -85,9 +93,11 @@ export interface Figure {
     y: number;
     width: number;
     height: number;
+    page_image_id?: string;
   };
   sub_panels?: FigureSubPanel[];
   visual_description?: string;
+  contextual_analysis?: string;
   citations?: FigureCitation[];
 }
 

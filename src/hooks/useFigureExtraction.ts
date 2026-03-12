@@ -30,7 +30,7 @@ export function useFigureExtraction(
   const runExtraction = useCallback(async () => {
     if (!paperId || !figures || !storagePath || figures.length === 0) return;
 
-    const needsExtraction = figures.filter((f) => !f.image_url);
+    const needsExtraction = figures.filter((f) => !f.image_url && !f.bounding_box);
     if (needsExtraction.length === 0) return;
 
     const pageNumbers = [...new Set(needsExtraction.map((f) => f.page_number || 1))];
@@ -101,10 +101,10 @@ export function useFigureExtraction(
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
       }
 
-      const responseData = data as { success?: boolean; retryable?: boolean; images_uploaded?: number } | null;
+      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number } | null;
 
-      if (responseData?.success && (responseData.images_uploaded ?? 0) > 0) {
-        console.log(`[useFigureExtraction] Success! ${responseData.images_uploaded} images extracted`);
+      if (responseData?.success && (responseData.figures_extracted ?? 0) > 0) {
+        console.log(`[useFigureExtraction] Success! ${responseData.figures_extracted} figures extracted`);
         onSuccessRef.current?.();
         return;
       }
@@ -124,7 +124,7 @@ export function useFigureExtraction(
   useEffect(() => {
     if (triggeredRef.current || !paperId || !figures || figures.length === 0) return;
 
-    const needsExtraction = figures.some((f) => !f.image_url);
+    const needsExtraction = figures.some((f) => !f.image_url && !f.bounding_box);
     if (!needsExtraction) return;
 
     triggeredRef.current = true;
