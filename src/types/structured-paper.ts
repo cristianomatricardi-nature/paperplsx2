@@ -93,9 +93,11 @@ export interface Figure {
     y: number;
     width: number;
     height: number;
+    page_image_id?: string;
   };
   sub_panels?: FigureSubPanel[];
   visual_description?: string;
+  contextual_analysis?: string;
   citations?: FigureCitation[];
 }
 
