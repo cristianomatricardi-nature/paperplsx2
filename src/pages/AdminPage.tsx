@@ -402,7 +402,6 @@ const AdminPage = () => {
           </TabsContent>
         </Tabs>
       </div>
-      </div>
     </div>
   );
 };
