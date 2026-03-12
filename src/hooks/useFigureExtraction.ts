@@ -101,10 +101,10 @@ export function useFigureExtraction(
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
       }
 
-      const responseData = data as { success?: boolean; retryable?: boolean; images_uploaded?: number } | null;
+      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number } | null;
 
-      if (responseData?.success && (responseData.images_uploaded ?? 0) > 0) {
-        console.log(`[useFigureExtraction] Success! ${responseData.images_uploaded} images extracted`);
+      if (responseData?.success && (responseData.figures_extracted ?? 0) > 0) {
+        console.log(`[useFigureExtraction] Success! ${responseData.figures_extracted} figures extracted`);
         onSuccessRef.current?.();
         return;
       }
