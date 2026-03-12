@@ -1,45 +1,51 @@
 
-## Dynamic Waveform Audio Player (NotebookLM-style)
 
-(Previous plan — implemented)
+## Plan: Parallel Figure Extraction with PNG Images + Code Execution
 
-## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
+### Architecture: Two Parallel Tracks
 
-### Changes made
-
-| File | Status |
-|------|--------|
-| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
-| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
-| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
-| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
-| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
-| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
-
-### Secret added
-- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
-
-## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
-
-### Problem
-Previous pipeline asked Gemini code_execution to return base64 cropped images inside JSON. Large payloads caused truncated responses, 503/429 errors, and zero images extracted.
-
-### Solution: code_execution for coordinates, client-side canvas crop from PNG
-
-1. Edge function keeps `code_execution` for precise bounding box detection via PIL
-2. Gemini returns **only normalized coordinates (0-1)** and enriched metadata — no base64 images
-3. Client loads page PNGs from public `paper-figures` bucket and crops via canvas
-4. Prompt enhanced to scan paper sections for figure references and build contextual analysis
+```text
+Upload PDF
+  ├── Track A (server - orchestrator): parse → structure → chunk → impact → completed
+  │                                                                    
+  └── Track B (client - immediate):    PDF → render ALL pages to PNG → upload to paper-figures bucket
+                                                                          │
+                              ┌───────────────────────────────────────────┘
+                              ▼
+              Orchestrator (after structuring): fires run-figure-extraction 
+              with page_images paths constructed from papers.num_pages
+                              │
+                              ▼
+              Edge function: downloads PNGs from bucket → sends to Gemini 
+              with code_execution → saves bounding_boxes to DB
+```
 
 ### Changes
 
-| File | Status |
-|------|--------|
-| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite: coordinates-only response, contextual analysis prompt, removed all base64/upload logic |
-| `src/types/structured-paper.ts` | ✅ Added `page_image_id` to `bounding_box`, `contextual_analysis` to `Figure`, `explanation` + `bounding_box` to `FigureSubPanel` |
-| `src/components/paper/FigureRenderer.tsx` | ✅ Rewrite: loads PNG from public bucket URL, crops via canvas, no pdf.js dependency |
-| `src/components/paper-view/FigureCard.tsx` | ✅ Updated props: `paperId` instead of `storagePath`, shows `contextual_analysis` in modal |
-| `src/components/paper-view/FiguresSection.tsx` | ✅ Updated props: `paperId` instead of `storagePath` |
-| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
-| `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
-| `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
+**1. `src/components/researcher-home/UploadSection.tsx`** — Start PNG rendering immediately after upload
+
+After `uploadPaper()` returns `paper_id`, fire-and-forget: load the PDF from the `selectedFile` using pdf.js, render every page at 2x scale to PNG, upload each to `paper-figures/{paperId}/page_{N}.png`. No Gemini call here — just prepare the PNGs. This runs client-side in parallel with the orchestrator.
+
+**2. `supabase/functions/orchestrate-pipeline/index.ts`** — Pass page_images to figure extraction
+
+At Step 3 (after structuring), read `papers.num_pages` (set during parsing). Construct `page_images` array: `[{ page_number: 1, storage_path: "{paperId}/page_1.png" }, ...]`. Fire `run-figure-extraction` with `{ paper_id, page_images }` — this gives the edge function the PNG paths it needs. Still fire-and-forget (non-blocking, parallel with chunking). No other pipeline changes.
+
+**3. `supabase/functions/run-figure-extraction/index.ts`** — Add server-side retry for 503/429
+
+Add a retry loop (3 attempts, exponential backoff) around the Gemini API call inside the edge function itself. If all retries fail with 429/503, save a `figure_extraction_status: "unavailable"` field to `structured_papers` so the UI knows extraction failed due to API limits. Keep everything else unchanged: PNG images + code_execution + Gemini 3 Flash Preview.
+
+**4. `src/hooks/useFigureExtraction.ts`** — Become a fallback/retry mechanism
+
+Check if figures have `bounding_box`. If yes, do nothing (extraction already succeeded). If no, check if PNGs exist in storage — if they do, call the edge function (existing retry logic). If PNGs don't exist, render and upload them first, then call. This handles the case where a user views a paper before Track B completed.
+
+**5. `src/components/paper-view/FigureCard.tsx`** — Graceful degradation message
+
+When `bounding_box` is null, check `structured_papers.figure_extraction_status`. If `"unavailable"`, show: "Figure image extraction is temporarily unavailable due to high API usage. Contextual analysis and metadata are still available below." Instead of generic "📊 Figure from page X" placeholder.
+
+### What is NOT touched
+- `run-parser`, `run-structuring`, `run-chunking-and-embedding` — unchanged
+- `generate-simulated-impact`, all module generation — unchanged
+- All persona views, RAG, UI module rendering — unchanged
+- Pipeline status flow (parsing → structuring → chunking → completed) — unchanged
+- Gemini prompt, code_execution, PNG-based analysis — unchanged
+
