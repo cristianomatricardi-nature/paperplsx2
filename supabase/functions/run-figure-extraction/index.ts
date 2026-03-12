@@ -237,17 +237,18 @@ function extractJsonArray(raw: string): GeminiFigureResult[] | null {
   }
 }
 
-/** Call Gemini with page PNG images + code_execution */
-async function callGemini(
+const MAX_SERVER_RETRIES = 3;
+const RETRY_BASE_MS = 5000;
+
+/** Call Gemini with page PNG images + code_execution, with server-side retry for 429/503 */
+async function callGeminiWithRetry(
   googleApiKey: string,
   pageImageData: { page_number: number; base64: string }[],
   figures: TextFigure[],
   sections: Section[],
-): Promise<GeminiFigureResult[]> {
+): Promise<{ results: GeminiFigureResult[] | null; unavailable: boolean; error?: string }> {
   const pageNumbers = pageImageData.map((p) => p.page_number);
   const prompt = buildGeminiPrompt(figures, sections, pageNumbers);
-
-  console.log(`[figure-extraction] Calling Gemini with ${pageImageData.length} page PNGs, ${figures.length} figures`);
 
   const parts: any[] = [];
   for (const page of pageImageData) {
@@ -268,56 +269,83 @@ async function callGemini(
     },
   });
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: requestBody,
-    },
-  );
+  for (let attempt = 1; attempt <= MAX_SERVER_RETRIES; attempt++) {
+    console.log(`[figure-extraction] Gemini attempt ${attempt}/${MAX_SERVER_RETRIES} with ${pageImageData.length} PNGs, ${figures.length} figures`);
 
-  if (response.status === 503 || response.status === 429) {
-    const errText = await response.text();
-    console.warn(`[figure-extraction] Gemini ${response.status}: ${errText.slice(0, 200)}`);
-    throw new Error(`Gemini API returned ${response.status}`);
-  }
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${googleApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: requestBody,
+        },
+      );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
-    throw new Error(`Gemini API error: ${response.status}`);
-  }
+      if (response.status === 429 || response.status === 503) {
+        const errText = await response.text();
+        console.warn(`[figure-extraction] Gemini ${response.status} (attempt ${attempt}): ${errText.slice(0, 200)}`);
 
-  const data = await response.json();
+        if (attempt === MAX_SERVER_RETRIES) {
+          return { results: null, unavailable: true, error: `Gemini API returned ${response.status} after ${MAX_SERVER_RETRIES} attempts` };
+        }
 
-  let rawText = "";
-  const candidates = data.candidates || [];
-  for (const candidate of candidates) {
-    const cParts = candidate.content?.parts || [];
-    for (const part of cParts) {
-      if (part.text) rawText = part.text;
-      if (part.codeExecutionResult?.output) {
-        const execOutput = part.codeExecutionResult.output;
-        if (execOutput.includes("[") || execOutput.includes("{")) {
-          rawText = execOutput;
+        const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1) + Math.random() * 3000;
+        console.log(`[figure-extraction] Retrying in ${Math.round(delay / 1000)}s...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`[figure-extraction] Gemini API error: ${response.status}`, errText);
+        return { results: null, unavailable: false, error: `Gemini API error: ${response.status}` };
+      }
+
+      const data = await response.json();
+
+      let rawText = "";
+      const candidates = data.candidates || [];
+      for (const candidate of candidates) {
+        const cParts = candidate.content?.parts || [];
+        for (const part of cParts) {
+          if (part.text) rawText = part.text;
+          if (part.codeExecutionResult?.output) {
+            const execOutput = part.codeExecutionResult.output;
+            if (execOutput.includes("[") || execOutput.includes("{")) {
+              rawText = execOutput;
+            }
+          }
         }
       }
+
+      if (!rawText.trim()) {
+        console.warn("[figure-extraction] No usable output from Gemini");
+        if (attempt === MAX_SERVER_RETRIES) {
+          return { results: null, unavailable: false, error: "Gemini returned empty output" };
+        }
+        continue;
+      }
+
+      const parsed = extractJsonArray(rawText);
+      if (!parsed || parsed.length === 0) {
+        console.error("[figure-extraction] Failed to parse Gemini response:", rawText.slice(0, 500));
+        return { results: null, unavailable: false, error: "Failed to parse figure results from Gemini" };
+      }
+
+      return { results: parsed, unavailable: false };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[figure-extraction] Gemini fetch error (attempt ${attempt}):`, msg);
+      if (attempt === MAX_SERVER_RETRIES) {
+        return { results: null, unavailable: true, error: msg };
+      }
+      const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1) + Math.random() * 3000;
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
 
-  if (!rawText.trim()) {
-    console.warn("[figure-extraction] No usable output from Gemini");
-    throw new Error("Gemini returned empty output");
-  }
-
-  const parsed = extractJsonArray(rawText);
-  if (!parsed || parsed.length === 0) {
-    console.error("[figure-extraction] Failed to parse Gemini response:", rawText.slice(0, 500));
-    throw new Error("Failed to parse figure results from Gemini");
-  }
-
-  return parsed;
+  return { results: null, unavailable: true, error: "Exhausted retries" };
 }
 
 Deno.serve(async (req) => {
@@ -404,8 +432,8 @@ Deno.serve(async (req) => {
 
     if (pageImageData.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Failed to download any page images" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Failed to download any page images", retryable: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -414,22 +442,44 @@ Deno.serve(async (req) => {
     // 3. Build regex-based citation map as fallback
     const regexCitationMap = buildCitationMapFromSections(sections);
 
-    // 4. Call Gemini
-    let geminiResults: GeminiFigureResult[];
-    try {
-      geminiResults = await callGemini(googleApiKey, pageImageData, figures, sections);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isQuotaExceeded = /\b429\b/.test(msg) || /quota/i.test(msg);
-      const retryable = !isQuotaExceeded;
+    // 4. Call Gemini with server-side retry
+    const { results: geminiResults, unavailable, error: geminiError } = await callGeminiWithRetry(
+      googleApiKey,
+      pageImageData,
+      figures,
+      sections,
+    );
 
-      console.error(`[figure-extraction] Gemini failed: ${msg}`);
+    if (!geminiResults) {
+      if (unavailable) {
+        // Mark extraction as unavailable in structured_papers metadata
+        const updatedFiguresWithStatus = figures.map((fig) => ({
+          ...fig,
+          figure_extraction_status: "unavailable",
+        }));
+        await supabase
+          .from("structured_papers")
+          .update({ figures: updatedFiguresWithStatus })
+          .eq("paper_id", paper_id);
+
+        console.warn(`[figure-extraction] Marked as unavailable for paper ${paper_id}: ${geminiError}`);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            retryable: true,
+            unavailable: true,
+            error: geminiError,
+            figures_extracted: 0,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
-          retryable,
-          error: msg,
-          reason: isQuotaExceeded ? "quota_exceeded" : "model_unavailable",
+          retryable: false,
+          error: geminiError,
           figures_extracted: 0,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -479,6 +529,7 @@ Deno.serve(async (req) => {
             bounding_box: p.bounding_box || undefined,
           })),
           citations: mergedCitations.length > 0 ? mergedCitations : undefined,
+          figure_extraction_status: "complete",
         };
       }
 

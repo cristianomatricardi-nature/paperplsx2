@@ -120,6 +120,8 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
       const newPaperId = result?.paper_id;
       if (newPaperId) {
         setPaperId(newPaperId);
+        // Fire-and-forget: render all PDF pages to PNG in parallel with the pipeline
+        uploadPagePngs(selectedFile, newPaperId);
         toast({ title: 'Pipeline started', description: 'Your paper is now being processed.' });
         onPaperAdded();
       } else {
