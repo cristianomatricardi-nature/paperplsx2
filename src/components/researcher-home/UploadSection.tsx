@@ -81,7 +81,7 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
-  const [uploadMode, setUploadMode] = useState<'paperpp' | 'library'>('paperpp');
+  const [uploadMode] = useState<'paperpp'>('paperpp');
 
   // DOI state
   const [doi, setDoi] = useState('');
