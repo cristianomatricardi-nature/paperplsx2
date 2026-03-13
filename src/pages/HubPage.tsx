@@ -53,6 +53,9 @@ const HubPage = () => {
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
 
+  // Library toggle state
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
   // Account dialog state
   const [accountOpen, setAccountOpen] = useState(false);
   const [editName, setEditName] = useState('');
