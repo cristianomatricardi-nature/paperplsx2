@@ -230,6 +230,7 @@ Deno.serve(async (req) => {
         .from("papers")
         .select("id, title, abstract, source_type")
         .eq("user_id", userId)
+        .eq("source_type", "library")
         .neq("id", paperId)
         .in("status", ["completed"])
         .order("created_at", { ascending: false })
