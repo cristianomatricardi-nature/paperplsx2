@@ -17,6 +17,7 @@ import ApiKeysPage from "./pages/ApiKeysPage";
 import AdminPage from "./pages/AdminPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
+import { HeatmapProvider } from "./components/HeatmapProvider";
 
 const queryClient = new QueryClient();
 
