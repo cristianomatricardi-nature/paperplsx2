@@ -24,6 +24,7 @@ interface PolicyMakerViewProps {
   paper: Record<string, unknown> | null;
   onPersonaChange: (persona: SubPersonaId) => void;
   allowedPersonas?: SubPersonaId[];
+  userId?: string;
 }
 
 const EVIDENCE_QUALITY_COLORS: Record<string, string> = {
