@@ -146,7 +146,7 @@ const ModuleAccordion = ({
       {/* Header */}
       <button
         onClick={handleToggle}
-        className="flex w-full items-start justify-between px-5 py-4 text-left transition-colors hover:bg-muted/40"
+        className="flex w-full items-start justify-between px-5 py-3 text-left transition-colors hover:bg-muted/40"
       >
         <div className="flex items-start gap-3 min-w-0">
           <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />
@@ -164,7 +164,10 @@ const ModuleAccordion = ({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 mt-1">
+        <div className="flex items-center gap-3 shrink-0 mt-1">
+          <span className="font-mono text-[10px] text-muted-foreground select-all hidden sm:inline">
+            {doiString}
+          </span>
           {authorsMode && isOpen && cachedContent && !editing && (
             <Button
               variant="ghost"
@@ -265,12 +268,6 @@ const ModuleAccordion = ({
         </div>
       </div>
 
-      {/* DOI-like footer — always visible */}
-      <div className="border-t border-border px-5 py-2">
-        <span className="font-mono text-[10px] text-muted-foreground select-all">
-          {doiString}
-        </span>
-      </div>
     </div>
   );
 };
