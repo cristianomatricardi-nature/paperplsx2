@@ -263,6 +263,40 @@ const HubPage = () => {
             </div>
           </button>
 
+          {/* ── My Library (collapsible) ── */}
+          <div className="w-full">
+            <button
+              onClick={() => setLibraryOpen((o) => !o)}
+              className="group w-full rounded-2xl border border-border bg-card text-left shadow-sm transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex items-center justify-between p-6 sm:p-8">
+                <div className="flex items-center gap-5">
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: 'hsl(var(--hero-teal) / 0.1)' }}
+                  >
+                    <Library className="h-7 w-7" style={{ color: 'hsl(var(--hero-teal))' }} />
+                  </div>
+                  <div>
+                    <h2 className="font-serif text-xl font-bold text-foreground">My Library</h2>
+                    <p className="mt-1 text-sm text-muted-foreground leading-relaxed max-w-lg">
+                      Browse your uploaded papers and Paper++ collection.
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`ml-4 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 ${libraryOpen ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+
+            {libraryOpen && (
+              <div className="mt-2 rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+                <PaperLibrary userId={user.id} refreshKey={0} />
+              </div>
+            )}
+          </div>
+
           {/* ── Bottom row: Manage Account + Digital Lab ── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 

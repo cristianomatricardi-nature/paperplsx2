@@ -227,8 +227,7 @@ const ResearcherHomePage = () => {
 
       {/* ── Main Content ── */}
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        <UploadSection userId={user.id} onPaperAdded={handlePaperAdded} />
-        <PaperLibrary userId={user.id} refreshKey={refreshKey} />
+        <UploadSection userId={user.id} onPaperAdded={() => {}} />
       </main>
 
       {/* Edit Profile Dialog */}
