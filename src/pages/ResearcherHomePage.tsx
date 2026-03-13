@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import UploadSection from '@/components/researcher-home/UploadSection';
-import PaperLibrary from '@/components/researcher-home/PaperLibrary';
 import {
   Dialog,
   DialogContent,
