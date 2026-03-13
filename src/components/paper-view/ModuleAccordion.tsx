@@ -268,12 +268,6 @@ const ModuleAccordion = ({
         </div>
       </div>
 
-      {/* DOI-like footer — always visible */}
-      <div className="border-t border-border px-5 py-2">
-        <span className="font-mono text-[10px] text-muted-foreground select-all">
-          {doiString}
-        </span>
-      </div>
     </div>
   );
 };

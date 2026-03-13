@@ -191,21 +191,35 @@ Deno.serve(async (req) => {
       fireFunction("generate-module-titles", { paper_id: paperId });
       fireFunction("generate-simulated-impact", { paper_id: paperId });
 
-      // Poll: both simulated impact + module titles
-      await pollForCondition(
-        "simulated impact scores generated",
-        async () => {
-          const { data } = await supabase
-            .from("papers")
-            .select("simulated_impact_scores")
-            .eq("id", paperId)
-            .single();
-          return data?.simulated_impact_scores != null;
-        },
-        120_000, // 2 min
-      );
-
-      // Module titles are non-blocking — don't wait for them
+      // Poll: both simulated impact + module titles must complete before finalizing
+      await Promise.all([
+        pollForCondition(
+          "simulated impact scores generated",
+          async () => {
+            const { data } = await supabase
+              .from("papers")
+              .select("simulated_impact_scores")
+              .eq("id", paperId)
+              .single();
+            return data?.simulated_impact_scores != null;
+          },
+          120_000,
+        ),
+        pollForCondition(
+          "module titles generated",
+          async () => {
+            const { data } = await supabase
+              .from("structured_papers")
+              .select("module_titles")
+              .eq("paper_id", paperId)
+              .single();
+            if (!data?.module_titles) return false;
+            const titles = data.module_titles as Record<string, unknown>;
+            return typeof titles === "object" && "M1" in titles;
+          },
+          120_000,
+        ),
+      ]);
 
       // Step 5: Finalize
       console.log(`[pipeline] Paper ${paperId}: Pipeline completed`);
