@@ -66,7 +66,6 @@ const ResearcherHomePage = () => {
       if (error) throw error;
       toast({ title: 'Profile updated' });
       setEditOpen(false);
-      setRefreshKey((k) => k + 1);
     } catch (err: any) {
       toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
     } finally {
