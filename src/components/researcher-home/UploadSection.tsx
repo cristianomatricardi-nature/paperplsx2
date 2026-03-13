@@ -198,7 +198,7 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setand setIsDragging(true);
+    setIsDragging(true);
   };
 
   const onDragLeave = () => setIsDragging(false);
