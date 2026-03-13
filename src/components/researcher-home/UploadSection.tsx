@@ -202,20 +202,16 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="upload" className="flex-1 gap-1.5">
-              <FileUp className="h-4 w-4" />
-              Upload PDF
-            </TabsTrigger>
-            <TabsTrigger value="doi" className="flex-1 gap-1.5">
-              <Link className="h-4 w-4" />
-              Paste DOI
-            </TabsTrigger>
-            <TabsTrigger value="library" className="flex-1 gap-1.5">
-              <BookOpen className="h-4 w-4" />
-              My Library
-            </TabsTrigger>
-          </TabsList>
+           <TabsList className="w-full">
+             <TabsTrigger value="upload" className="flex-1 gap-1.5">
+               <FileUp className="h-4 w-4" />
+               Upload PDF
+             </TabsTrigger>
+             <TabsTrigger value="doi" className="flex-1 gap-1.5">
+               <Link className="h-4 w-4" />
+               Paste DOI
+             </TabsTrigger>
+           </TabsList>
 
           {/* Upload PDF */}
           <TabsContent value="upload">
