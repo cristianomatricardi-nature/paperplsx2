@@ -150,30 +150,29 @@ Deno.serve(async (req) => {
         300_000, // 5 min
       );
 
-      // Step 3: Parallel — chunking + figure extraction
-      console.log(`[pipeline] Paper ${paperId}: Starting chunking & figure extraction`);
+      // Step 3: Chunking (+ figure extraction for full pipeline)
+      console.log(`[pipeline] Paper ${paperId}: Starting chunking${libraryOnly ? ' (library mode)' : ' & figure extraction'}`);
       await updateStatus("chunking");
       fireFunction("run-chunking-and-embedding", { paper_id: paperId });
 
-      // Construct page_images from num_pages (PNGs uploaded by the client in parallel)
-      const { data: paperForPages } = await supabase
-        .from("papers")
-        .select("num_pages")
-        .eq("id", paperId)
-        .single();
-      const numPages = paperForPages?.num_pages ?? 0;
-      if (numPages > 0) {
-        const pageImages = Array.from({ length: numPages }, (_, i) => ({
-          page_number: i + 1,
-          storage_path: `${paperId}/page_${i + 1}.png`,
-        }));
-        fireFunction("run-figure-extraction", { paper_id: paperId, page_images: pageImages });
-      } else {
-        console.warn(`[pipeline] Paper ${paperId}: num_pages not available, skipping figure extraction`);
+      if (!libraryOnly) {
+        // Construct page_images from num_pages (PNGs uploaded by the client in parallel)
+        const { data: paperForPages } = await supabase
+          .from("papers")
+          .select("num_pages")
+          .eq("id", paperId)
+          .single();
+        const numPages = paperForPages?.num_pages ?? 0;
+        if (numPages > 0) {
+          const pageImages = Array.from({ length: numPages }, (_, i) => ({
+            page_number: i + 1,
+            storage_path: `${paperId}/page_${i + 1}.png`,
+          }));
+          fireFunction("run-figure-extraction", { paper_id: paperId, page_images: pageImages });
+        } else {
+          console.warn(`[pipeline] Paper ${paperId}: num_pages not available, skipping figure extraction`);
+        }
       }
-
-      // Poll: figure extraction updates structured_papers.figures with bounding_box data
-      // (non-blocking — we only block on chunking)
 
       // Poll: chunking inserts rows into chunks table (blocking)
       await pollForCondition(
@@ -187,6 +186,13 @@ Deno.serve(async (req) => {
         },
         300_000, // 5 min
       );
+
+      // Library mode: skip module titles, simulated impact — mark completed
+      if (libraryOnly) {
+        console.log(`[pipeline] Paper ${paperId}: Library pipeline completed`);
+        await updateStatus("completed");
+        return;
+      }
 
       // Step 4: Module Titles + Simulated Impact (parallel)
       console.log(`[pipeline] Paper ${paperId}: Generating module titles + simulated impact scores`);
