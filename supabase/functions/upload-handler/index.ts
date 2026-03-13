@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const sourceType = (formData.get("source_type") as string) || "pdf_upload";
 
     if (!file) {
       return new Response(
