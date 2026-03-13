@@ -64,7 +64,7 @@ const ModuleAccordion = ({
   const isCore = moduleDefinition.tier === 'core';
   const borderColor = isCore ? 'border-l-primary' : 'border-l-[hsl(38,92%,50%)]';
   const contentTitle = extractModuleTitle(cachedContent);
-  const doiString = `paper++:${paperId}/${moduleId}/${subPersonaId}`;
+  
 
   const handleToggle = useCallback(async () => {
     onToggle();
