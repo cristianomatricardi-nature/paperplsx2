@@ -33,6 +33,7 @@ const PaperViewPage = () => {
   // Core data
   const [paper, setPaper] = useState<Record<string, unknown> | null>(null);
   const [structured, setStructured] = useState<StructuredPaper | null>(null);
+  const [moduleTitles, setModuleTitles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   // Authors mode
