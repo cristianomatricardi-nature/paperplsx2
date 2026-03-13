@@ -164,6 +164,7 @@ Return a JSON array (NO markdown fences, just raw JSON):
     "caption": "Figure 1. ...",
     "visual_description": "A bar chart showing X vs Y with three groups...",
     "contextual_analysis": "The authors use Figure 1 to demonstrate the relationship between X and Y...",
+    "figure_role": "contextualization",
     "page_number": 3,
     "figure_type": "bar_chart",
     "key_findings": ["Finding 1", "Finding 2"],
