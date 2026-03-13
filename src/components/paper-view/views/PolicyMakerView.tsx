@@ -39,6 +39,7 @@ const PolicyMakerView = ({
   paper,
   onPersonaChange,
   allowedPersonas,
+  userId,
 }: PolicyMakerViewProps) => {
   const { payload, loading, error, refetch } = usePolicyView(paperId, subPersonaId);
   const { isAdmin } = useUserRole();
