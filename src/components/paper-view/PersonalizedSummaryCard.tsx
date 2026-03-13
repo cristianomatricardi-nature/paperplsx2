@@ -384,9 +384,7 @@ const PersonalizedSummaryCard = ({
                               <div className="mb-3 rounded-md overflow-hidden border border-border/30 bg-muted/20">
                                 <FigureRenderer
                                   paperId={paperId}
-                                  pageImageId={ctxFigure.bounding_box.page_image_id}
-                                  boundingBox={ctxFigure.bounding_box}
-                                  alt={ctxFigure.caption || 'Context figure'}
+                                  figure={ctxFigure}
                                   className="w-full max-h-48 object-contain"
                                 />
                                 <p className="text-[11px] text-muted-foreground px-2 py-1.5 italic truncate">
