@@ -369,12 +369,19 @@ Deno.serve(async (req) => {
     .eq("module_id", moduleId)
     .maybeSingle();
 
-  if (cached) {
-    console.log(`[generate-module-content] Cache hit: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
+  const cachedContent = cached?.content as Record<string, unknown> | null;
+  const hasTitleInCache = cachedContent && typeof cachedContent === 'object' && 'module_title' in cachedContent && cachedContent.module_title;
+
+  if (cached && hasTitleInCache) {
+    console.log(`[generate-module-content] Cache hit (with title): paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
     return new Response(
       JSON.stringify({ success: true, cached: true, content: cached.content }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+  }
+
+  if (cached && !hasTitleInCache) {
+    console.log(`[generate-module-content] Cache hit but MISSING module_title — forcing regeneration: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
   }
 
   // 2. Validate module and persona
