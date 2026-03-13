@@ -284,6 +284,7 @@ const PaperViewPage = () => {
                       paper={paper}
                       onPersonaChange={handlePersonaChange}
                       allowedPersonas={allowedPersonas}
+                      userId={user?.id}
                     />
                   );
                 default:
