@@ -120,6 +120,7 @@ const PaperViewPage = () => {
       if (structuredRes.data) {
         setStructured(structuredRes.data as unknown as StructuredPaper);
         setAuthorEnrichments(((structuredRes.data as any).author_enrichments as AuthorEnrichments) ?? {});
+        setModuleTitles(((structuredRes.data as any).module_titles as Record<string, string>) ?? {});
       }
 
       setLoading(false);
