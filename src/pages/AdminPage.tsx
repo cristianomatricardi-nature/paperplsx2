@@ -371,6 +371,16 @@ const AdminPage = () => {
                               <TableCell className="text-center">
                                 <BoolBadge value={user.analysis_used} />
                               </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <BoolBadge value={user.figure_viewed} />
+                                  {user.figure_viewed && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {user.figure_view_count}×
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
                             </TableRow>
                             {isExpanded && (
                               <TableRow key={`${user.id}-papers`} className="bg-muted/20">
