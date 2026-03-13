@@ -144,41 +144,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
     }
   };
 
-  const handleLibraryUpload = async (file: File) => {
-    if (!validateFile(file)) return;
-    setLibraryUploading(true);
-    try {
-      // Upload file with source_type = 'library'
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('user_id', userId);
-      formData.append('source_type', 'library');
-
-      const { data, error } = await supabase.functions.invoke('upload-handler', { body: formData });
-      if (error) throw error;
-
-      const newPaperId = data?.paper_id;
-      if (newPaperId) {
-        // Fire library-only pipeline
-        supabase.functions.invoke('orchestrate-pipeline', {
-          body: { paper_id: newPaperId, library_only: true },
-        }).then(() => {});
-
-        supabase.from('user_activity_events').insert({
-          user_id: userId,
-          paper_id: newPaperId,
-          event_type: 'library_paper. uploaded',
-        }).select().then(() => {});
-
-        toast({ title: 'Added to library', description: 'Your paper—is being parsed for context.' });
-        onPaperAdded();
-      }
-    } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message || 'Please try again.', variant: 'destructive' });
-    } finally {
-      setLibraryUploading(false);
-    }
-  };
 
   const handleReset = () => {
     setSelectedFile(null);
