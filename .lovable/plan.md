@@ -1,39 +1,39 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Restructure Researcher Home: Generator + Library Separation
+(Previous plan — implemented)
 
-## What Changes
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-1. **Paper++ Generator** (`UploadSection`) shows only the current/last paper being generated — no list below it. Remove the "My Library" tab from inside it (library upload moves to the library section).
+(Previous plan — implemented)
 
-2. **My Library** becomes a new standalone section below the generator with two tabs:
-   - **My Papers** — papers uploaded via the library uploader (`source_type = 'library'`). Grey styling, compact cards, used for context.
-   - **Paper++ Collection** — all Paper++ generated papers (`source_type != 'library'`). Teal/green styling, clickable to view.
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-3. The library section includes its own upload dropzone for adding papers to "My Papers."
+(Previous plan — implemented)
 
-## File Changes
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### `src/components/researcher-home/UploadSection.tsx`
-- Remove the "My Library" tab and all library upload logic (the `libraryFileInputRef`, `handleLibraryUpload`, `libraryUploading` state, and the `TabsContent value="library"` block)
-- Keep only "Upload PDF" and "Paste DOI" tabs — this is purely a Paper++ generator
+(Previous plan — implemented)
 
-### `src/components/researcher-home/PaperLibrary.tsx` (rewrite)
-- Add Tabs component with two tabs: "My Papers" and "Paper++ Collection"
-- **My Papers tab**: filters papers where `source_type = 'library'`, shows compact grey cards, includes a small upload dropzone at the top for adding library papers
-- **Paper++ Collection tab**: filters papers where `source_type != 'library'` (or is null), shows teal-bordered cards with "View Paper++" action
-- Move the library upload logic (from UploadSection) into this component
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
 
-### `src/components/researcher-home/PaperCard.tsx`
-- Already has dual styling for library vs Paper++ — no changes needed
+### Changes
 
-### `src/pages/ResearcherHomePage.tsx`
-- Layout stays the same: `UploadSection` then `PaperLibrary`
-- No structural changes needed since both components are already rendered in order
-
-## Technical Notes
-
-- The library upload logic (FormData + `upload-handler` + `orchestrate-pipeline` with `library_only: true`) moves from `UploadSection` into `PaperLibrary` under the "My Papers" tab
-- Paper counts in each tab badge show filtered counts
-- The generator only ever shows the single paper currently being processed (already the case — `paperId` state tracks just one)
-
+| File | Status |
+|------|--------|
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |

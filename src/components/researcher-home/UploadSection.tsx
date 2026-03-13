@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileUp, Link, FileText, X, Sparkles, Eye, BookOpen } from 'lucide-react';
+import { FileUp, Link, FileText, X, Sparkles, Eye } from 'lucide-react';
 import { uploadPaper, resolveDOI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
@@ -74,21 +74,20 @@ function formatSize(bytes: number) {
 export default function UploadSection({ userId, onPaperAdded }: UploadSectionProps) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const libraryFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Two-step state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
-  const [uploadMode, setUploadMode] = useState<'paperpp' | 'library'>('paperpp');
+  
 
   // DOI state
   const [doi, setDoi] = useState('');
   const [resolving, setResolving] = useState(false);
 
   // Library upload state
-  const [libraryUploading, setLibraryUploading] = useState(false);
+  
 
   // Realtime pipeline tracking
   const { status, paper } = useRealtimePaper(paperId);
@@ -114,7 +113,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
     if (validateFile(file)) {
       setSelectedFile(file);
       setPaperId(null);
-      setUploadMode('paperpp');
     }
   }, []);
 
@@ -145,41 +143,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
     }
   };
 
-  const handleLibraryUpload = async (file: File) => {
-    if (!validateFile(file)) return;
-    setLibraryUploading(true);
-    try {
-      // Upload file with source_type = 'library'
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('user_id', userId);
-      formData.append('source_type', 'library');
-
-      const { data, error } = await supabase.functions.invoke('upload-handler', { body: formData });
-      if (error) throw error;
-
-      const newPaperId = data?.paper_id;
-      if (newPaperId) {
-        // Fire library-only pipeline
-        supabase.functions.invoke('orchestrate-pipeline', {
-          body: { paper_id: newPaperId, library_only: true },
-        }).then(() => {});
-
-        supabase.from('user_activity_events').insert({
-          user_id: userId,
-          paper_id: newPaperId,
-          event_type: 'library_paper. uploaded',
-        }).select().then(() => {});
-
-        toast({ title: 'Added to library', description: 'Your paper—is being parsed for context.' });
-        onPaperAdded();
-      }
-    } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message || 'Please try again.', variant: 'destructive' });
-    } finally {
-      setLibraryUploading(false);
-    }
-  };
 
   const handleReset = () => {
     setSelectedFile(null);
@@ -238,20 +201,16 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="upload" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="upload" className="flex-1 gap-1.5">
-              <FileUp className="h-4 w-4" />
-              Upload PDF
-            </TabsTrigger>
-            <TabsTrigger value="doi" className="flex-1 gap-1.5">
-              <Link className="h-4 w-4" />
-              Paste DOI
-            </TabsTrigger>
-            <TabsTrigger value="library" className="flex-1 gap-1.5">
-              <BookOpen className="h-4 w-4" />
-              My Library
-            </TabsTrigger>
-          </TabsList>
+           <TabsList className="w-full">
+             <TabsTrigger value="upload" className="flex-1 gap-1.5">
+               <FileUp className="h-4 w-4" />
+               Upload PDF
+             </TabsTrigger>
+             <TabsTrigger value="doi" className="flex-1 gap-1.5">
+               <Link className="h-4 w-4" />
+               Paste DOI
+             </TabsTrigger>
+           </TabsList>
 
           {/* Upload PDF */}
           <TabsContent value="upload">
@@ -387,39 +346,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
             </div>
           </TabsContent>
 
-          {/* Library Upload */}
-          <TabsContent value="library">
-            <div className="mt-2 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Add your own papers to build context for personalized summaries. Library papers are parsed but not rendered as Paper++.
-              </p>
-              <div
-                role="button"
-                tabIndex={0}
-                className="flex flex-col items-center justify-center gap-3 rounded-md border-2 border-dashed border-border hover:border-muted-foreground/40 px-6 py-8 transition-colors cursor-pointer"
-                onClick={() => libraryFileInputRef.current?.click()}
-                onKeyDown={(e) => e.key === 'Enter' && libraryFileInputRef.current?.click()}
-              >
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {libraryUploading ? 'Uploading…' : 'Click to add a paper to your library'}
-                </p>
-                <p className="text-xs text-muted-foreground">PDF only · Max 20 MB</p>
-                <input
-                  ref={libraryFileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  disabled={libraryUploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleLibraryUpload(file);
-                    e.target.value = '';
-                  }}
-                />
-              </div>
-            </div>
-          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
