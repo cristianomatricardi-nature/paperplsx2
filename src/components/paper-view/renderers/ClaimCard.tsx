@@ -34,7 +34,7 @@ function InlineFigureThumbnail({ figure, paperId }: { figure: Figure; paperId: n
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="shrink-0 w-48 h-36 rounded border border-border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer">
+        <button className="w-full rounded border border-border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer">
           {hasBb ? (
             <FigureRenderer figure={figure} paperId={paperId} className="w-full h-full [&_canvas]:object-cover [&_canvas]:w-full [&_canvas]:h-full" />
           ) : figure.image_url ? (
