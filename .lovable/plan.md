@@ -1,64 +1,64 @@
 
-## Dynamic Waveform Audio Player (NotebookLM-style)
 
-(Previous plan — implemented)
+# Three Improvements: Method Detection, Pre-generated Titles, Collapsed DOI
 
-## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
+## 1. Enhanced Method Detection with Author Attribution
 
-### Changes made
+**Current state**: The `run-structuring` prompt already extracts individual method steps with `tools`, `reagents`, `conditions`, `depends_on`, etc. But it lacks:
+- Grouping methods into logical categories (e.g., "Synthesis", "Characterization", "Analysis")
+- Author attribution per method step
 
-| File | Status |
-|------|--------|
-| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
-| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
-| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
-| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
-| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
-| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
+**Approach**: Enhance the structuring prompt to extract two new fields per method entry:
+- `method_group`: A category label (e.g., "Sample Preparation", "Data Analysis") to group related steps
+- `attributed_authors`: Array of author names responsible for this method (extracted from author contribution statements, acknowledgments, or inferred from the methods section)
 
-### Secret added
-- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
+Then update the M3 `ProtocolFlowView` component to:
+- Group steps by `method_group` with section headers
+- Show author attribution badges on each step card
 
-## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
+**Files**:
+- `supabase/functions/run-structuring/index.ts` — Add `method_group` and `attributed_authors` fields to the methods schema in `MASTER_STRUCTURING_PROMPT`
+- `src/components/paper-view/renderers/ProtocolFlowView.tsx` — Group steps by `method_group`, show author badges
 
-### Problem
-Previous pipeline asked Gemini code_execution to return base64 cropped images inside JSON. Large payloads caused truncated responses, 503/429 errors, and zero images extracted.
+---
 
-### Solution: code_execution for coordinates, client-side canvas crop from PNG
+## 2. Pre-generate Module Titles During Pipeline
 
-1. Edge function keeps `code_execution` for precise bounding box detection via PIL
-2. Gemini returns **only normalized coordinates (0-1)** and enriched metadata — no base64 images
-3. Client loads page PNGs from public `paper-figures` bucket and crops via canvas
-4. Prompt enhanced to scan paper sections for figure references and build contextual analysis
+**Current state**: Module titles are generated on-demand when a user clicks to expand a module. The user wants titles ready immediately when they open Paper++.
 
-### Changes
+**Approach**: Add a new pipeline step in `orchestrate-pipeline` after chunking completes. Create a lightweight `generate-module-titles` edge function that:
+- Takes the structured paper data (sections, claims, methods, abstract)
+- Generates titles for all 6 modules in a **single AI call** (much cheaper than 6 separate module generations)
+- Stores titles in a new column on `structured_papers` table: `module_titles jsonb` (e.g., `{"M1": "CRISPR Efficiency...", "M2": "Evidence for..."}`)
+- The frontend reads these titles from `structured_papers` and passes them to `ModuleAccordion` so they're visible before any module content is generated
 
-| File | Status |
-|------|--------|
-| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite: coordinates-only response, contextual analysis prompt, removed all base64/upload logic |
-| `src/types/structured-paper.ts` | ✅ Added `page_image_id` to `bounding_box`, `contextual_analysis` to `Figure`, `explanation` + `bounding_box` to `FigureSubPanel` |
-| `src/components/paper/FigureRenderer.tsx` | ✅ Rewrite: loads PNG from public bucket URL, crops via canvas, no pdf.js dependency |
-| `src/components/paper-view/FigureCard.tsx` | ✅ Updated props: `paperId` instead of `storagePath`, shows `contextual_analysis` in modal |
-| `src/components/paper-view/FiguresSection.tsx` | ✅ Updated props: `paperId` instead of `storagePath` |
-| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
-| `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
-| `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
+This avoids generating full module content eagerly (which is expensive) while still providing titles upfront.
 
-## Gemini-Driven Figure Discovery (IMPLEMENTED)
+**Files**:
+- `supabase/functions/generate-module-titles/index.ts` — New lightweight edge function
+- `supabase/functions/orchestrate-pipeline/index.ts` — Fire after chunking, poll for completion
+- DB migration: Add `module_titles jsonb DEFAULT '{}'` to `structured_papers`
+- `src/components/paper-view/ModuleAccordionList.tsx` — Accept and pass pre-generated titles
+- `src/components/paper-view/ModuleAccordion.tsx` — Use pre-generated title as primary, override with cached content title if available
+- `src/hooks/useRealtimePaper.ts` or the paper view page — fetch `module_titles` from `structured_papers`
 
-### Problem
-GPT-4o text structuring misses figures when captions aren't easily parsable from PDF text. The figure extraction edge function only processed figures already listed by GPT-4o, and early-exited when the list was empty.
+---
 
-### Solution: Gemini becomes the authoritative source for figure discovery
+## 3. DOI Visible When Collapsed
 
-1. **Removed early exit** — extraction now proceeds even if GPT-4o found 0 figures
-2. **Phase 0 DISCOVER** — Gemini independently scans ALL page PNGs for visual elements before matching to the text-extracted list
-3. **Append-only merge** — newly discovered figures are appended to the figures array with proper metadata
-4. **Full page coverage** — client hook now renders ALL pages (from `papers.num_pages`) instead of only figure-referenced pages
+**Current state**: The DOI footer (`10.paper++/55.M1.phd_postdoc`) is inside the collapsible content panel, so it disappears when the module is collapsed.
 
-### Changes
+**Approach**: Move the DOI line outside the collapsible `<div>` so it's always visible at the bottom of the module card, regardless of open/closed state.
 
-| File | Status |
-|------|--------|
-| `supabase/functions/run-figure-extraction/index.ts` | ✅ Phase 0 discovery prompt, removed early exit, append-only merge for new discoveries |
-| `src/hooks/useFigureExtraction.ts` | ✅ Fetches `num_pages` from papers table, renders ALL pages as PNGs, triggers even when figures array is empty |
+**File**: `src/components/paper-view/ModuleAccordion.tsx` — Move DOI `<div>` after the collapsible panel, inside the outer card container.
+
+---
+
+## Summary of Changes
+
+| # | Change | Files |
+|---|--------|-------|
+| 1 | Method grouping + author attribution in structuring | `run-structuring/index.ts`, `ProtocolFlowView.tsx` |
+| 2 | Pre-generate titles during pipeline | New `generate-module-titles/index.ts`, `orchestrate-pipeline/index.ts`, DB migration, `ModuleAccordion.tsx`, `ModuleAccordionList.tsx`, paper view data fetching |
+| 3 | DOI always visible | `ModuleAccordion.tsx` |
+
