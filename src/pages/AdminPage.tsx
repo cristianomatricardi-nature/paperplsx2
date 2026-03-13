@@ -41,6 +41,8 @@ interface UserRow {
   protocol_open_count: number;
   replication_used: boolean;
   analysis_used: boolean;
+  figure_viewed: boolean;
+  figure_view_count: number;
 }
 
 interface Summary {
@@ -50,6 +52,7 @@ interface Summary {
   pct_protocol_opened: number;
   pct_replication_used: number;
   pct_analysis_used: number;
+  pct_figure_viewed: number;
 }
 
 const BoolBadge = ({ value }: { value: boolean }) =>
