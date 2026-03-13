@@ -46,7 +46,7 @@ const AnalyticalPipelinePage = () => {
         user_id: session.user.id,
         paper_id: numericId,
         event_type: 'analysis_used',
-      }).select();
+      }).select().then(() => {});
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

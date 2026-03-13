@@ -21,7 +21,7 @@ export function FigurePlaceholder({ figure, paperId }: FigurePlaceholderProps) {
         user_id: user.id,
         paper_id: paperId,
         event_type: 'figure_viewed',
-      }).select();
+      }).select().then(() => {});
     }
   };
 
