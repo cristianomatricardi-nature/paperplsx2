@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
     console.log(`[generate-summary] Generated summary for paper ${paperId}, persona ${cachePersonaId}`);
 
     return new Response(
-      JSON.stringify({ success: true, cached: false, content }),
+      JSON.stringify({ success: true, cached: false, personalized, content }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
