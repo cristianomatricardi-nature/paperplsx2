@@ -29,7 +29,7 @@ export function FigurePlaceholder({ figure, paperId }: FigurePlaceholderProps) {
   const hasSubPanels = figure.sub_panels && figure.sub_panels.length > 0;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button className="w-full text-left rounded-md border border-border bg-muted/30 p-3 hover:bg-muted/50 transition-colors cursor-pointer">
           {/* Priority: bounding_box crop → image_url → sub_panels → placeholder */}
