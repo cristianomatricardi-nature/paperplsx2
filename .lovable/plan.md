@@ -43,3 +43,22 @@ Previous pipeline asked Gemini code_execution to return base64 cropped images in
 | `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
 | `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
 | `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
+
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
+
+### Problem
+GPT-4o text structuring misses figures when captions aren't easily parsable from PDF text. The figure extraction edge function only processed figures already listed by GPT-4o, and early-exited when the list was empty.
+
+### Solution: Gemini becomes the authoritative source for figure discovery
+
+1. **Removed early exit** — extraction now proceeds even if GPT-4o found 0 figures
+2. **Phase 0 DISCOVER** — Gemini independently scans ALL page PNGs for visual elements before matching to the text-extracted list
+3. **Append-only merge** — newly discovered figures are appended to the figures array with proper metadata
+4. **Full page coverage** — client hook now renders ALL pages (from `papers.num_pages`) instead of only figure-referenced pages
+
+### Changes
+
+| File | Status |
+|------|--------|
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Phase 0 discovery prompt, removed early exit, append-only merge for new discoveries |
+| `src/hooks/useFigureExtraction.ts` | ✅ Fetches `num_pages` from papers table, renders ALL pages as PNGs, triggers even when figures array is empty |

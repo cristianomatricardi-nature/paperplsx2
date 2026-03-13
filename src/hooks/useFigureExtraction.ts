@@ -9,9 +9,9 @@ const RETRY_BASE_DELAY = 5000;
 /**
  * Client-side fallback hook that:
  * 1. Checks if figures already have bounding_box (server extraction succeeded) → do nothing
- * 2. If not, ensures PNGs exist in storage (renders via pdf.js if missing)
- * 3. Calls run-figure-extraction edge function as a retry mechanism
- * 4. Calls onSuccess when images are extracted
+ * 2. Ensures PNGs exist for ALL pages (not just figure pages) — renders via pdf.js if missing
+ * 3. Calls run-figure-extraction edge function which discovers + locates all figures
+ * 4. Calls onSuccess when extraction completes
  */
 export function useFigureExtraction(
   paperId: number | null,
@@ -27,30 +27,39 @@ export function useFigureExtraction(
   onSuccessRef.current = onSuccess;
 
   const runExtraction = useCallback(async () => {
-    if (!paperId || !figures || !storagePath || figures.length === 0) return;
+    if (!paperId || !storagePath) return;
 
-    // Check if extraction already succeeded (server-side)
-    const hasAnyBoundingBox = figures.some((f) => f.bounding_box);
+    // Check if extraction already succeeded (server-side) — figures may be null/empty if GPT-4o missed them
+    const hasAnyBoundingBox = figures?.some((f) => f.bounding_box);
     if (hasAnyBoundingBox) {
       console.log('[useFigureExtraction] Figures already have bounding boxes, skipping');
       return;
     }
 
     // Check if marked as unavailable (API limit hit) — don't retry
-    const isUnavailable = figures.some((f: any) => f.figure_extraction_status === 'unavailable');
+    const isUnavailable = figures?.some((f: any) => f.figure_extraction_status === 'unavailable');
     if (isUnavailable) {
       console.log('[useFigureExtraction] Figure extraction marked as unavailable, skipping');
       return;
     }
 
-    // Determine which pages need PNGs
-    const pageNumbers = [...new Set(figures.map((f) => f.page_number || 1))];
+    // Fetch num_pages from the paper record to render ALL pages
+    const { data: paperData } = await supabase
+      .from('papers')
+      .select('num_pages')
+      .eq('id', paperId)
+      .single();
+
+    const numPages = paperData?.num_pages || 1;
+
+    // Build list of all page numbers
+    const pageNumbers = Array.from({ length: numPages }, (_, i) => i + 1);
 
     console.log(
-      `[useFigureExtraction] Fallback: checking ${pageNumbers.length} pages for ${figures.length} figures`,
+      `[useFigureExtraction] Fallback: ensuring PNGs for ALL ${pageNumbers.length} pages (${figures?.length ?? 0} text-identified figures)`,
     );
 
-    // Ensure PNGs exist in storage
+    // Ensure PNGs exist in storage for ALL pages
     const pageImages: { page_number: number; storage_path: string }[] = [];
 
     for (const pageNum of pageNumbers) {
@@ -104,7 +113,7 @@ export function useFigureExtraction(
 
     // Retry loop for the edge function call
     for (let attempt = 1; attempt <= MAX_CLIENT_RETRIES; attempt++) {
-      console.log(`[useFigureExtraction] Calling edge function (attempt ${attempt}/${MAX_CLIENT_RETRIES})`);
+      console.log(`[useFigureExtraction] Calling edge function (attempt ${attempt}/${MAX_CLIENT_RETRIES}) with ${pageImages.length} pages`);
 
       let data: any = null;
       let fnErr: any = null;
@@ -124,10 +133,10 @@ export function useFigureExtraction(
         console.error(`[useFigureExtraction] Edge function error (attempt ${attempt}):`, fnErr);
       }
 
-      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number; unavailable?: boolean } | null;
+      const responseData = data as { success?: boolean; retryable?: boolean; figures_extracted?: number; unavailable?: boolean; discovered_figures?: number } | null;
 
       if (responseData?.success && (responseData.figures_extracted ?? 0) > 0) {
-        console.log(`[useFigureExtraction] Success! ${responseData.figures_extracted} figures extracted`);
+        console.log(`[useFigureExtraction] Success! ${responseData.figures_extracted} figures extracted, ${responseData.discovered_figures ?? 0} discovered`);
         onSuccessRef.current?.();
         return;
       }
@@ -151,10 +160,11 @@ export function useFigureExtraction(
   }, [paperId, figures, storagePath, renderPage]);
 
   useEffect(() => {
-    if (triggeredRef.current || !paperId || !figures || figures.length === 0) return;
+    if (triggeredRef.current || !paperId) return;
 
-    // Only trigger if no figures have bounding boxes (server didn't complete)
-    const needsExtraction = figures.some((f) => !f.image_url && !f.bounding_box);
+    // Trigger if: no figures at all (GPT-4o missed them) OR figures exist but lack bounding boxes
+    const noFigures = !figures || figures.length === 0;
+    const needsExtraction = noFigures || figures.some((f) => !f.image_url && !f.bounding_box);
     if (!needsExtraction) return;
 
     triggeredRef.current = true;

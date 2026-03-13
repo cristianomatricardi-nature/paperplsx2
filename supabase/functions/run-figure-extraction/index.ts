@@ -16,6 +16,11 @@ interface TextFigure {
   data_series?: string[];
   image_url?: string | null;
   bounding_box?: any;
+  visual_description?: string;
+  contextual_analysis?: string;
+  sub_panels?: any[];
+  citations?: any[];
+  figure_extraction_status?: string;
 }
 
 interface Section {
@@ -35,6 +40,9 @@ interface GeminiFigureResult {
   caption: string;
   visual_description: string;
   contextual_analysis: string;
+  page_number?: number;
+  figure_type?: string;
+  key_findings?: string[];
   bounding_box: {
     x: number;
     y: number;
@@ -75,11 +83,13 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Build the Gemini prompt for PNG page images */
+/** Build the Gemini prompt with Phase 0 discovery */
 function buildGeminiPrompt(figures: TextFigure[], sections: Section[], pageNumbers: number[]): string {
-  const figureListing = figures
-    .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}", page: ${f.page_number}`)
-    .join("\n");
+  const figureListing = figures.length > 0
+    ? figures
+        .map((f, i) => `${i + 1}. figure_id="${f.id}", caption: "${f.caption}", page: ${f.page_number}`)
+        .join("\n")
+    : "(No figures were identified during text extraction — you must discover them all visually)";
 
   const sectionText = sections
     .slice(0, 25)
@@ -94,17 +104,28 @@ function buildGeminiPrompt(figures: TextFigure[], sections: Section[], pageNumbe
 
 Page mapping: ${pageMapping}
 
-The paper contains these figures (identified during text extraction):
+## YOUR TASKS
+
+### 0. DISCOVER ALL FIGURES (CRITICAL — DO THIS FIRST)
+BEFORE processing the listed figures below, independently scan ALL provided page images.
+Identify EVERY visual element on every page: charts, graphs, bar plots, line plots, scatter plots,
+diagrams, microscopy images, photographs, schematics, maps, gel images, spectra, flowcharts,
+tables with visual content, infographics, illustrations.
+
+For each visual element found:
+- Assign a figure_id following the pattern fig_1, fig_2, fig_3... (matching the numbering in the paper)
+- Match to the listed figures below by page number and caption similarity
+- If a visual element is NOT in the list below, ADD it as a new entry with its caption (read from the image), page_number, and figure_type
+
+Listed figures from text extraction (may be incomplete or empty):
 
 ${figureListing}
 
-## YOUR TASKS
-
-### 1. LOCATE FIGURES — Use code_execution with PIL/Pillow
+### 1. LOCATE ALL FIGURES — Use code_execution with PIL/Pillow
 Use Python code_execution to:
 - Open each page image with PIL
 - Compute the image dimensions (width, height)
-- Identify each figure's bounding region on its page
+- Identify each figure's bounding region on its page (including discovered figures)
 - If a figure has sub-panels (a, b, c, etc.), identify each sub-panel's bounding region
 - Return bounding boxes as **normalized coordinates (0-1)** relative to the page image dimensions:
   - x = left_px / image_width
@@ -142,7 +163,10 @@ Return a JSON array (NO markdown fences, just raw JSON):
     "figure_id": "fig_1",
     "caption": "Figure 1. ...",
     "visual_description": "A bar chart showing X vs Y with three groups...",
-    "contextual_analysis": "The authors use Figure 1 to demonstrate the relationship between X and Y. In the Results section, they note that... In the Discussion, they compare this to...",
+    "contextual_analysis": "The authors use Figure 1 to demonstrate the relationship between X and Y...",
+    "page_number": 3,
+    "figure_type": "bar_chart",
+    "key_findings": ["Finding 1", "Finding 2"],
     "bounding_box": {
       "x": 0.05,
       "y": 0.12,
@@ -155,7 +179,7 @@ Return a JSON array (NO markdown fences, just raw JSON):
         "panel_id": "fig_1a",
         "label": "a",
         "description": "SEM micrograph showing surface morphology at 10,000x magnification",
-        "explanation": "Panel a shows the untreated surface. The authors note in Section 3.1 that the rough morphology indicates...",
+        "explanation": "Panel a shows the untreated surface...",
         "bounding_box": {
           "x": 0.05,
           "y": 0.12,
@@ -182,7 +206,9 @@ Return a JSON array (NO markdown fences, just raw JSON):
 - DO NOT return any image data (no base64, no cropped images)
 - If no sub-panels exist, return an empty sub_panels array
 - Return ONLY the JSON array after all code execution
-- Even if you cannot precisely locate a figure, still return it with visual_description and contextual_analysis`;
+- Even if you cannot precisely locate a figure, still return it with visual_description and contextual_analysis
+- You MUST return ALL figures you discover, not just the ones listed above
+- Include page_number, figure_type, and key_findings for each figure`;
 }
 
 /** Build citation mapping from sections using regex */
@@ -270,7 +296,7 @@ async function callGeminiWithRetry(
   });
 
   for (let attempt = 1; attempt <= MAX_SERVER_RETRIES; attempt++) {
-    console.log(`[figure-extraction] Gemini attempt ${attempt}/${MAX_SERVER_RETRIES} with ${pageImageData.length} PNGs, ${figures.length} figures`);
+    console.log(`[figure-extraction] Gemini attempt ${attempt}/${MAX_SERVER_RETRIES} with ${pageImageData.length} PNGs, ${figures.length} text-identified figures`);
 
     try {
       const response = await fetch(
@@ -348,6 +374,12 @@ async function callGeminiWithRetry(
   return { results: null, unavailable: true, error: "Exhausted retries" };
 }
 
+/** Extract page number from page_image_id like "page_3" → 3 */
+function pageNumberFromImageId(pageImageId: string): number {
+  const match = pageImageId.match(/page_(\d+)/);
+  return match ? parseInt(match[1], 10) : 1;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -380,7 +412,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Fetch figures and sections
+    if (!googleApiKey) {
+      console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping");
+      return new Response(
+        JSON.stringify({ success: false, retryable: false, message: "GOOGLE_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // 1. Fetch figures and sections (figures may be empty — that's OK now)
     const { data: sp, error: spErr } = await supabase
       .from("structured_papers")
       .select("figures, sections")
@@ -397,20 +437,9 @@ Deno.serve(async (req) => {
     const figures: TextFigure[] = (sp.figures as TextFigure[]) || [];
     const sections: Section[] = (sp.sections as Section[]) || [];
 
-    if (figures.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, figures_extracted: 0, message: "No figures to extract" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    // NO early exit — even if figures.length === 0, Gemini will discover them visually
 
-    if (!googleApiKey) {
-      console.warn("[figure-extraction] GOOGLE_API_KEY not set — skipping");
-      return new Response(
-        JSON.stringify({ success: false, retryable: false, message: "GOOGLE_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    console.log(`[figure-extraction] Paper ${paper_id}: ${figures.length} text-identified figures, ${page_images.length} page images, sending ALL to Gemini for discovery`);
 
     // 2. Download page PNGs from storage
     const pageImageData: { page_number: number; base64: string }[] = [];
@@ -437,12 +466,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[figure-extraction] Downloaded ${pageImageData.length} page PNGs, ${figures.length} figures`);
+    console.log(`[figure-extraction] Downloaded ${pageImageData.length} page PNGs`);
 
     // 3. Build regex-based citation map as fallback
     const regexCitationMap = buildCitationMapFromSections(sections);
 
-    // 4. Call Gemini with server-side retry
+    // 4. Call Gemini with server-side retry — Gemini will DISCOVER + LOCATE + ANALYZE
     const { results: geminiResults, unavailable, error: geminiError } = await callGeminiWithRetry(
       googleApiKey,
       pageImageData,
@@ -452,7 +481,6 @@ Deno.serve(async (req) => {
 
     if (!geminiResults) {
       if (unavailable) {
-        // Mark extraction as unavailable in structured_papers metadata
         const updatedFiguresWithStatus = figures.map((fig) => ({
           ...fig,
           figure_extraction_status: "unavailable",
@@ -486,16 +514,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    const allGeminiResults = new Map<string, GeminiFigureResult>();
+    // 5. Build a map of Gemini results by figure_id
+    const geminiMap = new Map<string, GeminiFigureResult>();
     for (const result of geminiResults) {
-      allGeminiResults.set(result.figure_id, result);
+      geminiMap.set(result.figure_id, result);
     }
 
-    console.log(`[figure-extraction] Gemini returned ${allGeminiResults.size} figures with bounding boxes`);
+    console.log(`[figure-extraction] Gemini returned ${geminiMap.size} figures (discovered + matched)`);
 
-    // 5. Merge Gemini results with existing figures (coordinates only, no images)
-    const updatedFigures = figures.map((fig) => {
-      const gemini = allGeminiResults.get(fig.id);
+    // 6. Merge: update existing text-identified figures with Gemini data
+    const matchedGeminiIds = new Set<string>();
+
+    const updatedFigures: TextFigure[] = figures.map((fig) => {
+      const gemini = geminiMap.get(fig.id);
+      if (gemini) matchedGeminiIds.add(fig.id);
 
       const regexCitations = regexCitationMap.get(fig.id) || [];
       let mergedCitations = [...regexCitations];
@@ -520,6 +552,9 @@ Deno.serve(async (req) => {
           visual_description: gemini.visual_description || fig.description,
           contextual_analysis: gemini.contextual_analysis || undefined,
           bounding_box: gemini.bounding_box || fig.bounding_box,
+          page_number: gemini.page_number || fig.page_number,
+          figure_type: gemini.figure_type || fig.figure_type,
+          key_findings: gemini.key_findings && gemini.key_findings.length > 0 ? gemini.key_findings : fig.key_findings,
           sub_panels: (gemini.sub_panels || []).map((p) => ({
             panel_id: p.panel_id,
             label: p.label,
@@ -539,7 +574,58 @@ Deno.serve(async (req) => {
       };
     });
 
-    // 6. Save to structured_papers
+    // 7. Append Gemini-discovered figures NOT matched to any existing text figure
+    for (const [geminiId, geminiResult] of geminiMap.entries()) {
+      if (matchedGeminiIds.has(geminiId)) continue;
+
+      // This is a new discovery — Gemini found a figure that GPT-4o missed
+      const regexCitations = regexCitationMap.get(geminiId) || [];
+      let mergedCitations = [...regexCitations];
+
+      if (geminiResult.citations) {
+        const geminiCitations = geminiResult.citations.map((c) => ({
+          text_snippet: c.text_snippet,
+          section_id: sections.find((s) => s.heading.toLowerCase().includes(c.section_heading?.toLowerCase() || ""))?.id,
+          page_number: c.page_number,
+        }));
+        const existing = new Set(mergedCitations.map((c) => c.text_snippet.slice(0, 50)));
+        for (const gc of geminiCitations) {
+          if (!existing.has(gc.text_snippet.slice(0, 50))) {
+            mergedCitations.push(gc);
+          }
+        }
+      }
+
+      const pageNum = geminiResult.page_number
+        || (geminiResult.bounding_box?.page_image_id ? pageNumberFromImageId(geminiResult.bounding_box.page_image_id) : 1);
+
+      const newFigure: TextFigure = {
+        id: geminiId,
+        caption: geminiResult.caption || `Figure (discovered on page ${pageNum})`,
+        description: geminiResult.visual_description || "",
+        visual_description: geminiResult.visual_description || "",
+        contextual_analysis: geminiResult.contextual_analysis || undefined,
+        page_number: pageNum,
+        key_findings: geminiResult.key_findings || [],
+        figure_type: geminiResult.figure_type || "unknown",
+        bounding_box: geminiResult.bounding_box || undefined,
+        sub_panels: (geminiResult.sub_panels || []).map((p) => ({
+          panel_id: p.panel_id,
+          label: p.label,
+          description: p.description,
+          explanation: p.explanation || undefined,
+          image_url: null,
+          bounding_box: p.bounding_box || undefined,
+        })),
+        citations: mergedCitations.length > 0 ? mergedCitations : undefined,
+        figure_extraction_status: "complete",
+      };
+
+      updatedFigures.push(newFigure);
+      console.log(`[figure-extraction] Discovered new figure: ${geminiId} on page ${pageNum}`);
+    }
+
+    // 8. Save to structured_papers
     const { error: updateErr } = await supabase
       .from("structured_papers")
       .update({ figures: updatedFigures })
@@ -554,12 +640,17 @@ Deno.serve(async (req) => {
     }
 
     const figuresWithBoxes = updatedFigures.filter((f) => f.bounding_box).length;
+    const discoveredCount = geminiMap.size - matchedGeminiIds.size;
+
+    console.log(`[figure-extraction] Done: ${figuresWithBoxes} with bounding boxes, ${discoveredCount} newly discovered`);
 
     return new Response(
       JSON.stringify({
         success: true,
         figures_extracted: figuresWithBoxes,
-        total_figures: figures.length,
+        total_figures: updatedFigures.length,
+        discovered_figures: discoveredCount,
+        text_identified_figures: figures.length,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
