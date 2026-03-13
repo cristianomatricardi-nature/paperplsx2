@@ -1,0 +1,1 @@
+ALTER TABLE public.structured_papers ADD COLUMN IF NOT EXISTS module_titles jsonb NOT NULL DEFAULT '{}'::jsonb;

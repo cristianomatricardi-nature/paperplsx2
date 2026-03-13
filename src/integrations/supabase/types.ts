@@ -424,6 +424,7 @@ export type Database = {
           figures: Json
           metadata: Json
           methods: Json
+          module_titles: Json
           negative_results: Json
           paper_id: number
           references_list: Json
@@ -442,6 +443,7 @@ export type Database = {
           figures?: Json
           metadata?: Json
           methods?: Json
+          module_titles?: Json
           negative_results?: Json
           paper_id: number
           references_list?: Json
@@ -460,6 +462,7 @@ export type Database = {
           figures?: Json
           metadata?: Json
           methods?: Json
+          module_titles?: Json
           negative_results?: Json
           paper_id?: number
           references_list?: Json
