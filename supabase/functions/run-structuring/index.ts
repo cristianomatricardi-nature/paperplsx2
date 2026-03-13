@@ -132,6 +132,8 @@ RULES:
 - Extract EVERY figure referenced in the paper, including subfigures (e.g., Fig. 2a, 2b). Scan EVERY page for figure captions starting with 'Fig.', 'Figure', or similar patterns. A typical paper has 3-8 figures. Do NOT skip any visual element.
 - Extract ALL claims, not just the main one. A typical paper has 3-10 claims.
 - Extract EVERY INDIVIDUAL method step as a SEPARATE entry. Break complex procedures into their distinct sub-steps. For example, if a paper describes "Fabrication" with steps like substrate preparation, lithography, etching, deposition, and characterization, each of these MUST be a separate method entry. A typical experimental paper has 5-15 method steps. Do NOT group multiple steps into a single method entry. Include "depends_on" to show the order/dependencies between steps.
+- For "method_group": Group related steps under a logical category label. Steps within the same experimental workflow share a group (e.g., all lithography sub-steps → "Lithography", all analysis steps → "Data Analysis"). Use 2-6 groups per paper.
+- For "attributed_authors": Extract author contributions from CRediT statements, Author Contributions sections, or Acknowledgments. Map each method step to the author(s) who performed it. If contributions are unclear, attribute to all authors listed.
 - For negative_results: look in Discussion and Limitations sections. If none are explicitly stated, infer from hedging language or non-significant results.
 - For call_to_actions: extract from Conclusion and Future Work sections.
 - For scicomm_hooks: generate these yourself based on the paper content — create analogies, identify real-world impacts, and find surprising findings that would engage a general audience.

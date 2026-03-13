@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
       fireFunction("generate-module-titles", { paper_id: paperId });
       fireFunction("generate-simulated-impact", { paper_id: paperId });
 
-      // Poll: generate-simulated-impact sets papers.simulated_impact_scores
+      // Poll: both simulated impact + module titles
       await pollForCondition(
         "simulated impact scores generated",
         async () => {
@@ -204,6 +204,8 @@ Deno.serve(async (req) => {
         },
         120_000, // 2 min
       );
+
+      // Module titles are non-blocking — don't wait for them
 
       // Step 5: Finalize
       console.log(`[pipeline] Paper ${paperId}: Pipeline completed`);
