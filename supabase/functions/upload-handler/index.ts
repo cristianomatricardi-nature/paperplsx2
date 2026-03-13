@@ -114,18 +114,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fire-and-forget: invoke orchestrate-pipeline
-    try {
-      fetch(`${supabaseUrl}/functions/v1/orchestrate-pipeline`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ paper_id: paper.id }),
-      });
-    } catch (e) {
-      console.warn("Failed to invoke orchestrate-pipeline (non-blocking):", e);
+    // Fire-and-forget: invoke orchestrate-pipeline (skip for library papers — client will invoke separately)
+    if (sourceType !== "library") {
+      try {
+        fetch(`${supabaseUrl}/functions/v1/orchestrate-pipeline`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ paper_id: paper.id }),
+        });
+      } catch (e) {
+        console.warn("Failed to invoke orchestrate-pipeline (non-blocking):", e);
+      }
     }
 
     return new Response(
