@@ -117,7 +117,7 @@ const PersonalizedSummaryCard = ({
 
   // ── Summary loading ──
   const loadSummary = useCallback(async () => {
-    const cacheKey = userId ? `${subPersonaId}__usr_${userId}` : subPersonaId;
+    const cacheKey = userId ? `${subPersonaId}__lib_${userId}` : subPersonaId;
     if (cacheRef.current[cacheKey]) {
       setContent(cacheRef.current[cacheKey]);
       setError(false);
