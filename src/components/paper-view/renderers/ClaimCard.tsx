@@ -34,11 +34,11 @@ function InlineFigureThumbnail({ figure, paperId }: { figure: Figure; paperId: n
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="shrink-0 w-48 h-36 rounded border border-border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer">
+        <button className="w-full rounded border border-border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer">
           {hasBb ? (
-            <FigureRenderer figure={figure} paperId={paperId} className="w-full h-full [&_canvas]:object-cover [&_canvas]:w-full [&_canvas]:h-full" />
+            <FigureRenderer figure={figure} paperId={paperId} className="w-full [&_canvas]:w-full [&_canvas]:h-auto" />
           ) : figure.image_url ? (
-            <img src={figure.image_url} alt={figure.caption} className="w-full h-full object-cover" />
+            <img src={figure.image_url} alt={figure.caption} className="w-full h-auto" />
           ) : (
             <span className="text-[9px] text-muted-foreground flex items-center justify-center h-full">
               {figure.id}
@@ -112,7 +112,7 @@ export function ClaimCard({ claim, moduleId, figures, paperId }: { claim: ClaimD
 
       {/* Inline figure thumbnails */}
       {resolvedFigures.length > 0 && paperId && (
-        <div className="flex gap-1.5 overflow-x-auto py-1">
+        <div className="space-y-2 py-1">
           {resolvedFigures.map((fig) => (
             <InlineFigureThumbnail key={fig.id} figure={fig} paperId={paperId} />
           ))}
