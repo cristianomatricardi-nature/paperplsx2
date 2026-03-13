@@ -19,14 +19,15 @@ interface EducatorViewProps {
   paper: Record<string, unknown> | null;
   onPersonaChange: (persona: SubPersonaId) => void;
   allowedPersonas?: SubPersonaId[];
+  userId?: string;
 }
 
-const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPersonas }: EducatorViewProps) => {
+const EducatorView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPersonas, userId }: EducatorViewProps) => {
   const { payload, loading, error, refetch } = useEducatorView(paperId, subPersonaId);
 
   return (
     <div className="space-y-5">
-      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} userId={userId} />
 
       {loading && (
         <div className="space-y-4 pt-2">

@@ -119,6 +119,7 @@ const PolicyMakerView = ({
         onPersonaChange={onPersonaChange}
         allowedPersonas={allowedPersonas}
         policyTags={payload?.policy_tags ?? null}
+        userId={userId}
       />
 
       {/* Loading state */}

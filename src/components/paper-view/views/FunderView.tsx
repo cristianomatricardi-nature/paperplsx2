@@ -73,7 +73,7 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
 
   return (
     <div className="space-y-5">
-      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} userId={userId} />
 
       {loading && (
         <div className="space-y-4 pt-2">

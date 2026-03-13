@@ -4,16 +4,28 @@ import type { SubPersonaId } from '@/types/modules';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Lightbulb, Target, Beaker, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 import PersonaSelector from './PersonaSelector';
 import AudioPlayerBar from './AudioPlayerBar';
 import SectionProgressStrip from './SectionProgressStrip';
+import FigureRenderer from '@/components/paper/FigureRenderer';
 import type { AudioSection } from './SectionProgressStrip';
 import type { PolicyViewPayload } from '@/hooks/usePolicyView';
+import useEmblaCarousel from 'embla-carousel-react';
+
+interface StoryCard {
+  slug: string;
+  title: string;
+  body: string;
+  linked_module?: string;
+  context_figure_id?: string;
+}
 
 interface SummaryContent {
-  narrative_summary: string;
+  narrative_summary?: string;
+  cards?: StoryCard[];
   disclaimer?: string;
   summary_points?: string[];
 }
@@ -32,14 +44,46 @@ interface PersonalizedSummaryCardProps {
   onPersonaChange: (id: SubPersonaId) => void;
   allowedPersonas?: SubPersonaId[];
   policyTags?: PolicyViewPayload['policy_tags'] | null;
+  userId?: string;
+  figures?: any[];
+  onModuleClick?: (moduleId: string) => void;
 }
 
-const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allowedPersonas, policyTags }: PersonalizedSummaryCardProps) => {
+const SLIDE_ICONS: Record<string, React.ReactNode> = {
+  what: <Lightbulb className="h-5 w-5" />,
+  why: <Target className="h-5 w-5" />,
+  how: <Beaker className="h-5 w-5" />,
+  next: <ArrowRight className="h-5 w-5" />,
+};
+
+const SLIDE_COLORS: Record<string, string> = {
+  what: 'bg-primary/10 text-primary',
+  why: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  how: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  next: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+};
+
+const PersonalizedSummaryCard = ({
+  paperId,
+  subPersonaId,
+  onPersonaChange,
+  allowedPersonas,
+  policyTags,
+  userId,
+  figures,
+  onModuleClick,
+}: PersonalizedSummaryCardProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [content, setContent] = useState<SummaryContent | null>(null);
   const [openTag, setOpenTag] = useState<string | null>(null);
   const cacheRef = useRef<Record<string, SummaryContent>>({});
+
+  // Carousel
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
 
   // Audio state
   const [audioState, setAudioState] = useState<AudioState>('idle');
@@ -51,19 +95,39 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
   const audioCacheRef = useRef<Record<string, AudioCacheEntry>>({});
   const rafRef = useRef<number>(0);
 
+  // Embla callbacks
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
   // ── Summary loading ──
   const loadSummary = useCallback(async () => {
-    if (cacheRef.current[subPersonaId]) {
-      setContent(cacheRef.current[subPersonaId]);
+    const cacheKey = userId ? `${subPersonaId}__usr_${userId}` : subPersonaId;
+    if (cacheRef.current[cacheKey]) {
+      setContent(cacheRef.current[cacheKey]);
       setError(false);
       return;
     }
     setLoading(true);
     setError(false);
     try {
-      const data = await fetchSummary(paperId, subPersonaId);
+      const data = await fetchSummary(paperId, subPersonaId, userId);
       const summaryContent = (data?.content ?? data) as SummaryContent;
-      cacheRef.current[subPersonaId] = summaryContent;
+      cacheRef.current[cacheKey] = summaryContent;
       setContent(summaryContent);
     } catch {
       setError(true);
@@ -71,7 +135,7 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
     } finally {
       setLoading(false);
     }
-  }, [paperId, subPersonaId]);
+  }, [paperId, subPersonaId, userId]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
@@ -202,6 +266,9 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
     );
   };
 
+  // Check if content uses new card format or old narrative format
+  const hasCards = content?.cards && Array.isArray(content.cards) && content.cards.length > 0;
+
   const getNarrative = (c: SummaryContent): string => {
     if (c.narrative_summary) return c.narrative_summary;
     if (c.summary_points) return c.summary_points.join(' ');
@@ -216,6 +283,12 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
 
   const showPlayer = audioState === 'ready' || audioState === 'playing';
   const showGenerating = audioState === 'generating';
+
+  // Find context figure for "What" card
+  const getContextFigure = (card: StoryCard) => {
+    if (!card.context_figure_id || !figures) return null;
+    return figures.find((f) => f.id === card.context_figure_id) || null;
+  };
 
   return (
     <Card className="relative overflow-hidden border-l-4 border-l-primary shadow-sm rounded-xl">
@@ -246,9 +319,123 @@ const PersonalizedSummaryCard = ({ paperId, subPersonaId, onPersonaChange, allow
 
         {!loading && content && (
           <>
-            <p className="text-base text-foreground/90 leading-relaxed">
-              {renderWithPageRefs(getNarrative(content))}
-            </p>
+            {/* New carousel format */}
+            {hasCards ? (
+              <div className="relative">
+                {/* Navigation buttons */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex gap-1">
+                    {content.cards!.map((card, i) => (
+                      <button
+                        key={card.slug}
+                        onClick={() => emblaApi?.scrollTo(i)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                          selectedIndex === i
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {card.title}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => emblaApi?.scrollPrev()}
+                      disabled={!canScrollPrev}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => emblaApi?.scrollNext()}
+                      disabled={!canScrollNext}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Embla carousel */}
+                <div className="overflow-hidden" ref={emblaRef}>
+                  <div className="flex">
+                    {content.cards!.map((card) => {
+                      const ctxFigure = getContextFigure(card);
+                      return (
+                        <div key={card.slug} className="flex-[0_0_100%] min-w-0 px-1">
+                          <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                            {/* Card header */}
+                            <div className="flex items-center gap-2.5 mb-3">
+                              <div className={`flex items-center justify-center h-8 w-8 rounded-lg ${SLIDE_COLORS[card.slug] || 'bg-muted text-muted-foreground'}`}>
+                                {SLIDE_ICONS[card.slug]}
+                              </div>
+                              <h3 className="font-sans text-sm font-semibold text-foreground uppercase tracking-wide">
+                                {card.title}
+                              </h3>
+                            </div>
+
+                            {/* Context figure for "What" card */}
+                            {card.slug === 'what' && ctxFigure && ctxFigure.bounding_box && (
+                              <div className="mb-3 rounded-md overflow-hidden border border-border/30 bg-muted/20">
+                                <FigureRenderer
+                                  paperId={paperId}
+                                  pageImageId={ctxFigure.bounding_box.page_image_id}
+                                  boundingBox={ctxFigure.bounding_box}
+                                  alt={ctxFigure.caption || 'Context figure'}
+                                  className="w-full max-h-48 object-contain"
+                                />
+                                <p className="text-[11px] text-muted-foreground px-2 py-1.5 italic truncate">
+                                  {ctxFigure.caption}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Card body */}
+                            <p className="text-sm text-foreground/90 leading-relaxed">
+                              {renderWithPageRefs(card.body)}
+                            </p>
+
+                            {/* Module link */}
+                            {card.linked_module && onModuleClick && (
+                              <button
+                                onClick={() => onModuleClick(card.linked_module!)}
+                                className="mt-3 text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                              >
+                                Explore in detail
+                                <ArrowRight className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dot indicators */}
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {content.cards!.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => emblaApi?.scrollTo(i)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        selectedIndex === i ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/30'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Old single-paragraph format — backward compat */
+              <p className="text-base text-foreground/90 leading-relaxed">
+                {renderWithPageRefs(getNarrative(content))}
+              </p>
+            )}
 
             {/* Audio Player */}
             {showGenerating && (

@@ -18,12 +18,9 @@ interface ResearcherViewProps {
   onModuleOpened: (moduleId: ModuleId) => void;
   allowedPersonas?: SubPersonaId[];
   moduleTitles?: Record<string, string>;
+  userId?: string;
 }
 
-/**
- * ResearcherView — the canonical module accordion layout.
- * Extracted from PaperViewPage. Zero behavior change.
- */
 const ResearcherView = ({
   paperId,
   subPersonaId,
@@ -37,6 +34,7 @@ const ResearcherView = ({
   onModuleOpened,
   allowedPersonas,
   moduleTitles = {},
+  userId,
 }: ResearcherViewProps) => {
   return (
     <>
@@ -46,6 +44,9 @@ const ResearcherView = ({
           subPersonaId={subPersonaId}
           onPersonaChange={onPersonaChange}
           allowedPersonas={allowedPersonas}
+          userId={userId}
+          figures={structured?.figures}
+          onModuleClick={(moduleId) => onModuleOpened(moduleId as ModuleId)}
         />
       </div>
 
