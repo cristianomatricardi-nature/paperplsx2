@@ -258,6 +258,10 @@ const AdminPage = () => {
               <BarChart3 className="h-4 w-4" />
               Activity
             </TabsTrigger>
+            <TabsTrigger value="heatmaps" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" />
+              Heatmaps
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5">
               <Settings className="h-4 w-4" />
               Settings
