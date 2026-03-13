@@ -140,6 +140,7 @@ Deno.serve(async (req) => {
       pct_protocol_opened: pct(users.filter((u) => u.protocol_opened).length),
       pct_replication_used: pct(users.filter((u) => u.replication_used).length),
       pct_analysis_used: pct(users.filter((u) => u.analysis_used).length),
+      pct_figure_viewed: pct(users.filter((u) => u.figure_viewed).length),
     };
 
     return new Response(JSON.stringify({ summary, users }), {

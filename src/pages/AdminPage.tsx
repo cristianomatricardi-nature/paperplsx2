@@ -122,11 +122,11 @@ const AdminPage = () => {
 
   const exportUsersCsv = () => {
     if (!users.length) return;
-    const headers = ['Name', 'Email', 'Signed Up', 'Papers', 'Persona Changed', 'Protocol Opened', 'Protocol Open Count', 'Replication Used', 'Analysis Used'];
+    const headers = ['Name', 'Email', 'Signed Up', 'Papers', 'Persona Changed', 'Protocol Opened', 'Protocol Open Count', 'Replication Used', 'Analysis Used', 'Figure Viewed', 'Figure View Count'];
     const rows = users.map((u) => [
       u.full_name || '', u.email, u.created_at ?? '', u.papers.length,
       u.persona_changed, u.protocol_opened, u.protocol_open_count,
-      u.replication_used, u.analysis_used,
+      u.replication_used, u.analysis_used, u.figure_viewed, u.figure_view_count ?? 0,
     ]);
     downloadCsv([headers, ...rows.map(r => r.map(String))], 'user-activity.csv');
   };
