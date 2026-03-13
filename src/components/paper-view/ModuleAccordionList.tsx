@@ -14,6 +14,7 @@ interface ModuleAccordionListProps {
   authorEnrichments?: AuthorEnrichments;
   onEnrichmentsUpdate?: (e: AuthorEnrichments) => void;
   onModuleOpened?: (moduleId: ModuleId) => void;
+  moduleTitles?: Record<string, string>;
 }
 
 const ModuleAccordionList = ({
