@@ -16,9 +16,11 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   let paperId: number;
+  let libraryOnly = false;
   try {
     const body = await req.json();
     paperId = body.paper_id;
+    libraryOnly = body.library_only === true;
   } catch {
     return new Response(
       JSON.stringify({ error: "Invalid JSON or missing paper_id" }),
