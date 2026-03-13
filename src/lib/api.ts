@@ -5,8 +5,20 @@ export async function uploadPaper(file: File, userId: string) {
   formData.append('file', file);
   formData.append('user_id', userId);
 
-  const { data, error } = await supabase.functions.invoke('upload-handler', { body: formData });
-  if (error) throw error;
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-handler`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: formData,
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
   return data;
 }
 
