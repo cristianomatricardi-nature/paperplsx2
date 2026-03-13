@@ -40,6 +40,7 @@ interface GeminiFigureResult {
   caption: string;
   visual_description: string;
   contextual_analysis: string;
+  figure_role?: string;
   page_number?: number;
   figure_type?: string;
   key_findings?: string[];
