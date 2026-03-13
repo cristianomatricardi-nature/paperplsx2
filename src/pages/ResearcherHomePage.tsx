@@ -73,9 +73,6 @@ const ResearcherHomePage = () => {
     }
   };
 
-  const handlePaperAdded = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
 
   const handleSignOut = async () => {
     await signOut();
