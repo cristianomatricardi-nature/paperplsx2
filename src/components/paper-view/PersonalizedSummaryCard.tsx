@@ -4,7 +4,7 @@ import type { SubPersonaId } from '@/types/modules';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Lightbulb, Target, Beaker, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Lightbulb, Target, Beaker, ArrowRight, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import PersonaSelector from './PersonaSelector';
