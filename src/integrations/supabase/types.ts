@@ -513,6 +513,42 @@ export type Database = {
           },
         ]
       }
+      user_heatmap_events: {
+        Row: {
+          created_at: string | null
+          dwell_ms: number
+          id: number
+          page_path: string
+          user_id: string
+          viewport_h: number
+          viewport_w: number
+          x_pct: number
+          y_pct: number
+        }
+        Insert: {
+          created_at?: string | null
+          dwell_ms?: number
+          id?: never
+          page_path: string
+          user_id: string
+          viewport_h: number
+          viewport_w: number
+          x_pct: number
+          y_pct: number
+        }
+        Update: {
+          created_at?: string | null
+          dwell_ms?: number
+          id?: never
+          page_path?: string
+          user_id?: string
+          viewport_h?: number
+          viewport_w?: number
+          x_pct?: number
+          y_pct?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

@@ -67,7 +67,7 @@ const PaperViewPage = () => {
       user_id: user.id,
       paper_id: numericId,
       event_type: 'protocol_opened',
-    });
+    }).select();
   }, [user, numericId]);
 
   // Realtime
@@ -140,7 +140,7 @@ const PaperViewPage = () => {
           user_id: user.id,
           paper_id: numericId,
           event_type: 'persona_changed',
-        });
+        }).select();
       }
     },
     [user, numericId],

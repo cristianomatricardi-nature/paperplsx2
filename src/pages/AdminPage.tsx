@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import DefaultPersonasSettings from '@/components/admin/DefaultPersonasSettings';
+import HeatmapTab from '@/components/admin/HeatmapTab';
 
 interface UserRow {
   id: string;
@@ -258,6 +259,10 @@ const AdminPage = () => {
               <BarChart3 className="h-4 w-4" />
               Activity
             </TabsTrigger>
+            <TabsTrigger value="heatmaps" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" />
+              Heatmaps
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5">
               <Settings className="h-4 w-4" />
               Settings
@@ -393,6 +398,10 @@ const AdminPage = () => {
                 </Table>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="heatmaps">
+            <HeatmapTab />
           </TabsContent>
 
           <TabsContent value="settings">
