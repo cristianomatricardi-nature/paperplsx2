@@ -36,6 +36,7 @@ const ResearcherView = ({
   onPersonaChange,
   onModuleOpened,
   allowedPersonas,
+  moduleTitles = {},
 }: ResearcherViewProps) => {
   return (
     <>
