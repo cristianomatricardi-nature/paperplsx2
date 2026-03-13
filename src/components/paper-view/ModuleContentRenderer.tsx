@@ -141,7 +141,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
           <Carousel opts={{ align: 'start', loop: false }} className="w-full">
             <CarouselContent className="-ml-3">
               {data.map((claim, i) => (
-                <CarouselItem key={i} className="pl-3 basis-full md:basis-1/2">
+                <CarouselItem key={i} className="pl-3 basis-full">
                   <ClaimCard claim={claim} moduleId={moduleId} figures={figures} paperId={paperId} />
                 </CarouselItem>
               ))}
