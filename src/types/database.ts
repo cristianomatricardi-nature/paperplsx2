@@ -19,7 +19,7 @@ export interface Paper {
   doi: string | null;
   journal: string | null;
   publication_date: string | null;
-  source_type: 'pdf_upload' | 'doi';
+  source_type: 'pdf_upload' | 'doi' | 'library';
   storage_path: string | null;
   file_size: number | null;
   num_pages: number | null;

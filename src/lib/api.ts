@@ -18,10 +18,10 @@ export async function resolveDOI(doi: string, userId: string) {
   return data;
 }
 
-export async function fetchSummary(paperId: number, subPersonaId: string) {
-  const { data, error } = await supabase.functions.invoke('generate-summary', {
-    body: { paper_id: paperId, sub_persona_id: subPersonaId },
-  });
+export async function fetchSummary(paperId: number, subPersonaId: string, userId?: string) {
+  const body: Record<string, unknown> = { paper_id: paperId, sub_persona_id: subPersonaId };
+  if (userId) body.user_id = userId;
+  const { data, error } = await supabase.functions.invoke('generate-summary', { body });
   if (error) throw error;
   return data;
 }
