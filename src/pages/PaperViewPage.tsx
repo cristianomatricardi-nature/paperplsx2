@@ -165,6 +165,7 @@ const PaperViewPage = () => {
     if (data) {
       setStructured(data as unknown as StructuredPaper);
       setAuthorEnrichments(((data as any).author_enrichments as AuthorEnrichments) ?? {});
+      setModuleTitles(((data as any).module_titles as Record<string, string>) ?? {});
     }
   }, [numericId]);
 
