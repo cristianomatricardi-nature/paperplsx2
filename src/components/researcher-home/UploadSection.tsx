@@ -88,7 +88,7 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
   const [resolving, setResolving] = useState(false);
 
   // Library upload state
-  const [libraryUploading, setLibraryUploading] = useState(false);
+  
 
   // Realtime pipeline tracking
   const { status, paper } = useRealtimePaper(paperId);
