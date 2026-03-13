@@ -508,7 +508,7 @@ When a figure or sub-panel is referenced in the text you're generating, insert t
       )
       .join("\n\n");
 
-    const fullPrompt = composeModulePrompt(subPersona, moduleId, contextText + figureContext, modulePrompt);
+    const fullPrompt = composeModulePrompt(subPersona, moduleId, contextText + figureContext, MODULE_TITLE_INSTRUCTION + "\n\n" + modulePrompt);
 
     // 6. Call GPT-4o with temperature 0.2
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {

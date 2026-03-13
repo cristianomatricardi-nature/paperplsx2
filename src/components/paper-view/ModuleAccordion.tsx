@@ -6,6 +6,7 @@ import type { Figure } from '@/types/structured-paper';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { ChevronDown, FlaskConical, GripVertical, Pencil, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,14 @@ interface ModuleAccordionProps {
 
 const RESEARCHER_PERSONAS: SubPersonaId[] = ['phd_postdoc', 'pi_tenure'];
 
+/** Extract module_title from cached content if available */
+function extractModuleTitle(content: unknown): string | null {
+  if (content && typeof content === 'object' && 'module_title' in (content as Record<string, unknown>)) {
+    return (content as Record<string, unknown>).module_title as string;
+  }
+  return null;
+}
+
 const ModuleAccordion = ({
   paperId,
   moduleId,
@@ -48,19 +57,17 @@ const ModuleAccordion = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-
-  // Edit mode state
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   const isCore = moduleDefinition.tier === 'core';
-  const borderColor = isCore ? 'border-l-[#3B82F6]' : 'border-l-[#F59E0B]';
+  const borderColor = isCore ? 'border-l-primary' : 'border-l-[hsl(38,92%,50%)]';
+  const contentTitle = extractModuleTitle(cachedContent);
+  const doiString = `paper++:${paperId}/${moduleId}/${subPersonaId}`;
 
   const handleToggle = useCallback(async () => {
     onToggle();
-
-    // If opening and no cached content, fetch
     if (!isOpen && !cachedContent && !loading) {
       setLoading(true);
       setError(false);
@@ -77,7 +84,6 @@ const ModuleAccordion = ({
   }, [isOpen, cachedContent, loading, paperId, moduleId, subPersonaId, onToggle, onContentLoaded]);
 
   const handleEdit = useCallback(() => {
-    // Serialize content to JSON string for editing
     const serialized = typeof cachedContent === 'string'
       ? cachedContent
       : JSON.stringify(cachedContent, null, 2);
@@ -89,22 +95,14 @@ const ModuleAccordion = ({
     setSaving(true);
     try {
       let parsed: unknown;
-      try {
-        parsed = JSON.parse(editValue);
-      } catch {
-        parsed = editValue;
-      }
-
-      // Update the generated_content_cache
+      try { parsed = JSON.parse(editValue); } catch { parsed = editValue; }
       const { error: dbError } = await supabase
         .from('generated_content_cache')
         .update({ content: parsed as any })
         .eq('paper_id', paperId)
         .eq('module_id', moduleId)
         .eq('persona_id', subPersonaId);
-
       if (dbError) throw dbError;
-
       onContentLoaded(moduleId, parsed);
       setEditing(false);
       toast.success('Module content updated');
@@ -130,35 +128,49 @@ const ModuleAccordion = ({
         e.dataTransfer.setData('application/json', JSON.stringify({
           sourceModule: moduleId,
           type: 'module',
-          title: moduleDefinition.title,
+          title: contentTitle || moduleDefinition.title,
           data: cachedContent ?? null,
         }));
         e.dataTransfer.effectAllowed = 'copy';
       }}
-      className={cn('rounded-xl border border-border bg-card overflow-hidden border-l-4 shadow-sm cursor-grab active:cursor-grabbing', borderColor)}
+      className={cn(
+        'rounded-xl border border-border bg-card overflow-hidden border-l-4 shadow-sm cursor-grab active:cursor-grabbing',
+        borderColor,
+      )}
     >
-      {/* Header / trigger */}
+      {/* Header */}
       <button
         onClick={handleToggle}
-        className="flex w-full items-center justify-between px-5 py-[18px] text-left transition-colors hover:bg-muted/40"
+        className="flex w-full items-start justify-between px-5 py-4 text-left transition-colors hover:bg-muted/40"
       >
-        <div className="flex items-center gap-3">
-          <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-          <span className="font-sans text-base font-semibold text-foreground">
-            {moduleDefinition.title}
-          </span>
+        <div className="flex items-start gap-3 min-w-0">
+          <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />
+          <div className="min-w-0 space-y-1">
+            <Badge
+              variant="secondary"
+              className="text-[10px] font-medium uppercase tracking-wider px-2 py-0"
+            >
+              {moduleDefinition.title}
+            </Badge>
+            {contentTitle && (
+              <p className="font-sans text-base font-semibold text-foreground leading-snug">
+                {contentTitle}
+              </p>
+            )}
+            {!contentTitle && (
+              <p className="font-sans text-base font-semibold text-foreground leading-snug">
+                {moduleDefinition.title}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Edit button in header when authors mode is active */}
+        <div className="flex items-center gap-2 shrink-0 mt-1">
           {authorsMode && isOpen && cachedContent && !editing && (
             <Button
               variant="ghost"
               size="sm"
               className="gap-1 text-xs h-7 px-2 text-primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleEdit(); }}
             >
               <Pencil className="h-3 w-3" />
               Edit
@@ -182,7 +194,6 @@ const ModuleAccordion = ({
       >
         <div className="overflow-hidden">
           <div className="px-5 pb-5 pt-1 space-y-4">
-            {/* Loading */}
             {loading && (
               <div className="space-y-3">
                 <Skeleton className="h-4 w-full" />
@@ -192,14 +203,12 @@ const ModuleAccordion = ({
               </div>
             )}
 
-            {/* Error */}
             {!loading && error && !cachedContent && (
               <p className="text-sm text-muted-foreground">
                 Content generation in progress. Please try again in a moment.
               </p>
             )}
 
-            {/* Edit mode */}
             {!loading && editing && (
               <div className="space-y-3">
                 <Textarea
@@ -220,7 +229,6 @@ const ModuleAccordion = ({
               </div>
             )}
 
-            {/* Cached / loaded content (hide when editing) */}
             {!loading && !editing && cachedContent && (
               <ModuleContentRenderer
                 content={cachedContent}
@@ -230,7 +238,6 @@ const ModuleAccordion = ({
               />
             )}
 
-            {/* Author enrichment panel */}
             {authorsMode && isOpen && !loading && cachedContent && onEnrichmentsUpdate && (
               <AuthorEnrichmentPanel
                 paperId={paperId}
@@ -240,7 +247,6 @@ const ModuleAccordion = ({
               />
             )}
 
-            {/* Replicate button for M3 + researcher personas */}
             {showReplicateButton && (
               <Button
                 variant="outline"
@@ -255,6 +261,13 @@ const ModuleAccordion = ({
                 Replicate this
               </Button>
             )}
+          </div>
+
+          {/* DOI-like footer */}
+          <div className="border-t border-border px-5 py-2">
+            <span className="font-mono text-[10px] text-muted-foreground select-all">
+              {doiString}
+            </span>
           </div>
         </div>
       </div>
