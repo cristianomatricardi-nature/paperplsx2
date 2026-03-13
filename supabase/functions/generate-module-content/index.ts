@@ -48,6 +48,7 @@ IMPORTANT: The "metrics" array must include EVERY quantitative result reported i
 
 Return JSON with this structure:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific contribution and impact",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what problem does this paper address and why it matters to the field",
