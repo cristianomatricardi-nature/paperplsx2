@@ -308,6 +308,7 @@ const AdminPage = () => {
                       <TableHead className="font-semibold text-foreground text-center">Protocol Opened</TableHead>
                       <TableHead className="font-semibold text-foreground text-center">Replication Used</TableHead>
                       <TableHead className="font-semibold text-foreground text-center">Analysis Used</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Figure Viewed</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
