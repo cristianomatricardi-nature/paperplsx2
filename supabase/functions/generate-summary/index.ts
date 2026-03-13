@@ -223,27 +223,75 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch researcher's other papers for personalized "What To Do Now" card
+    // Fetch researcher's library papers with rich structured data for personalized "What To Do Now" card
     let researcherContext: string | undefined;
     if (userId) {
       const { data: userPapers } = await supabase
         .from("papers")
-        .select("id, title, abstract, source_type")
+        .select("id, title, abstract")
         .eq("user_id", userId)
         .eq("source_type", "library")
         .neq("id", paperId)
         .in("status", ["completed"])
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(15);
 
       if (userPapers && userPapers.length > 0) {
+        // Fetch structured data for all library papers in one query
+        const libraryPaperIds = userPapers.map((p: any) => p.id);
+        const { data: structuredRows } = await supabase
+          .from("structured_papers")
+          .select("paper_id, claims, methods, sections, abstract")
+          .in("paper_id", libraryPaperIds);
+
+        const structuredMap = new Map<number, any>();
+        if (structuredRows) {
+          for (const row of structuredRows) {
+            structuredMap.set(row.paper_id, row);
+          }
+        }
+
         const paperSummaries = userPapers.map((p: any) => {
-          const type = p.source_type === "library" ? "[Library Paper]" : "[Paper++]";
-          const abstract = p.abstract ? p.abstract.slice(0, 300) : "No abstract";
-          return `${type} "${p.title || "Untitled"}": ${abstract}`;
+          const parts: string[] = [];
+          parts.push(`PAPER: "${p.title || "Untitled"}"`);
+
+          const sp = structuredMap.get(p.id);
+          if (sp) {
+            // Abstract
+            const abs = sp.abstract || p.abstract;
+            if (abs) parts.push(`Abstract: ${abs.slice(0, 400)}`);
+
+            // Claims
+            if (Array.isArray(sp.claims) && sp.claims.length > 0) {
+              const claimLines = sp.claims.slice(0, 5).map((c: any) =>
+                `- [${c.strength || "unknown"}] ${c.statement || ""}`
+              );
+              parts.push(`Key Claims:\n${claimLines.join("\n")}`);
+            }
+
+            // Methods
+            if (Array.isArray(sp.methods) && sp.methods.length > 0) {
+              const methodLines = sp.methods.slice(0, 5).map((m: any) =>
+                `- ${m.title || ""}: ${(m.description || "").slice(0, 150)}`
+              );
+              parts.push(`Methods:\n${methodLines.join("\n")}`);
+            }
+
+            // Section headings
+            if (Array.isArray(sp.sections) && sp.sections.length > 0) {
+              const headings = sp.sections.slice(0, 10).map((s: any) => s.heading).filter(Boolean);
+              if (headings.length > 0) parts.push(`Sections: ${headings.join(", ")}`);
+            }
+          } else {
+            const abs = p.abstract ? p.abstract.slice(0, 300) : "No abstract";
+            parts.push(`Abstract: ${abs}`);
+          }
+
+          return parts.join("\n");
         });
-        researcherContext = paperSummaries.join("\n\n");
-        console.log(`[generate-summary] Including ${userPapers.length} researcher papers as context`);
+
+        researcherContext = paperSummaries.join("\n\n---\n\n");
+        console.log(`[generate-summary] Including ${userPapers.length} library papers with rich structured context`);
       }
     }
 

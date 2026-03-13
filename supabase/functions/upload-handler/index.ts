@@ -66,12 +66,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate storage path
+    // Generate storage path — library papers go to a dedicated subfolder
     const sanitizedName = file.name
       .replace(/[^a-zA-Z0-9._-]/g, "_")
       .replace(/_+/g, "_");
     const timestamp = Date.now();
-    const storagePath = `${user.id}/${timestamp}_${sanitizedName}`;
+    const folder = sourceType === "library" ? `${user.id}/library` : `${user.id}`;
+    const storagePath = `${folder}/${timestamp}_${sanitizedName}`;
 
     // Upload to storage
     const fileBuffer = await file.arrayBuffer();
