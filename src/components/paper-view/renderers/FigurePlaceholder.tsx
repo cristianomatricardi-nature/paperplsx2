@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { Figure } from '@/types/structured-paper';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { FigureRenderer } from '@/components/paper/FigureRenderer';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FigurePlaceholderProps {
   figure: Figure;
@@ -10,6 +12,18 @@ interface FigurePlaceholderProps {
 
 export function FigurePlaceholder({ figure, paperId }: FigurePlaceholderProps) {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen && user?.id && paperId) {
+      supabase.from('user_activity_events').insert({
+        user_id: user.id,
+        paper_id: paperId,
+        event_type: 'figure_viewed',
+      }).select();
+    }
+  };
 
   const hasBoundingBox = !!figure.bounding_box && !!paperId;
   const hasSubPanels = figure.sub_panels && figure.sub_panels.length > 0;
