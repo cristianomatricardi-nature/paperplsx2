@@ -50,6 +50,8 @@ OUTPUT: A JSON object with the following structure. Extract ACTUAL CONTENT, not 
       "id": "method_1",
       "title": "name of the INDIVIDUAL method/protocol step (e.g. 'Substrate Cleaning', 'Lithography', 'Etching')",
       "description": "detailed description of what was done in THIS SPECIFIC step only",
+      "method_group": "logical category grouping related steps (e.g. 'Sample Preparation', 'Synthesis', 'Characterization', 'Data Analysis', 'Computational Modeling')",
+      "attributed_authors": ["author names responsible for this method, extracted from author contribution statements, acknowledgments, or CRediT roles. If unclear, attribute to all authors."],
       "tools": ["instrument names used in this step"],
       "reagents": ["reagent names with concentrations used in this step"],
       "software": ["software names with versions used in this step"],
