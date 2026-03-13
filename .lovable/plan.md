@@ -1,52 +1,39 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Fix Library Paper Upload
+(Previous plan — implemented)
 
-## Problem
-The `upload-handler` edge function crashes with `"Body can not be decoded as form data"` because `supabase.functions.invoke()` doesn't properly transmit `FormData` to the Deno runtime. This means **no library papers can be uploaded**, so the "What To Do Now" personalization has zero library context to work with.
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-## Root Cause
-`supabase.functions.invoke('upload-handler', { body: formData })` — the JS client serializes or mangles the multipart boundary, causing `req.formData()` to fail in the edge function.
+(Previous plan — implemented)
 
-## Fix: Direct `fetch` Instead of `supabase.functions.invoke`
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-### 1. `src/components/researcher-home/PaperLibrary.tsx` — Fix the upload call
-Replace `supabase.functions.invoke` with a direct `fetch` to the edge function URL, which correctly preserves the `FormData` multipart boundary:
+(Previous plan — implemented)
 
-```typescript
-const session = (await supabase.auth.getSession()).data.session;
-const res = await fetch(
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-handler`,
-  {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    },
-    body: formData, // browser auto-sets Content-Type with boundary
-  }
-);
-if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
-const data = await res.json();
-```
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### 2. `src/lib/api.ts` — Fix `uploadPaper` too (same bug)
-Same change for the `uploadPaper` function used by the Paper++ upload flow.
+(Previous plan — implemented)
 
-### 3. No edge function changes needed
-The `upload-handler` edge function code is correct — it properly handles `req.formData()`. The bug is purely client-side.
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
 
-## Pipeline Flow (already correct)
-Once upload succeeds:
-1. **upload-handler** stores file, creates paper record with `source_type='library'`
-2. Client fires `orchestrate-pipeline` with `library_only=true`
-3. Pipeline: parse → structure (extracts title, abstract, authors) → chunk → mark `completed`
-4. **generate-summary** finds library papers with `source_type='library'` + `status='completed'` and uses their titles/abstracts for personalized "What To Do Now"
+### Changes
 
-## Files Changed
-
-| File | Change |
+| File | Status |
 |------|--------|
-| `src/components/researcher-home/PaperLibrary.tsx` | Replace `supabase.functions.invoke` with direct `fetch` for upload |
-| `src/lib/api.ts` | Same fix for `uploadPaper` function |
-
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |
