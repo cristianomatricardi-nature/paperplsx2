@@ -37,7 +37,6 @@ const ResearcherHomePage = () => {
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Edit profile form state
   const [editName, setEditName] = useState('');
