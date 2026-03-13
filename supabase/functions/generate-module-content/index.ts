@@ -19,6 +19,14 @@ const MODULE_QUERIES: Record<string, string> = {
 };
 
 // Module-specific prompt instructions
+const MODULE_TITLE_INSTRUCTION = `
+IMPORTANT: Include a top-level "module_title" field in your JSON response.
+This should be a concise (8-15 word) title that captures the specific content of this module for THIS paper.
+NOT the generic module type name — write a title like a journal article section heading that summarizes what THIS module covers for THIS specific paper.
+Example: "CRISPR-Cas9 Achieves 94% Editing Efficiency in Human T-Cells" instead of "Contribution & Impact".
+Place "module_title" at the same level as "tabs" in the JSON.
+`;
+
 const MODULE_PROMPTS: Record<string, string> = {
   M1: `Generate the Contribution & Impact module. This module is a SELF-CONTAINED knowledge lens: a reader should understand the entire paper's significance by reading only this module.
 
