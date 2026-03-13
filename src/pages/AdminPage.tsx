@@ -399,6 +399,10 @@ const AdminPage = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="heatmaps">
+            <HeatmapTab />
+          </TabsContent>
+
           <TabsContent value="settings">
             <div className="max-w-2xl">
               <DefaultPersonasSettings />
