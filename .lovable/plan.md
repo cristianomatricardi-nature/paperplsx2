@@ -1,38 +1,64 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Fix Heatmap Accuracy + Missing Activity Events
+(Previous plan — implemented)
 
-## Issues Found
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-### 1. Heatmap coordinates are wrong
-The tracker records `x_pct` and `y_pct` as percentage of the **browser viewport** (`clientX / window.innerWidth`). But this only captures the visible portion — it does not account for **scroll position**. If a user scrolls halfway down a page and dwells there, the y coordinate is recorded as 50% (middle of viewport), but the actual page position might be 70% down the document. The heatmap overlay positions dots relative to the iframe content, so they appear in the wrong place.
+### Changes made
 
-**Fix**: Record position relative to the **full document** using `pageX/pageY` and `document.documentElement.scrollHeight/scrollWidth` instead of `clientX/clientY` and `window.innerWidth/innerHeight`. Also store `scroll_y` so the heatmap can account for scroll depth.
+| File | Status |
+|------|--------|
+| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
+| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
+| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
+| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
+| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
+| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
 
-### 2. `replication_used` event never fires
-The `useEffect` in `ReplicationAssistantPage.tsx` has `deps: []` (empty array), but the guard checks `if (!numericId || !user?.id) return`. The `user` from `useAuth()` is typically `null` on the first render and only populates after the auth state resolves. Since the effect only runs once (empty deps), it exits early and never re-runs.
+### Secret added
+- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
 
-The `AnalyticalPipelinePage.tsx` works around this by calling `supabase.auth.getSession()` inside the effect — that pattern actually works. `ReplicationAssistantPage` does not.
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-### 3. `figure_viewed` and `paper_uploaded` events exist in code but have 0 rows
-The `figure_viewed` code looks correct. The `paper_uploaded` code also looks correct. These likely just haven't been triggered yet (no new uploads or figure clicks since the fix). Not a code bug.
+### Problem
+Previous pipeline asked Gemini code_execution to return base64 cropped images inside JSON. Large payloads caused truncated responses, 503/429 errors, and zero images extracted.
 
-## Changes
+### Solution: code_execution for coordinates, client-side canvas crop from PNG
 
-### `src/hooks/useHeatmapTracker.ts`
-- Change from `clientX/clientY` (viewport-relative) to `pageX/pageY` (document-relative)
-- Calculate percentages against `document.documentElement.scrollWidth` and `document.documentElement.scrollHeight` instead of `window.innerWidth/innerHeight`
-- This makes coordinates match the full page layout, which is what the iframe renders
+1. Edge function keeps `code_execution` for precise bounding box detection via PIL
+2. Gemini returns **only normalized coordinates (0-1)** and enriched metadata — no base64 images
+3. Client loads page PNGs from public `paper-figures` bucket and crops via canvas
+4. Prompt enhanced to scan paper sections for figure references and build contextual analysis
 
-### `src/pages/ReplicationAssistantPage.tsx`
-- Use the same `supabase.auth.getSession()` pattern as `AnalyticalPipelinePage` so the event fires even when `useAuth()` hasn't resolved yet on mount
+### Changes
 
-### `src/components/admin/HeatmapTab.tsx`
-- Add `figure_viewed` and `paper_uploaded` counts to the admin dashboard summary (they exist in the edge function query but aren't surfaced in the UI)
+| File | Status |
+|------|--------|
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite: coordinates-only response, contextual analysis prompt, removed all base64/upload logic |
+| `src/types/structured-paper.ts` | ✅ Added `page_image_id` to `bounding_box`, `contextual_analysis` to `Figure`, `explanation` + `bounding_box` to `FigureSubPanel` |
+| `src/components/paper/FigureRenderer.tsx` | ✅ Rewrite: loads PNG from public bucket URL, crops via canvas, no pdf.js dependency |
+| `src/components/paper-view/FigureCard.tsx` | ✅ Updated props: `paperId` instead of `storagePath`, shows `contextual_analysis` in modal |
+| `src/components/paper-view/FiguresSection.tsx` | ✅ Updated props: `paperId` instead of `storagePath` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
 
-### `supabase/functions/admin-dashboard/index.ts`
-- Add `figure_viewed` and `paper_uploaded` to the per-user event tracking and summary percentages
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### `src/pages/AdminPage.tsx`
-- Add stat cards and table columns for `figure_viewed` and `paper_uploaded`
+### Problem
+GPT-4o text structuring misses figures when captions aren't easily parsable from PDF text. The figure extraction edge function only processed figures already listed by GPT-4o, and early-exited when the list was empty.
 
+### Solution: Gemini becomes the authoritative source for figure discovery
+
+1. **Removed early exit** — extraction now proceeds even if GPT-4o found 0 figures
+2. **Phase 0 DISCOVER** — Gemini independently scans ALL page PNGs for visual elements before matching to the text-extracted list
+3. **Append-only merge** — newly discovered figures are appended to the figures array with proper metadata
+4. **Full page coverage** — client hook now renders ALL pages (from `papers.num_pages`) instead of only figure-referenced pages
+
+### Changes
+
+| File | Status |
+|------|--------|
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Phase 0 discovery prompt, removed early exit, append-only merge for new discoveries |
+| `src/hooks/useFigureExtraction.ts` | ✅ Fetches `num_pages` from papers table, renders ALL pages as PNGs, triggers even when figures array is empty |

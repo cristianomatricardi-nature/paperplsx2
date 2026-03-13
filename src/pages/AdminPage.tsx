@@ -41,6 +41,8 @@ interface UserRow {
   protocol_open_count: number;
   replication_used: boolean;
   analysis_used: boolean;
+  figure_viewed: boolean;
+  figure_view_count: number;
 }
 
 interface Summary {
@@ -50,6 +52,7 @@ interface Summary {
   pct_protocol_opened: number;
   pct_replication_used: number;
   pct_analysis_used: number;
+  pct_figure_viewed: number;
 }
 
 const BoolBadge = ({ value }: { value: boolean }) =>
@@ -119,11 +122,11 @@ const AdminPage = () => {
 
   const exportUsersCsv = () => {
     if (!users.length) return;
-    const headers = ['Name', 'Email', 'Signed Up', 'Papers', 'Persona Changed', 'Protocol Opened', 'Protocol Open Count', 'Replication Used', 'Analysis Used'];
+    const headers = ['Name', 'Email', 'Signed Up', 'Papers', 'Persona Changed', 'Protocol Opened', 'Protocol Open Count', 'Replication Used', 'Analysis Used', 'Figure Viewed', 'Figure View Count'];
     const rows = users.map((u) => [
       u.full_name || '', u.email, u.created_at ?? '', u.papers.length,
       u.persona_changed, u.protocol_opened, u.protocol_open_count,
-      u.replication_used, u.analysis_used,
+      u.replication_used, u.analysis_used, u.figure_viewed, u.figure_view_count ?? 0,
     ]);
     downloadCsv([headers, ...rows.map(r => r.map(String))], 'user-activity.csv');
   };
@@ -279,9 +282,10 @@ const AdminPage = () => {
                   <StatCard label="Persona Changed" value={`${summary.pct_persona_changed}%`} sub="of users" />
                   <StatCard label="Protocol Opened" value={`${summary.pct_protocol_opened}%`} sub="of users" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <StatCard label="Replication Used" value={`${summary.pct_replication_used}%`} sub="of users" />
                   <StatCard label="Analysis Used" value={`${summary.pct_analysis_used}%`} sub="of users" />
+                  <StatCard label="Figure Viewed" value={`${summary.pct_figure_viewed ?? 0}%`} sub="of users" />
                 </div>
               </div>
             )}
@@ -304,6 +308,7 @@ const AdminPage = () => {
                       <TableHead className="font-semibold text-foreground text-center">Protocol Opened</TableHead>
                       <TableHead className="font-semibold text-foreground text-center">Replication Used</TableHead>
                       <TableHead className="font-semibold text-foreground text-center">Analysis Used</TableHead>
+                      <TableHead className="font-semibold text-foreground text-center">Figure Viewed</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -365,6 +370,16 @@ const AdminPage = () => {
                               </TableCell>
                               <TableCell className="text-center">
                                 <BoolBadge value={user.analysis_used} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <BoolBadge value={user.figure_viewed} />
+                                  {user.figure_viewed && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {user.figure_view_count}×
+                                    </span>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                             {isExpanded && (

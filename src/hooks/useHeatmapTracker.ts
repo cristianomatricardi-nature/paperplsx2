@@ -13,9 +13,9 @@ interface HeatmapEvent {
   dwell_ms: number;
 }
 
-const SAMPLE_INTERVAL = 2000; // check every 2s
-const DWELL_THRESHOLD = 500; // must stay 500ms to count
-const FLUSH_INTERVAL = 30000; // batch insert every 30s
+const SAMPLE_INTERVAL = 2000;
+const DWELL_THRESHOLD = 500;
+const FLUSH_INTERVAL = 30000;
 
 export function useHeatmapTracker() {
   const { user } = useAuth();
@@ -24,10 +24,10 @@ export function useHeatmapTracker() {
   const lastPosRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Track mouse position
+  // Track mouse position using pageX/pageY (document-relative)
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
+      mouseRef.current = { x: e.pageX, y: e.pageY };
     };
     window.addEventListener('mousemove', handler, { passive: true });
     return () => window.removeEventListener('mousemove', handler);
@@ -39,25 +39,24 @@ export function useHeatmapTracker() {
 
     const interval = setInterval(() => {
       const { x, y } = mouseRef.current;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const xPct = Math.round((x / vw) * 1000) / 10;
-      const yPct = Math.round((y / vh) * 1000) / 10;
+      const docW = document.documentElement.scrollWidth;
+      const docH = document.documentElement.scrollHeight;
+      const xPct = Math.round((x / docW) * 1000) / 10;
+      const yPct = Math.round((y / docH) * 1000) / 10;
       const now = Date.now();
 
       const last = lastPosRef.current;
       if (last) {
         const dist = Math.abs(x - last.x) + Math.abs(y - last.y);
         const elapsed = now - last.time;
-        // Only record if mouse was roughly stationary (within 30px)
         if (dist < 30 && elapsed >= DWELL_THRESHOLD) {
           bufferRef.current.push({
             user_id: user.id,
             page_path: location.pathname,
             x_pct: xPct,
             y_pct: yPct,
-            viewport_w: vw,
-            viewport_h: vh,
+            viewport_w: window.innerWidth,
+            viewport_h: window.innerHeight,
             dwell_ms: elapsed,
           });
         }
@@ -80,7 +79,6 @@ export function useHeatmapTracker() {
     };
 
     const interval = setInterval(flush, FLUSH_INTERVAL);
-    // Also flush on unmount
     return () => {
       clearInterval(interval);
       flush();

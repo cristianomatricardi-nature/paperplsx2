@@ -46,12 +46,15 @@ const ReplicationAssistantPage = () => {
 
   // Fire replication_used event on mount (fire-and-forget)
   useEffect(() => {
-    if (!numericId || !user?.id) return;
-    supabase.from('user_activity_events').insert({
-      user_id: user.id,
-      paper_id: numericId,
-      event_type: 'replication_used',
-    }).select().then(() => {});
+    if (!numericId) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user?.id) return;
+      supabase.from('user_activity_events').insert({
+        user_id: session.user.id,
+        paper_id: numericId,
+        event_type: 'replication_used',
+      }).select().then(() => {});
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

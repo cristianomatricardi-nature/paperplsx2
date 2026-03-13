@@ -95,14 +95,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Count total unique protocols per user (across papers)
-    // We'll compute protocol_opened as boolean and % of unique event rows
-    // For % opened: count distinct (paper_id + event per paper) — simplified: unique protocol_opened event rows / total module count
-    // We'll just expose the count of times protocol was opened per user
     const protocolOpenCountByUser: Record<string, number> = {};
+    const figureViewCountByUser: Record<string, number> = {};
     for (const e of events) {
       if (e.event_type === 'protocol_opened') {
         protocolOpenCountByUser[e.user_id] = (protocolOpenCountByUser[e.user_id] ?? 0) + 1;
+      }
+      if (e.event_type === 'figure_viewed') {
+        figureViewCountByUser[e.user_id] = (figureViewCountByUser[e.user_id] ?? 0) + 1;
       }
     }
 
@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
       const userEvents = eventsByUser[profile.id] ?? new Set();
       const userPapers = papersByUser[profile.id] ?? [];
       const protocolOpenCount = protocolOpenCountByUser[profile.id] ?? 0;
+      const figureViewCount = figureViewCountByUser[profile.id] ?? 0;
 
       return {
         id: profile.id,
@@ -123,6 +124,8 @@ Deno.serve(async (req) => {
         protocol_open_count: protocolOpenCount,
         replication_used: userEvents.has('replication_used'),
         analysis_used: userEvents.has('analysis_used'),
+        figure_viewed: userEvents.has('figure_viewed'),
+        figure_view_count: figureViewCount,
       };
     });
 
@@ -137,6 +140,7 @@ Deno.serve(async (req) => {
       pct_protocol_opened: pct(users.filter((u) => u.protocol_opened).length),
       pct_replication_used: pct(users.filter((u) => u.replication_used).length),
       pct_analysis_used: pct(users.filter((u) => u.analysis_used).length),
+      pct_figure_viewed: pct(users.filter((u) => u.figure_viewed).length),
     };
 
     return new Response(JSON.stringify({ summary, users }), {
