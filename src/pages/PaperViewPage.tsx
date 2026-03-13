@@ -303,6 +303,7 @@ const PaperViewPage = () => {
                       onModuleOpened={handleModuleOpened}
                       allowedPersonas={allowedPersonas}
                       moduleTitles={moduleTitles}
+                      userId={user?.id}
                     />
                   );
               }
