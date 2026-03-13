@@ -1,47 +1,39 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Move Paper Library to Hub Page
+(Previous plan — implemented)
 
-## What Changes
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-Move the `PaperLibrary` component from `ResearcherHomePage` to `HubPage`, adding it as a fourth card ("My Library") that expands inline or navigates to show the tabbed library (My Papers + Paper++ Collection).
+(Previous plan — implemented)
 
-## Approach
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-### `src/pages/HubPage.tsx`
-- Import `PaperLibrary` component
-- Add a new full-width card below the Paper++ Generator card (before the Manage Account / Digital Lab row) titled "My Library" with a `Library` icon
-- Unlike the other cards which navigate away, this one uses a collapsible/expandable pattern: clicking it toggles showing the `PaperLibrary` component inline below the card (using state `libraryOpen`)
-- Pass `userId={user.id}` and `refreshKey={0}` (static, since uploads happen inside the component)
+(Previous plan — implemented)
 
-### `src/pages/ResearcherHomePage.tsx`
-- Remove `PaperLibrary` import and rendering — the researcher home page becomes purely the Paper++ Generator (upload section only)
-- Remove the `refreshKey` state and `handlePaperAdded` callback since `PaperLibrary` managed its own fetching
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### Layout on Hub Page
+(Previous plan — implemented)
 
-```text
-┌─────────────────────────────────────┐
-│  Paper++ Generator          →       │  (navigates to /researcher-home)
-└─────────────────────────────────────┘
-┌─────────────────────────────────────┐
-│  📚 My Library              ▼       │  (toggles open/close)
-│  ┌─────────────────────────────────┐│
-│  │ [My Papers] [Paper++ Collection]││
-│  │ ...cards...                     ││
-│  └─────────────────────────────────┘│
-└─────────────────────────────────────┘
-┌────────────────┐ ┌─────────────────┐
-│ Manage Account │ │  Digital Lab    │
-└────────────────┘ └─────────────────┘
-```
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
 
-The library card uses the same rounded-2xl styling as other hub cards. When collapsed, it shows "My Library" with paper count badge and a chevron. When expanded, the `PaperLibrary` component renders inside with full tab UI and upload dropzone.
+### Changes
 
-## Files Changed
-
-| File | Change |
+| File | Status |
 |------|--------|
-| `src/pages/HubPage.tsx` | Add `PaperLibrary` in collapsible card section |
-| `src/pages/ResearcherHomePage.tsx` | Remove `PaperLibrary`, keep only `UploadSection` |
-
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |

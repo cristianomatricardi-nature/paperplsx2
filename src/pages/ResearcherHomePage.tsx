@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import UploadSection from '@/components/researcher-home/UploadSection';
-import PaperLibrary from '@/components/researcher-home/PaperLibrary';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,6 @@ const ResearcherHomePage = () => {
   const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Edit profile form state
   const [editName, setEditName] = useState('');
@@ -68,7 +66,6 @@ const ResearcherHomePage = () => {
       if (error) throw error;
       toast({ title: 'Profile updated' });
       setEditOpen(false);
-      setRefreshKey((k) => k + 1);
     } catch (err: any) {
       toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
     } finally {
@@ -76,9 +73,6 @@ const ResearcherHomePage = () => {
     }
   };
 
-  const handlePaperAdded = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -104,7 +98,7 @@ const ResearcherHomePage = () => {
     .slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-background" key={refreshKey}>
+    <div className="min-h-screen bg-background">
       {/* ── Top Navigation Bar ── */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -230,8 +224,7 @@ const ResearcherHomePage = () => {
 
       {/* ── Main Content ── */}
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        <UploadSection userId={user.id} onPaperAdded={handlePaperAdded} />
-        <PaperLibrary userId={user.id} refreshKey={refreshKey} />
+        <UploadSection userId={user.id} onPaperAdded={() => {}} />
       </main>
 
       {/* Edit Profile Dialog */}
