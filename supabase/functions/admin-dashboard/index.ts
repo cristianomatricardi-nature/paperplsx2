@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
       const userEvents = eventsByUser[profile.id] ?? new Set();
       const userPapers = papersByUser[profile.id] ?? [];
       const protocolOpenCount = protocolOpenCountByUser[profile.id] ?? 0;
+      const figureViewCount = figureViewCountByUser[profile.id] ?? 0;
 
       return {
         id: profile.id,
@@ -123,6 +124,8 @@ Deno.serve(async (req) => {
         protocol_open_count: protocolOpenCount,
         replication_used: userEvents.has('replication_used'),
         analysis_used: userEvents.has('analysis_used'),
+        figure_viewed: userEvents.has('figure_viewed'),
+        figure_view_count: figureViewCount,
       };
     });
 
