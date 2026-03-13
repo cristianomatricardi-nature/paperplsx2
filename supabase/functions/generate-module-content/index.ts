@@ -260,6 +260,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's recommended actions and next steps",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what did this paper find and why does it matter",
