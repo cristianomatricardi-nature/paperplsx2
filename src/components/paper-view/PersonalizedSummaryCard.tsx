@@ -4,7 +4,7 @@ import type { SubPersonaId } from '@/types/modules';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Lightbulb, Target, Beaker, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertCircle, Lightbulb, Target, Beaker, ArrowRight, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import PersonaSelector from './PersonaSelector';
@@ -28,6 +28,7 @@ interface SummaryContent {
   cards?: StoryCard[];
   disclaimer?: string;
   summary_points?: string[];
+  personalized?: boolean;
 }
 
 type AudioState = 'idle' | 'generating' | 'ready' | 'playing';
@@ -127,6 +128,10 @@ const PersonalizedSummaryCard = ({
     try {
       const data = await fetchSummary(paperId, subPersonaId, userId);
       const summaryContent = (data?.content ?? data) as SummaryContent;
+      // Carry personalized flag from the response envelope
+      if (data?.personalized !== undefined) {
+        summaryContent.personalized = data.personalized;
+      }
       cacheRef.current[cacheKey] = summaryContent;
       setContent(summaryContent);
     } catch {
@@ -389,6 +394,16 @@ const PersonalizedSummaryCard = ({
                                 />
                                 <p className="text-[11px] text-muted-foreground px-2 py-1.5 italic truncate">
                                   {ctxFigure.caption}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Info banner for non-personalized "next" card */}
+                            {card.slug === 'next' && content.personalized === false && (
+                              <div className="flex items-start gap-2 mb-3 p-2.5 rounded-md bg-accent/50 border border-accent">
+                                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <p className="text-xs text-muted-foreground leading-snug">
+                                  Add papers to your library from the Hub to get personalized next steps based on your own research.
                                 </p>
                               </div>
                             )}

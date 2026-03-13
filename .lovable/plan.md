@@ -1,31 +1,39 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Fix "What To Do Now" Card When No Library Papers Exist
+(Previous plan — implemented)
 
-## Problem
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-The "What To Do Now" summary card always renders — even when you have zero papers in your library. The edge function (lines 228-247 of `generate-summary/index.ts`) queries for your other papers, finds none, and the LLM just generates generic next steps pretending it knows your work. That's misleading.
+(Previous plan — implemented)
 
-## Solution
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-Two changes:
+(Previous plan — implemented)
 
-### 1. Edge function: `supabase/functions/generate-summary/index.ts`
-- When `userPapers` is empty (length 0), do NOT pass `researcherContext` to the prompt composer — this already happens correctly
-- But also: add a `personalized: boolean` flag to the response so the frontend knows whether the "next" card is actually personalized or generic
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### 2. Frontend: `src/components/paper-view/PersonalizedSummaryCard.tsx`
-- On the "What To Do Now" slide, if `personalized` is false (no library papers were available), show a subtle info banner: *"Add papers to your library from the Hub to get personalized next steps based on your own research."*
-- The generic next steps from the LLM still display, but the user understands they're not based on their work
+(Previous plan — implemented)
 
-### 3. Prompt composer: `supabase/functions/_shared/prompt-composers.ts`
-- When `researcherContext` is absent, update the "next" card instruction to say: "Provide general actionable next steps for any researcher in this field. Do NOT pretend to know the reader's own work."
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
 
-## Files Changed
+### Changes
 
-| File | Change |
+| File | Status |
 |------|--------|
-| `supabase/functions/generate-summary/index.ts` | Add `personalized: true/false` to response JSON |
-| `supabase/functions/_shared/prompt-composers.ts` | Clarify "next" card instruction when no researcher context |
-| `src/components/paper-view/PersonalizedSummaryCard.tsx` | Show info banner on "next" slide when not personalized |
-
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |

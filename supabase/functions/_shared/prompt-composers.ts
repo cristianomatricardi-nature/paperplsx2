@@ -126,7 +126,7 @@ The 4 cards are:
 1. "what" — THE DISCOVERY: What is this research about? Provide a broader conceptual look at the work. If a context figure is available, describe what it conceptually illustrates. Do NOT include specific numerical/scientific results. Focus on the big picture idea.
 2. "why" — WHY IT MATTERS: What research gap does this close? Why should this reader care? Connect to real-world significance.
 3. "how" — THE APPROACH: Brief methodology snapshot. What tools, techniques, or frameworks were used? Keep it accessible.
-4. "next" — WHAT TO DO NOW: Actionable next steps for this reader.${opts?.researcherContext ? " Personalize based on the researcher's own work." : ""} What should they do with this knowledge?
+4. "next" — WHAT TO DO NOW: Actionable next steps for this reader.${opts?.researcherContext ? " Personalize based on the researcher's own work." : " Provide general actionable next steps for any researcher in this field. Do NOT pretend to know the reader's own work — you have no information about their publications or research interests."} What should they do with this knowledge?
 
 Requirements:
 - Each card body should be ${wordRange} words, flowing prose (NO bullet points, NO numbered lists)
