@@ -398,9 +398,9 @@ const PersonalizedSummaryCard = ({
 
                             {/* Info banner for non-personalized "next" card */}
                             {card.slug === 'next' && content.personalized === false &&
-                        <div className="flex items-start gap-2 mb-3 p-2.5 rounded-md bg-muted border-dotted border-[#7e1b1b] border-4">
-                                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                <p className="text-xs text-muted-foreground leading-snug">
+                        <div className="flex items-start gap-2 mb-3 p-2.5 rounded-md bg-muted border-dotted border-4 border-accent">
+                                <Info className="h-4 shrink-0 mt-0.5 border-destructive-foreground w-[16px] text-destructive-foreground bg-destructive-foreground" />
+                                <p className="text-xs leading-snug text-black">
                                   Add papers to your library from the Hub to get personalized next steps based on your own research.
                                 </p>
                               </div>
