@@ -617,6 +617,7 @@ Deno.serve(async (req) => {
         description: geminiResult.visual_description || "",
         visual_description: geminiResult.visual_description || "",
         contextual_analysis: geminiResult.contextual_analysis || undefined,
+        figure_role: geminiResult.figure_role || undefined,
         page_number: pageNum,
         key_findings: geminiResult.key_findings || [],
         figure_type: geminiResult.figure_type || "unknown",
