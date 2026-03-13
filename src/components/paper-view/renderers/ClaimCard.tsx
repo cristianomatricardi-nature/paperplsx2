@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { renderWithPageRefs } from './PageReference';
+import type { Figure } from '@/types/structured-paper';
+import { FigureRenderer } from '@/components/paper/FigureRenderer';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 interface ClaimData {
   statement?: string;
@@ -23,7 +27,43 @@ const STRENGTH_STYLES: Record<string, { border: string; dot: string }> = {
   speculative: { border: 'border-l-gray-400', dot: 'bg-gray-400' },
 };
 
-export function ClaimCard({ claim, moduleId }: { claim: ClaimData; moduleId?: string }) {
+function InlineFigureThumbnail({ figure, paperId }: { figure: Figure; paperId: number }) {
+  const [open, setOpen] = useState(false);
+  const hasBb = !!figure.bounding_box;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="shrink-0 w-16 h-16 rounded border border-border bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer">
+          {hasBb ? (
+            <FigureRenderer figure={figure} paperId={paperId} className="w-full h-full [&_canvas]:object-cover [&_canvas]:w-full [&_canvas]:h-full" />
+          ) : figure.image_url ? (
+            <img src={figure.image_url} alt={figure.caption} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[9px] text-muted-foreground flex items-center justify-center h-full">
+              {figure.id}
+            </span>
+          )}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        {hasBb ? (
+          <FigureRenderer figure={figure} paperId={paperId} scale={3} className="w-full" />
+        ) : figure.image_url ? (
+          <img src={figure.image_url} alt={figure.caption} className="w-full h-auto rounded-md" />
+        ) : (
+          <div className="flex items-center justify-center h-48 bg-muted rounded-md text-muted-foreground">
+            No image available
+          </div>
+        )}
+        <p className="text-sm font-medium mt-2">{figure.caption}</p>
+        {figure.description && <p className="text-xs text-muted-foreground mt-1">{figure.description}</p>}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function ClaimCard({ claim, moduleId, figures, paperId }: { claim: ClaimData; moduleId?: string; figures?: Figure[]; paperId?: number }) {
   const strength = claim.strength ?? 'moderate';
   const styles = STRENGTH_STYLES[strength] ?? STRENGTH_STYLES.moderate;
   const evidence = claim.evidence ?? claim.evidence_summary ?? '';
@@ -31,13 +71,17 @@ export function ClaimCard({ claim, moduleId }: { claim: ClaimData; moduleId?: st
   const figRefs = claim.figure_refs ?? claim.related_figure_ids ?? [];
   const methodRefs = claim.method_refs ?? claim.related_method_ids ?? [];
 
-  // Build consolidated refs segments
+  // Resolve figure refs to actual Figure objects
+  const resolvedFigures = figures && paperId
+    ? figRefs.map((ref) => figures.find((f) => f.id === ref)).filter(Boolean) as Figure[]
+    : [];
+
+  // Build consolidated refs segments (only non-figure refs now if figures are rendered inline)
   const refSegments: string[] = [];
-  if (figRefs.length > 0) refSegments.push(figRefs.join(', '));
+  if (resolvedFigures.length === 0 && figRefs.length > 0) refSegments.push(figRefs.join(', '));
   if (methodRefs.length > 0) refSegments.push(methodRefs.join(', '));
   if (pages.length > 0) refSegments.push(pages.map((p) => `p. ${p}`).join(', '));
 
-  // Build inline stats string
   const statsInline = claim.statistics?.map((stat) =>
     typeof stat === 'string' ? stat : `${stat.name}: ${stat.value}`
   ).join('  ·  ');
@@ -65,6 +109,15 @@ export function ClaimCard({ claim, moduleId }: { claim: ClaimData; moduleId?: st
           <p className="text-sm font-semibold text-foreground leading-snug">{claim.statement}</p>
         </div>
       </div>
+
+      {/* Inline figure thumbnails */}
+      {resolvedFigures.length > 0 && paperId && (
+        <div className="flex gap-1.5 overflow-x-auto py-1">
+          {resolvedFigures.map((fig) => (
+            <InlineFigureThumbnail key={fig.id} figure={fig} paperId={paperId} />
+          ))}
+        </div>
+      )}
 
       {/* Evidence (clamped) + inline stats */}
       {(evidence || statsInline) && (
