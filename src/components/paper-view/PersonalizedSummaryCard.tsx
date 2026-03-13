@@ -128,10 +128,8 @@ const PersonalizedSummaryCard = ({
     try {
       const data = await fetchSummary(paperId, subPersonaId, userId);
       const summaryContent = (data?.content ?? data) as SummaryContent;
-      // Carry personalized flag from the response envelope
-      if (data?.personalized !== undefined) {
-        summaryContent.personalized = data.personalized;
-      }
+      // Carry personalized flag from the response envelope; default to false if missing
+      summaryContent.personalized = data?.personalized === true;
       cacheRef.current[cacheKey] = summaryContent;
       setContent(summaryContent);
     } catch {
