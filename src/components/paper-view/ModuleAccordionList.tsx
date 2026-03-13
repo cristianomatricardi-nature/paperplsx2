@@ -26,6 +26,7 @@ const ModuleAccordionList = ({
   authorEnrichments = {},
   onEnrichmentsUpdate,
   onModuleOpened,
+  moduleTitles = {},
 }: ModuleAccordionListProps) => {
   const [openModuleId, setOpenModuleId] = useState<ModuleId | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, unknown>>({});
