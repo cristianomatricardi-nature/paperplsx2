@@ -74,7 +74,6 @@ function formatSize(bytes: number) {
 export default function UploadSection({ userId, onPaperAdded }: UploadSectionProps) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Two-step state
