@@ -17,6 +17,7 @@ interface ResearcherViewProps {
   onPersonaChange: (persona: SubPersonaId) => void;
   onModuleOpened: (moduleId: ModuleId) => void;
   allowedPersonas?: SubPersonaId[];
+  moduleTitles?: Record<string, string>;
 }
 
 /**
