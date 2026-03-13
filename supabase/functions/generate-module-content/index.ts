@@ -221,6 +221,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's negative results and limitations",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what was the research trying to achieve and what were the expectations",
