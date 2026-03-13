@@ -17,6 +17,7 @@ interface ResearcherViewProps {
   onPersonaChange: (persona: SubPersonaId) => void;
   onModuleOpened: (moduleId: ModuleId) => void;
   allowedPersonas?: SubPersonaId[];
+  moduleTitles?: Record<string, string>;
 }
 
 /**
@@ -35,6 +36,7 @@ const ResearcherView = ({
   onPersonaChange,
   onModuleOpened,
   allowedPersonas,
+  moduleTitles = {},
 }: ResearcherViewProps) => {
   return (
     <>
@@ -56,6 +58,7 @@ const ResearcherView = ({
         authorEnrichments={authorEnrichments}
         onEnrichmentsUpdate={onEnrichmentsUpdate}
         onModuleOpened={onModuleOpened}
+        moduleTitles={moduleTitles}
       />
 
       {structured?.figures && structured.figures.length > 0 && (

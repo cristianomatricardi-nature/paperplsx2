@@ -49,6 +49,8 @@ export interface MethodStep {
   id: string;
   title: string;
   description: string;
+  method_group?: string;
+  attributed_authors?: string[];
   tools: string[];
   reagents: string[];
   software: string[];

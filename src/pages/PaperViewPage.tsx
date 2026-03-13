@@ -33,6 +33,7 @@ const PaperViewPage = () => {
   // Core data
   const [paper, setPaper] = useState<Record<string, unknown> | null>(null);
   const [structured, setStructured] = useState<StructuredPaper | null>(null);
+  const [moduleTitles, setModuleTitles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   // Authors mode
@@ -119,6 +120,7 @@ const PaperViewPage = () => {
       if (structuredRes.data) {
         setStructured(structuredRes.data as unknown as StructuredPaper);
         setAuthorEnrichments(((structuredRes.data as any).author_enrichments as AuthorEnrichments) ?? {});
+        setModuleTitles(((structuredRes.data as any).module_titles as Record<string, string>) ?? {});
       }
 
       setLoading(false);
@@ -163,6 +165,7 @@ const PaperViewPage = () => {
     if (data) {
       setStructured(data as unknown as StructuredPaper);
       setAuthorEnrichments(((data as any).author_enrichments as AuthorEnrichments) ?? {});
+      setModuleTitles(((data as any).module_titles as Record<string, string>) ?? {});
     }
   }, [numericId]);
 
@@ -292,10 +295,11 @@ const PaperViewPage = () => {
                       storagePath={storagePath}
                       authorsMode={authorsMode}
                       authorEnrichments={authorEnrichments}
-                      onEnrichmentsUpdate={setAuthorEnrichments}
+                       onEnrichmentsUpdate={setAuthorEnrichments}
                       onPersonaChange={handlePersonaChange}
                       onModuleOpened={handleModuleOpened}
                       allowedPersonas={allowedPersonas}
+                      moduleTitles={moduleTitles}
                     />
                   );
               }

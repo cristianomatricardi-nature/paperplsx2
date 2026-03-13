@@ -14,6 +14,7 @@ interface ModuleAccordionListProps {
   authorEnrichments?: AuthorEnrichments;
   onEnrichmentsUpdate?: (e: AuthorEnrichments) => void;
   onModuleOpened?: (moduleId: ModuleId) => void;
+  moduleTitles?: Record<string, string>;
 }
 
 const ModuleAccordionList = ({
@@ -25,6 +26,7 @@ const ModuleAccordionList = ({
   authorEnrichments = {},
   onEnrichmentsUpdate,
   onModuleOpened,
+  moduleTitles = {},
 }: ModuleAccordionListProps) => {
   const [openModuleId, setOpenModuleId] = useState<ModuleId | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, unknown>>({});
@@ -89,6 +91,7 @@ const ModuleAccordionList = ({
                 authorsMode={authorsMode}
                 authorEnrichments={authorEnrichments}
                 onEnrichmentsUpdate={onEnrichmentsUpdate}
+                preGeneratedTitle={moduleTitles[mod.id] ?? null}
               />
             );
           })}

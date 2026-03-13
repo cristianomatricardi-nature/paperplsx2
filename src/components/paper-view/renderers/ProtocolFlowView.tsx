@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Wrench, FlaskConical, Monitor, Thermometer, ChevronDown, ChevronUp, Sparkles, Loader2 } from 'lucide-react';
+import { Clock, Wrench, FlaskConical, Monitor, Thermometer, ChevronDown, ChevronUp, Sparkles, Loader2, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,6 +11,8 @@ interface StepData {
   id?: string;
   title?: string;
   description?: string;
+  method_group?: string;
+  attributed_authors?: string[];
   tools?: string[];
   reagents?: string[];
   software?: string[];
@@ -32,14 +34,11 @@ function FlowCard({ step, index, total, moduleId }: { step: StepData; index: num
   const conditions = toArray(step.conditions);
   const criticalNotes = toArray(step.critical_notes);
   const pages = toArray(step.page_numbers).map(Number).filter(Boolean);
+  const authors = toArray(step.attributed_authors);
 
   return (
     <div className="relative flex flex-col items-center">
-      {/* Connector line from previous */}
-      {index > 0 && (
-        <div className="w-px h-6 bg-border" />
-      )}
-      {/* Arrow indicator */}
+      {index > 0 && <div className="w-px h-6 bg-border" />}
       {index > 0 && (
         <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-border -mt-px mb-1" />
       )}
@@ -64,7 +63,6 @@ function FlowCard({ step, index, total, moduleId }: { step: StepData; index: num
       >
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            {/* Step badge */}
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
               {index + 1}
             </span>
@@ -74,6 +72,17 @@ function FlowCard({ step, index, total, moduleId }: { step: StepData; index: num
                 <p className="text-sm font-semibold text-foreground leading-tight">{step.title}</p>
                 {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
               </div>
+
+              {/* Author attribution badges */}
+              {authors.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {authors.map((author, i) => (
+                    <Badge key={i} variant="outline" className="text-[10px] gap-1 font-normal">
+                      <User className="h-2.5 w-2.5" /> {author}
+                    </Badge>
+                  ))}
+                </div>
+              )}
 
               {/* Compact badges row */}
               <div className="flex flex-wrap gap-1.5">
@@ -106,7 +115,6 @@ function FlowCard({ step, index, total, moduleId }: { step: StepData; index: num
                     <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
                   )}
 
-                  {/* Tools/reagents/software chips */}
                   {(tools.length > 0 || reagents.length > 0 || software.length > 0) && (
                     <div className="flex flex-wrap gap-1.5">
                       {tools.map((t, i) => (
@@ -150,10 +158,7 @@ function FlowCard({ step, index, total, moduleId }: { step: StepData; index: num
         </CardContent>
       </Card>
 
-      {/* Connector line to next */}
-      {index < total - 1 && (
-        <div className="w-px h-6 bg-border" />
-      )}
+      {index < total - 1 && <div className="w-px h-6 bg-border" />}
     </div>
   );
 }
@@ -186,12 +191,22 @@ export function ProtocolFlowView({ steps, paperId, moduleId }: ProtocolFlowViewP
     }
   };
 
+  // Group steps by method_group
+  const grouped = new Map<string, StepData[]>();
+  for (const step of steps) {
+    const group = step.method_group || 'General';
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group)!.push(step);
+  }
+
+  const hasGroups = grouped.size > 1 || (grouped.size === 1 && !grouped.has('General'));
+
   return (
     <div className="space-y-2">
       {/* Header with infographic button */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {steps.length} Protocol Steps
+          {steps.length} Protocol Steps{hasGroups ? ` · ${grouped.size} Groups` : ''}
         </p>
         <Button
           variant="outline"
@@ -215,12 +230,47 @@ export function ProtocolFlowView({ steps, paperId, moduleId }: ProtocolFlowViewP
         </Card>
       )}
 
-      {/* Flow cards */}
-      <div className="flex flex-col items-center">
-        {steps.map((step, i) => (
-          <FlowCard key={step.id ?? i} step={step} index={i} total={steps.length} moduleId={moduleId} />
-        ))}
-      </div>
+      {/* Flow cards — grouped or flat */}
+      {hasGroups ? (
+        <div className="space-y-6">
+          {Array.from(grouped.entries()).map(([groupName, groupSteps]) => {
+            // Compute global index offset for this group
+            let globalOffset = 0;
+            for (const [gn, gs] of grouped.entries()) {
+              if (gn === groupName) break;
+              globalOffset += gs.length;
+            }
+            return (
+              <div key={groupName} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider shrink-0">
+                    {groupName}
+                  </Badge>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <div className="flex flex-col items-center">
+                  {groupSteps.map((step, i) => (
+                    <FlowCard
+                      key={step.id ?? globalOffset + i}
+                      step={step}
+                      index={globalOffset + i}
+                      total={steps.length}
+                      moduleId={moduleId}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          {steps.map((step, i) => (
+            <FlowCard key={step.id ?? i} step={step} index={i} total={steps.length} moduleId={moduleId} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
