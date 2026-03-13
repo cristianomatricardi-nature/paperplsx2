@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileUp, Link, FileText, X, Sparkles, Eye, BookOpen } from 'lucide-react';
+import { FileUp, Link, FileText, X, Sparkles, Eye } from 'lucide-react';
 import { uploadPaper, resolveDOI } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimePaper } from '@/hooks/useRealtimePaper';
