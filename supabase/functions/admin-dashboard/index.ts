@@ -95,14 +95,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Count total unique protocols per user (across papers)
-    // We'll compute protocol_opened as boolean and % of unique event rows
-    // For % opened: count distinct (paper_id + event per paper) — simplified: unique protocol_opened event rows / total module count
-    // We'll just expose the count of times protocol was opened per user
     const protocolOpenCountByUser: Record<string, number> = {};
+    const figureViewCountByUser: Record<string, number> = {};
     for (const e of events) {
       if (e.event_type === 'protocol_opened') {
         protocolOpenCountByUser[e.user_id] = (protocolOpenCountByUser[e.user_id] ?? 0) + 1;
+      }
+      if (e.event_type === 'figure_viewed') {
+        figureViewCountByUser[e.user_id] = (figureViewCountByUser[e.user_id] ?? 0) + 1;
       }
     }
 
