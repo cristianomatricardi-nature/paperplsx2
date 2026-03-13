@@ -347,39 +347,6 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
             </div>
           </TabsContent>
 
-          {/* Library Upload */}
-          <TabsContent value="library">
-            <div className="mt-2 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Add your own papers to build context for personalized summaries. Library papers are parsed but not rendered as Paper++.
-              </p>
-              <div
-                role="button"
-                tabIndex={0}
-                className="flex flex-col items-center justify-center gap-3 rounded-md border-2 border-dashed border-border hover:border-muted-foreground/40 px-6 py-8 transition-colors cursor-pointer"
-                onClick={() => libraryFileInputRef.current?.click()}
-                onKeyDown={(e) => e.key === 'Enter' && libraryFileInputRef.current?.click()}
-              >
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">
-                  {libraryUploading ? 'Uploading…' : 'Click to add a paper to your library'}
-                </p>
-                <p className="text-xs text-muted-foreground">PDF only · Max 20 MB</p>
-                <input
-                  ref={libraryFileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  disabled={libraryUploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleLibraryUpload(file);
-                    e.target.value = '';
-                  }}
-                />
-              </div>
-            </div>
-          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
