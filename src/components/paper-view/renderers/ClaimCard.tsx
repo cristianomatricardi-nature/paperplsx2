@@ -38,7 +38,7 @@ function InlineFigureThumbnail({ figure, paperId }: { figure: Figure; paperId: n
           {hasBb ? (
             <FigureRenderer figure={figure} paperId={paperId} className="w-full [&_canvas]:w-full [&_canvas]:h-auto" />
           ) : figure.image_url ? (
-            <img src={figure.image_url} alt={figure.caption} className="w-full h-full object-cover" />
+            <img src={figure.image_url} alt={figure.caption} className="w-full h-auto" />
           ) : (
             <span className="text-[9px] text-muted-foreground flex items-center justify-center h-full">
               {figure.id}
