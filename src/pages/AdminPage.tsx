@@ -282,9 +282,10 @@ const AdminPage = () => {
                   <StatCard label="Persona Changed" value={`${summary.pct_persona_changed}%`} sub="of users" />
                   <StatCard label="Protocol Opened" value={`${summary.pct_protocol_opened}%`} sub="of users" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <StatCard label="Replication Used" value={`${summary.pct_replication_used}%`} sub="of users" />
                   <StatCard label="Analysis Used" value={`${summary.pct_analysis_used}%`} sub="of users" />
+                  <StatCard label="Figure Viewed" value={`${summary.pct_figure_viewed ?? 0}%`} sub="of users" />
                 </div>
               </div>
             )}
