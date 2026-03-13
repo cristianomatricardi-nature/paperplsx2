@@ -91,6 +91,7 @@ const ModuleAccordionList = ({
                 authorsMode={authorsMode}
                 authorEnrichments={authorEnrichments}
                 onEnrichmentsUpdate={onEnrichmentsUpdate}
+                preGeneratedTitle={moduleTitles[mod.id] ?? null}
               />
             );
           })}

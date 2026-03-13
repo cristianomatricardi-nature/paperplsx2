@@ -28,6 +28,7 @@ interface ModuleAccordionProps {
   authorsMode?: boolean;
   authorEnrichments?: AuthorEnrichments;
   onEnrichmentsUpdate?: (e: AuthorEnrichments) => void;
+  preGeneratedTitle?: string | null;
 }
 
 const RESEARCHER_PERSONAS: SubPersonaId[] = ['phd_postdoc', 'pi_tenure'];
@@ -53,6 +54,7 @@ const ModuleAccordion = ({
   authorsMode = false,
   authorEnrichments = {},
   onEnrichmentsUpdate,
+  preGeneratedTitle = null,
 }: ModuleAccordionProps) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -63,8 +65,9 @@ const ModuleAccordion = ({
 
   const isCore = moduleDefinition.tier === 'core';
   const borderColor = isCore ? 'border-l-primary' : 'border-l-[hsl(38,92%,50%)]';
-  const contentTitle = extractModuleTitle(cachedContent);
   
+  // Priority: cached content title > pre-generated title > null
+  const contentTitle = extractModuleTitle(cachedContent) || preGeneratedTitle || null;
 
   const handleToggle = useCallback(async () => {
     onToggle();
@@ -120,6 +123,8 @@ const ModuleAccordion = ({
 
   const showReplicateButton =
     moduleId === 'M3' && RESEARCHER_PERSONAS.includes(subPersonaId);
+
+  const doiString = `10.paper++/${paperId}.${moduleId}.${subPersonaId}`;
 
   return (
     <div
@@ -257,14 +262,14 @@ const ModuleAccordion = ({
               </Button>
             )}
           </div>
-
-          {/* DOI-like footer */}
-          <div className="border-t border-border px-5 py-2">
-            <span className="font-mono text-[10px] text-muted-foreground select-all">
-              10.paper++/{paperId}.{moduleId}.{subPersonaId}
-            </span>
-          </div>
         </div>
+      </div>
+
+      {/* DOI-like footer — always visible */}
+      <div className="border-t border-border px-5 py-2">
+        <span className="font-mono text-[10px] text-muted-foreground select-all">
+          {doiString}
+        </span>
       </div>
     </div>
   );
