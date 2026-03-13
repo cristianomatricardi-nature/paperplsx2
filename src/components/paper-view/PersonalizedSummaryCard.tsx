@@ -398,6 +398,16 @@ const PersonalizedSummaryCard = ({
                               </div>
                             )}
 
+                            {/* Info banner for non-personalized "next" card */}
+                            {card.slug === 'next' && content.personalized === false && (
+                              <div className="flex items-start gap-2 mb-3 p-2.5 rounded-md bg-accent/50 border border-accent">
+                                <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <p className="text-xs text-muted-foreground leading-snug">
+                                  Add papers to your library from the Hub to get personalized next steps based on your own research.
+                                </p>
+                              </div>
+                            )}
+
                             {/* Card body */}
                             <p className="text-sm text-foreground/90 leading-relaxed">
                               {renderWithPageRefs(card.body)}
