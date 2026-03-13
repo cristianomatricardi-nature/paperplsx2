@@ -161,6 +161,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific methods and protocols",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what problem is being solved and why, what is the research question",
