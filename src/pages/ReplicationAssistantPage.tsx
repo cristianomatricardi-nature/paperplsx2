@@ -51,7 +51,7 @@ const ReplicationAssistantPage = () => {
       user_id: user.id,
       paper_id: numericId,
       event_type: 'replication_used',
-    }).select();
+    }).select().then(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

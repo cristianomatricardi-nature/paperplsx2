@@ -76,7 +76,7 @@ export function useHeatmapTracker() {
     const flush = () => {
       const events = bufferRef.current.splice(0);
       if (events.length === 0) return;
-      supabase.from('user_heatmap_events' as any).insert(events).select();
+      supabase.from('user_heatmap_events' as any).insert(events).select().then(() => {});
     };
 
     const interval = setInterval(flush, FLUSH_INTERVAL);
