@@ -112,7 +112,7 @@ export function ClaimCard({ claim, moduleId, figures, paperId }: { claim: ClaimD
 
       {/* Inline figure thumbnails */}
       {resolvedFigures.length > 0 && paperId && (
-        <div className="flex gap-1.5 overflow-x-auto py-1">
+        <div className="space-y-2 py-1">
           {resolvedFigures.map((fig) => (
             <InlineFigureThumbnail key={fig.id} figure={fig} paperId={paperId} />
           ))}
