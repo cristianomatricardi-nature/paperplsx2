@@ -1,80 +1,64 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Module as Knowledge Object — Title Generation Architecture
+(Previous plan — implemented)
 
-## What You Want
-Each module (M1–M6) should feel like a standalone **knowledge object** with:
-- A **type label** (e.g., "Contribution & Impact Statement") — the current title becomes the category
-- A **content-specific title** generated from the actual paper content (e.g., "CRISPR-Cas9 Achieves 94% Editing Efficiency in Human T-Cells")
-- A **DOI-like identifier** at the bottom (e.g., `paper++:55/M1/phd_postdoc`)
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-## Where to Generate Titles
+### Changes made
 
-### Best approach: Generate during module content generation (in `generate-module-content`)
+| File | Status |
+|------|--------|
+| `run-figure-extraction/index.ts` | ✅ Full rewrite: pdfjs-serverless page→PNG, Gemini 2.5 Flash vision + code_execution, crop upload, citation mapping |
+| `src/types/structured-paper.ts` | ✅ Added `FigureSubPanel`, `FigureCitation`, and new fields on `Figure` |
+| `generate-module-content/index.ts` | ✅ Injects figure citations + visual descriptions into prompt |
+| `generate-summary/index.ts` | ✅ Includes figure context for inline placement |
+| `ModuleContentRenderer.tsx` | ✅ Supports sub-panel tokens `[FIGURE: fig_Xa]` |
+| `FigurePlaceholder.tsx` | ✅ Renders sub-panels as grid, shows visual_description |
 
-The module content generation step already has all the context needed — the RAG chunks, the module prompt, and the AI call. The simplest and most effective approach:
+### Secret added
+- `GOOGLE_API_KEY` — Google AI Studio key for native Gemini API
 
-**Add a `module_title` field to the JSON output schema of each module prompt.** For example, the M1 prompt already asks for a JSON with `tabs: { ... }`. We add a top-level `module_title` field:
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-```text
-{
-  "module_title": "A concise 8-15 word title summarizing THIS module's content for THIS paper",
-  "tabs": { ... }
-}
-```
+### Problem
+Previous pipeline asked Gemini code_execution to return base64 cropped images inside JSON. Large payloads caused truncated responses, 503/429 errors, and zero images extracted.
 
-This means:
-- No extra API call — the title comes back with the content in the same generation
-- It's persona-aware (a PhD student gets a different title framing than a policy maker)
-- It's cached alongside the content in `generated_content_cache`
-- Existing cached content without titles gracefully falls back to the module type name
+### Solution: code_execution for coordinates, client-side canvas crop from PNG
 
-### Why not during structuring?
-Structuring happens before modularization and doesn't know which content maps to which module. The module titles only make sense once the RAG + prompt has produced the module-specific lens.
+1. Edge function keeps `code_execution` for precise bounding box detection via PIL
+2. Gemini returns **only normalized coordinates (0-1)** and enriched metadata — no base64 images
+3. Client loads page PNGs from public `paper-figures` bucket and crops via canvas
+4. Prompt enhanced to scan paper sections for figure references and build contextual analysis
 
-## Implementation Plan
+### Changes
 
-### 1. Backend — Update module prompts (edge function)
-In `generate-module-content/index.ts`, prepend to each `MODULE_PROMPTS[M*]` string:
+| File | Status |
+|------|--------|
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Rewrite: coordinates-only response, contextual analysis prompt, removed all base64/upload logic |
+| `src/types/structured-paper.ts` | ✅ Added `page_image_id` to `bounding_box`, `contextual_analysis` to `Figure`, `explanation` + `bounding_box` to `FigureSubPanel` |
+| `src/components/paper/FigureRenderer.tsx` | ✅ Rewrite: loads PNG from public bucket URL, crops via canvas, no pdf.js dependency |
+| `src/components/paper-view/FigureCard.tsx` | ✅ Updated props: `paperId` instead of `storagePath`, shows `contextual_analysis` in modal |
+| `src/components/paper-view/FiguresSection.tsx` | ✅ Updated props: `paperId` instead of `storagePath` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/pages/PublicPaperViewPage.tsx` | ✅ Pass `paperId` to FiguresSection |
+| `src/hooks/useFigureExtraction.ts` | ✅ Check `figures_extracted` instead of `images_uploaded`, skip figures with existing `bounding_box` |
 
-```text
-IMPORTANT: Include a top-level "module_title" field in your JSON response.
-This should be a concise (8-15 words) title that captures the specific
-content of this module for THIS paper. Not the generic module type —
-a title like a journal article section heading.
-```
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-The JSON schema for each module gets `"module_title": "..."` at the top level alongside `"tabs"`.
+### Problem
+GPT-4o text structuring misses figures when captions aren't easily parsable from PDF text. The figure extraction edge function only processed figures already listed by GPT-4o, and early-exited when the list was empty.
 
-### 2. Frontend — Update ModuleAccordion header
-- Extract `module_title` from `cachedContent` (if present)
-- Display the module type (e.g., "Contribution & Impact") as a small colored badge/chip
-- Display the `module_title` as the main heading
-- Add a DOI-like footer: `paper++:{paperId}/{moduleId}/{persona}`
+### Solution: Gemini becomes the authoritative source for figure discovery
 
-### 3. Visual design of the module card
+1. **Removed early exit** — extraction now proceeds even if GPT-4o found 0 figures
+2. **Phase 0 DISCOVER** — Gemini independently scans ALL page PNGs for visual elements before matching to the text-extracted list
+3. **Append-only merge** — newly discovered figures are appended to the figures array with proper metadata
+4. **Full page coverage** — client hook now renders ALL pages (from `papers.num_pages`) instead of only figure-referenced pages
 
-```text
-┌─────────────────────────────────────────────────┐
-│ ┌──────────────────────────┐                  ▼ │
-│ │ Contribution & Impact    │  ← type badge      │
-│ └──────────────────────────┘                    │
-│ CRISPR-Cas9 Achieves 94% Editing               │
-│ Efficiency in Human T-Cells    ← content title  │
-│                                                 │
-│ [expanded content here...]                      │
-│                                                 │
-│ ─────────────────────────────────────────────── │
-│ paper++:55/M1/phd_postdoc          ← DOI line  │
-└─────────────────────────────────────────────────┘
-```
+### Changes
 
-### 4. Backward compatibility
-- If `cachedContent.module_title` is undefined (old cached entries), fall back to the generic `moduleDefinition.title` as the main heading (no badge shown)
-- No migration needed — new generations will include titles automatically
-
-### Files to Change
-1. **`supabase/functions/generate-module-content/index.ts`** — Add `module_title` instruction to each of the 6 `MODULE_PROMPTS` entries
-2. **`src/components/paper-view/ModuleAccordion.tsx`** — Redesign header to show type badge + content title + DOI footer
-3. **`src/components/paper-view/ModuleAccordionList.tsx`** — Minor: pass paperId for DOI construction (already passed)
-
+| File | Status |
+|------|--------|
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Phase 0 discovery prompt, removed early exit, append-only merge for new discoveries |
+| `src/hooks/useFigureExtraction.ts` | ✅ Fetches `num_pages` from papers table, renders ALL pages as PNGs, triggers even when figures array is empty |
