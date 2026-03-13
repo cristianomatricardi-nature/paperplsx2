@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { FileText, Trash2, RotateCcw, ExternalLink } from 'lucide-react';
+import { FileText, Trash2, RotateCcw, ExternalLink, BookOpen } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ export default function PaperCard({ paper, onDeleted }: PaperCardProps) {
   const currentStatus = (realtimeStatus ?? paper.status) as PaperStatus;
   const currentPaper = realtimePaper ? { ...paper, ...realtimePaper } : paper;
   const errorMessage = (currentPaper as any).error_message as string | null;
+  const isLibrary = currentPaper.source_type === 'library';
 
   // Toast on status change
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function PaperCard({ paper, onDeleted }: PaperCardProps) {
     prevStatusRef.current = realtimeStatus;
 
     if (realtimeStatus === 'completed') {
-      toast({ title: 'Paper processed!', description: currentPaper.title || 'Your paper is ready.' });
+      toast({ title: isLibrary ? 'Paper added to library!' : 'Paper processed!', description: currentPaper.title || 'Your paper is ready.' });
     } else if (realtimeStatus === 'failed') {
       toast({ title: 'Processing failed', description: errorMessage || 'An error occurred.', variant: 'destructive' });
     }
@@ -74,7 +75,7 @@ export default function PaperCard({ paper, onDeleted }: PaperCardProps) {
   const handleRetry = async () => {
     try {
       const { error } = await supabase.functions.invoke('orchestrate-pipeline', {
-        body: { paper_id: paper.id },
+        body: { paper_id: paper.id, library_only: isLibrary },
       });
       if (error) throw error;
       toast({ title: 'Retrying processing…' });
@@ -88,12 +89,36 @@ export default function PaperCard({ paper, onDeleted }: PaperCardProps) {
   const isProcessing = !isCompleted && !isFailed && currentStatus !== 'uploaded';
 
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+    <Card className={`overflow-hidden transition-shadow hover:shadow-md border-l-4 ${
+      isLibrary ? 'border-l-muted-foreground/30' : 'border-l-primary'
+    }`}>
       <CardContent className="space-y-3 p-5">
+        {/* Badge row */}
+        <div className="flex items-center gap-2">
+          {isLibrary ? (
+            <Badge variant="secondary" className="text-[10px] gap-1 font-sans">
+              <BookOpen className="h-3 w-3" />
+              My Paper
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] gap-1 font-sans bg-primary/10 text-primary border-primary/20">
+              <FileText className="h-3 w-3" />
+              Paper++
+            </Badge>
+          )}
+          {isLibrary && isCompleted && (
+            <span className="text-[10px] text-muted-foreground italic">Used for context</span>
+          )}
+        </div>
+
         {/* Title */}
         <h3
-          className={`font-serif text-base font-semibold leading-snug ${isCompleted ? 'cursor-pointer text-foreground hover:text-[hsl(var(--deep-blue))]' : 'text-foreground'}`}
-          onClick={isCompleted ? () => navigate(`/paper/${paper.id}`) : undefined}
+          className={`font-serif text-base font-semibold leading-snug ${
+            isCompleted && !isLibrary
+              ? 'cursor-pointer text-foreground hover:text-primary'
+              : 'text-foreground'
+          }`}
+          onClick={isCompleted && !isLibrary ? () => navigate(`/paper/${paper.id}`) : undefined}
         >
           {currentPaper.title || 'Untitled Paper'}
         </h3>
@@ -131,10 +156,10 @@ export default function PaperCard({ paper, onDeleted }: PaperCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-1">
-          {isCompleted && (
+          {isCompleted && !isLibrary && (
             <Button
               size="sm"
-              className="bg-[hsl(var(--deep-blue))] hover:bg-[hsl(var(--deep-blue)/.85)] text-[hsl(var(--deep-blue-foreground))]"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => navigate(`/paper/${paper.id}`)}
             >
               <FileText className="mr-1 h-3.5 w-3.5" />

@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
     // Parse multipart form data
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const sourceType = (formData.get("source_type") as string) || "pdf_upload";
 
     if (!file) {
       return new Response(
@@ -95,7 +96,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: user.id,
         title: file.name.replace(/\.pdf$/i, ""),
-        source_type: "pdf_upload",
+        source_type: sourceType,
         storage_path: storagePath,
         file_size: file.size,
         status: "uploaded",
@@ -113,18 +114,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fire-and-forget: invoke orchestrate-pipeline
-    try {
-      fetch(`${supabaseUrl}/functions/v1/orchestrate-pipeline`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ paper_id: paper.id }),
-      });
-    } catch (e) {
-      console.warn("Failed to invoke orchestrate-pipeline (non-blocking):", e);
+    // Fire-and-forget: invoke orchestrate-pipeline (skip for library papers — client will invoke separately)
+    if (sourceType !== "library") {
+      try {
+        fetch(`${supabaseUrl}/functions/v1/orchestrate-pipeline`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ paper_id: paper.id }),
+        });
+      } catch (e) {
+        console.warn("Failed to invoke orchestrate-pipeline (non-blocking):", e);
+      }
     }
 
     return new Response(

@@ -96,11 +96,13 @@ Deno.serve(async (req) => {
 
   let paperId: number;
   let subPersonaId: string;
+  let userId: string | undefined;
 
   try {
     const body = await req.json();
     paperId = body.paper_id;
     subPersonaId = body.sub_persona_id;
+    userId = body.user_id;
   } catch {
     return new Response(
       JSON.stringify({ error: "Invalid JSON" }),
@@ -115,17 +117,20 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Build composite cache key that includes user_id for researcher-specific summaries
+  const cachePersonaId = userId ? `${subPersonaId}__usr_${userId}` : subPersonaId;
+
   // 1. Check cache
   const { data: cached } = await supabase
     .from("generated_content_cache")
     .select("content")
     .eq("paper_id", paperId)
     .eq("content_type", "summary")
-    .eq("persona_id", subPersonaId)
+    .eq("persona_id", cachePersonaId)
     .maybeSingle();
 
   if (cached) {
-    console.log(`[generate-summary] Cache hit for paper ${paperId}, persona ${subPersonaId}`);
+    console.log(`[generate-summary] Cache hit for paper ${paperId}, persona ${cachePersonaId}`);
     return new Response(
       JSON.stringify({ success: true, cached: true, content: cached.content }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -161,7 +166,6 @@ Deno.serve(async (req) => {
     let contextText: string;
 
     if (moduleRows && moduleRows.length > 0) {
-      // Build context from cached modules
       const contextParts: string[] = [];
       for (const row of moduleRows) {
         const moduleContent = row.content as Record<string, unknown>;
@@ -173,7 +177,6 @@ Deno.serve(async (req) => {
       contextText = contextParts.join("\n\n");
       console.log(`[generate-summary] Built context from ${moduleRows.length} cached modules`);
     } else {
-      // Fallback: use paper abstract
       console.warn("[generate-summary] No cached modules found, falling back to abstract");
       const { data: paper } = await supabase
         .from("papers")
@@ -186,8 +189,10 @@ Deno.serve(async (req) => {
         : "No content available for this paper.";
     }
 
-    // Fetch figure context for inline placement
+    // Fetch figure context — find contextualization figure for "What" card
+    let contextFigure: { id: string; caption: string; visual_description?: string } | undefined;
     let figureContext = "";
+
     const { data: spData } = await supabase
       .from("structured_papers")
       .select("figures")
@@ -195,9 +200,22 @@ Deno.serve(async (req) => {
       .single();
 
     if (spData?.figures && Array.isArray(spData.figures)) {
-      const figs = (spData.figures as any[]).filter((f: any) => f.citations?.length > 0 || f.visual_description);
-      if (figs.length > 0) {
-        const figLines = figs.slice(0, 8).map((f: any) => {
+      const figs = spData.figures as any[];
+
+      // Find the contextualization figure, or fall back to first figure
+      const ctxFig = figs.find((f: any) => f.figure_role === "contextualization") || figs[0];
+      if (ctxFig) {
+        contextFigure = {
+          id: ctxFig.id,
+          caption: ctxFig.caption || "",
+          visual_description: ctxFig.visual_description || ctxFig.description || undefined,
+        };
+      }
+
+      // General figure context for inline refs
+      const figsWithContext = figs.filter((f: any) => f.citations?.length > 0 || f.visual_description);
+      if (figsWithContext.length > 0) {
+        const figLines = figsWithContext.slice(0, 8).map((f: any) => {
           const desc = f.visual_description ? ` — ${f.visual_description}` : "";
           return `${f.id}: "${f.caption}"${desc}`;
         });
@@ -205,8 +223,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fetch researcher's other papers for personalized "What To Do Now" card
+    let researcherContext: string | undefined;
+    if (userId) {
+      const { data: userPapers } = await supabase
+        .from("papers")
+        .select("id, title, abstract, source_type")
+        .eq("user_id", userId)
+        .neq("id", paperId)
+        .in("status", ["completed"])
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (userPapers && userPapers.length > 0) {
+        const paperSummaries = userPapers.map((p: any) => {
+          const type = p.source_type === "library" ? "[Library Paper]" : "[Paper++]";
+          const abstract = p.abstract ? p.abstract.slice(0, 300) : "No abstract";
+          return `${type} "${p.title || "Untitled"}": ${abstract}`;
+        });
+        researcherContext = paperSummaries.join("\n\n");
+        console.log(`[generate-summary] Including ${userPapers.length} researcher papers as context`);
+      }
+    }
+
     // 4. Build prompt
-    const prompt = composeSummaryPrompt(subPersona, contextText + figureContext);
+    const prompt = composeSummaryPrompt(subPersona, contextText + figureContext, {
+      researcherContext,
+      contextFigure,
+    });
 
     // 5. Call Lovable AI Gateway
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
@@ -253,7 +297,7 @@ Deno.serve(async (req) => {
       .insert({
         paper_id: paperId,
         content_type: "summary",
-        persona_id: subPersonaId,
+        persona_id: cachePersonaId,
         content: content,
         source_chunks: [],
       });
@@ -262,7 +306,7 @@ Deno.serve(async (req) => {
       console.warn("[generate-summary] Cache insert failed (non-blocking):", insertError);
     }
 
-    console.log(`[generate-summary] Generated summary for paper ${paperId}, persona ${subPersonaId}`);
+    console.log(`[generate-summary] Generated summary for paper ${paperId}, persona ${cachePersonaId}`);
 
     return new Response(
       JSON.stringify({ success: true, cached: false, content }),
@@ -278,7 +322,17 @@ Deno.serve(async (req) => {
       .single();
 
     const fallbackContent = {
-      narrative_summary: `This paper "${paper?.title || "Untitled"}" presents findings that may be relevant to your work. ${paper?.abstract ? paper.abstract.slice(0, 300) + "..." : "No abstract is available."} Please refer to the full paper for detailed methodology and results.`,
+      cards: [
+        {
+          slug: "what",
+          title: "The Discovery",
+          body: `This paper "${paper?.title || "Untitled"}" presents findings that may be relevant to your work. ${paper?.abstract ? paper.abstract.slice(0, 300) + "..." : "No abstract is available."}`,
+          linked_module: "M1",
+        },
+        { slug: "why", title: "Why It Matters", body: "Please refer to the full paper for significance and context.", linked_module: "M2" },
+        { slug: "how", title: "The Approach", body: "Please refer to the full paper for detailed methodology.", linked_module: "M3" },
+        { slug: "next", title: "What To Do Now", body: "Review the full paper and its modules for actionable next steps.", linked_module: "M5" },
+      ],
       disclaimer: "This summary was generated by AI and may contain inaccuracies. Always refer to the original paper for definitive information.",
     };
 

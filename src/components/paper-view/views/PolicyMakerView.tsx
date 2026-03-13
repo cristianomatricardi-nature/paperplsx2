@@ -24,6 +24,7 @@ interface PolicyMakerViewProps {
   paper: Record<string, unknown> | null;
   onPersonaChange: (persona: SubPersonaId) => void;
   allowedPersonas?: SubPersonaId[];
+  userId?: string;
 }
 
 const EVIDENCE_QUALITY_COLORS: Record<string, string> = {
@@ -38,6 +39,7 @@ const PolicyMakerView = ({
   paper,
   onPersonaChange,
   allowedPersonas,
+  userId,
 }: PolicyMakerViewProps) => {
   const { payload, loading, error, refetch } = usePolicyView(paperId, subPersonaId);
   const { isAdmin } = useUserRole();
@@ -117,6 +119,7 @@ const PolicyMakerView = ({
         onPersonaChange={onPersonaChange}
         allowedPersonas={allowedPersonas}
         policyTags={payload?.policy_tags ?? null}
+        userId={userId}
       />
 
       {/* Loading state */}

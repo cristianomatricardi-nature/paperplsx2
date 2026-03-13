@@ -40,6 +40,7 @@ interface GeminiFigureResult {
   caption: string;
   visual_description: string;
   contextual_analysis: string;
+  figure_role?: string;
   page_number?: number;
   figure_type?: string;
   key_findings?: string[];
@@ -152,7 +153,16 @@ Synthesize ALL references into:
 - A rich "visual_description" per figure (what you visually see: chart types, axes, trends, colors, data patterns)
 - For each sub-panel, an "explanation" that combines visual observation with what the paper text says about it
 
-### 3. CITATIONS — Return text references
+### 3. FIGURE ROLE CLASSIFICATION
+For each figure, classify its \`figure_role\` from one of these categories:
+- \`contextualization\` — conceptual illustration showing the idea/big picture of the work (e.g. schematic, concept diagram, graphical abstract)
+- \`characterization\` — material/sample characterization (SEM, XRD, spectra, TEM, AFM)
+- \`calculation\` — computational results, simulations, theoretical plots
+- \`supporting_evidence\` — experimental data directly supporting claims (bar charts, scatter plots, dose-response curves)
+- \`methodology\` — workflow diagrams, experimental setups, apparatus photos
+- \`comparison\` — benchmarking against other work, literature comparison tables/charts
+
+### 4. CITATIONS — Return text references
 For each figure reference found in the sections, return the snippet, section heading, and page number.
 
 ## OUTPUT FORMAT
@@ -164,6 +174,7 @@ Return a JSON array (NO markdown fences, just raw JSON):
     "caption": "Figure 1. ...",
     "visual_description": "A bar chart showing X vs Y with three groups...",
     "contextual_analysis": "The authors use Figure 1 to demonstrate the relationship between X and Y...",
+    "figure_role": "contextualization",
     "page_number": 3,
     "figure_type": "bar_chart",
     "key_findings": ["Finding 1", "Finding 2"],
@@ -551,6 +562,7 @@ Deno.serve(async (req) => {
           ...fig,
           visual_description: gemini.visual_description || fig.description,
           contextual_analysis: gemini.contextual_analysis || undefined,
+          figure_role: gemini.figure_role || undefined,
           bounding_box: gemini.bounding_box || fig.bounding_box,
           page_number: gemini.page_number || fig.page_number,
           figure_type: gemini.figure_type || fig.figure_type,
@@ -605,6 +617,7 @@ Deno.serve(async (req) => {
         description: geminiResult.visual_description || "",
         visual_description: geminiResult.visual_description || "",
         contextual_analysis: geminiResult.contextual_analysis || undefined,
+        figure_role: geminiResult.figure_role || undefined,
         page_number: pageNum,
         key_findings: geminiResult.key_findings || [],
         figure_type: geminiResult.figure_type || "unknown",

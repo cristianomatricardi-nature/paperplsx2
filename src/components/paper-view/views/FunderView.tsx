@@ -22,9 +22,10 @@ interface FunderViewProps {
   paper: Record<string, unknown> | null;
   onPersonaChange: (persona: SubPersonaId) => void;
   allowedPersonas?: SubPersonaId[];
+  userId?: string;
 }
 
-const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPersonas }: FunderViewProps) => {
+const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPersonas, userId }: FunderViewProps) => {
   const { payload, loading, error, refetch } = useFunderView(paperId, subPersonaId);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -72,7 +73,7 @@ const FunderView = ({ paperId, subPersonaId, paper, onPersonaChange, allowedPers
 
   return (
     <div className="space-y-5">
-      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} />
+      <PersonalizedSummaryCard paperId={paperId} subPersonaId={subPersonaId} onPersonaChange={onPersonaChange} allowedPersonas={allowedPersonas} userId={userId} />
 
       {loading && (
         <div className="space-y-4 pt-2">

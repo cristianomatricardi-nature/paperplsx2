@@ -81,6 +81,8 @@ export interface FigureCitation {
   page_number: number;
 }
 
+export type FigureRole = 'contextualization' | 'characterization' | 'calculation' | 'supporting_evidence' | 'methodology' | 'comparison';
+
 export interface Figure {
   id: string;
   caption: string;
@@ -90,6 +92,7 @@ export interface Figure {
   key_findings: string[];
   data_series: string[];
   image_url: string | null;
+  figure_role?: FigureRole;
   bounding_box?: {
     x: number;
     y: number;

@@ -262,6 +262,7 @@ const PaperViewPage = () => {
                       paper={paper}
                       onPersonaChange={handlePersonaChange}
                       allowedPersonas={allowedPersonas}
+                      userId={user?.id}
                     />
                   );
                 case 'Funding Agency':
@@ -272,6 +273,7 @@ const PaperViewPage = () => {
                       paper={paper}
                       onPersonaChange={handlePersonaChange}
                       allowedPersonas={allowedPersonas}
+                      userId={user?.id}
                     />
                   );
                 case 'Educator':
@@ -282,6 +284,7 @@ const PaperViewPage = () => {
                       paper={paper}
                       onPersonaChange={handlePersonaChange}
                       allowedPersonas={allowedPersonas}
+                      userId={user?.id}
                     />
                   );
                 default:
@@ -300,6 +303,7 @@ const PaperViewPage = () => {
                       onModuleOpened={handleModuleOpened}
                       allowedPersonas={allowedPersonas}
                       moduleTitles={moduleTitles}
+                      userId={user?.id}
                     />
                   );
               }
