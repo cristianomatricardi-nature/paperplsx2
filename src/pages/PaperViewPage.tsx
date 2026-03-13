@@ -295,10 +295,11 @@ const PaperViewPage = () => {
                       storagePath={storagePath}
                       authorsMode={authorsMode}
                       authorEnrichments={authorEnrichments}
-                      onEnrichmentsUpdate={setAuthorEnrichments}
+                       onEnrichmentsUpdate={setAuthorEnrichments}
                       onPersonaChange={handlePersonaChange}
                       onModuleOpened={handleModuleOpened}
                       allowedPersonas={allowedPersonas}
+                      moduleTitles={moduleTitles}
                     />
                   );
               }

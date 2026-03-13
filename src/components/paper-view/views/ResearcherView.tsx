@@ -58,6 +58,7 @@ const ResearcherView = ({
         authorEnrichments={authorEnrichments}
         onEnrichmentsUpdate={onEnrichmentsUpdate}
         onModuleOpened={onModuleOpened}
+        moduleTitles={moduleTitles}
       />
 
       {structured?.figures && structured.figures.length > 0 && (
