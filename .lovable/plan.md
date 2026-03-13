@@ -1,47 +1,39 @@
 
-Goal: Ensure “What To Do Now” is personalized only from papers in **My Papers** (library papers), never from Paper++ uploads.
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-What I verified:
-1. In `PaperLibrary.tsx`, **My Papers** is correctly defined as `source_type === 'library'`.
-2. In `generate-summary/index.ts`, personalization context currently pulls:
-   - same user
-   - `status = completed`
-   - **no `source_type = 'library'` filter**
-3. Runtime logs confirm this is happening: `Including 10 researcher papers as context`.
-4. Database check for your user shows `0` library papers and many completed `pdf_upload` papers, so personalization is currently using Paper++ uploads by mistake.
+(Previous plan — implemented)
 
-Root cause:
-- The summary function is using **all completed user papers** instead of only **My Papers**.
-- So even when My Papers is empty, “What To Do Now” still gets context from completed Paper++ uploads and writes personalized-looking text.
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-Implementation plan:
-1. Update personalization query in `supabase/functions/generate-summary/index.ts`:
-   - Add `.eq("source_type", "library")`
-   - Keep `.eq("user_id", userId)`, `.neq("id", paperId)`, `.in("status", ["completed"])`
-2. Strengthen cache correctness for this logic:
-   - Bump/version the summary cache persona key for user-scoped summaries (so old mixed-context summaries are not reused).
-   - Keep/return `personalized` consistently on both fresh and cached responses.
-3. Preserve existing behavior when My Papers is empty:
-   - “What To Do Now” remains general (non-personalized), with the existing info banner.
-4. Small frontend safety in `src/components/paper-view/PersonalizedSummaryCard.tsx`:
-   - Default missing `personalized` to `false` so old cache payloads can’t hide the banner.
+(Previous plan — implemented)
 
-Files to change:
-- `supabase/functions/generate-summary/index.ts` (primary fix + cache consistency)
-- `src/components/paper-view/PersonalizedSummaryCard.tsx` (defensive fallback)
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-Technical details:
-- New personalization dataset = `papers WHERE user_id = :userId AND source_type = 'library' AND status = 'completed' AND id != :paperId`.
-- Cache key update avoids serving stale summaries that were generated with old (incorrect) paper scope.
-- No database migration required.
+(Previous plan — implemented)
 
-Validation checklist after implementation:
-1. User with no My Papers + many Paper++ papers:
-   - `generate-summary` logs should show no “Including X researcher papers as context”.
-   - response `personalized: false`.
-   - banner appears on “What To Do Now”.
-2. User with My Papers present:
-   - logs should show included context count from library papers only.
-   - response `personalized: true`.
-3. Re-open same paper/persona:
-   - cached response preserves correct `personalized` behavior.
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
+
+(Previous plan — implemented)
+
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
+
+### Changes
+
+| File | Status |
+|------|--------|
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |

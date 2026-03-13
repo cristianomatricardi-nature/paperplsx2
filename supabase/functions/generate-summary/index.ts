@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   }
 
   // Build composite cache key that includes user_id for researcher-specific summaries
-  const cachePersonaId = userId ? `${subPersonaId}__usr_${userId}` : subPersonaId;
+  const cachePersonaId = userId ? `${subPersonaId}__lib_${userId}` : subPersonaId;
 
   // 1. Check cache
   const { data: cached } = await supabase
@@ -230,6 +230,7 @@ Deno.serve(async (req) => {
         .from("papers")
         .select("id, title, abstract, source_type")
         .eq("user_id", userId)
+        .eq("source_type", "library")
         .neq("id", paperId)
         .in("status", ["completed"])
         .order("created_at", { ascending: false })

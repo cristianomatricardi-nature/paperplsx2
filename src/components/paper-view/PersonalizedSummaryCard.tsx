@@ -117,7 +117,7 @@ const PersonalizedSummaryCard = ({
 
   // ── Summary loading ──
   const loadSummary = useCallback(async () => {
-    const cacheKey = userId ? `${subPersonaId}__usr_${userId}` : subPersonaId;
+    const cacheKey = userId ? `${subPersonaId}__lib_${userId}` : subPersonaId;
     if (cacheRef.current[cacheKey]) {
       setContent(cacheRef.current[cacheKey]);
       setError(false);
@@ -128,10 +128,8 @@ const PersonalizedSummaryCard = ({
     try {
       const data = await fetchSummary(paperId, subPersonaId, userId);
       const summaryContent = (data?.content ?? data) as SummaryContent;
-      // Carry personalized flag from the response envelope
-      if (data?.personalized !== undefined) {
-        summaryContent.personalized = data.personalized;
-      }
+      // Carry personalized flag from the response envelope; default to false if missing
+      summaryContent.personalized = data?.personalized === true;
       cacheRef.current[cacheKey] = summaryContent;
       setContent(summaryContent);
     } catch {
