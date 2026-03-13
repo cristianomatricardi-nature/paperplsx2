@@ -56,18 +56,16 @@ function isReproducibilityData(data: unknown): data is Record<string, unknown> {
 }
 
 /**
- * Replace [FIGURE: fig_X] or [FIGURE: fig_Xa] tokens in a string with FigurePlaceholder components.
- * Supports sub-panel tokens like [FIGURE: fig_1a] by looking up parent figure's sub_panels.
+ * Replace [FIGURE: fig_X] tokens with FigurePlaceholder components.
  */
-function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[] {
+function replaceFigureTokens(text: string, figures: Figure[], paperId?: number): React.ReactNode[] {
   const parts = text.split(/\[FIGURE:\s*(fig_\w+)\]/gi);
   return parts.map((part, i) => {
     if (i % 2 === 1) {
-      // Try exact match first
       const fig = figures.find((f) => f.id === part);
-      if (fig) return <FigurePlaceholder key={i} figure={fig} />;
+      if (fig) return <FigurePlaceholder key={i} figure={fig} paperId={paperId} />;
 
-      // Try sub-panel match: e.g. "fig_1a" → parent "fig_1", panel "a"
+      // Sub-panel match: "fig_1a" → parent "fig_1", panel "a"
       const subMatch = part.match(/^(fig_\d+)([a-z])$/i);
       if (subMatch) {
         const parentId = subMatch[1];
@@ -76,7 +74,6 @@ function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[]
         if (parent?.sub_panels) {
           const panel = parent.sub_panels.find((sp) => sp.label.toLowerCase() === panelLabel);
           if (panel) {
-            // Create a synthetic figure for the sub-panel
             const syntheticFig: Figure = {
               ...parent,
               id: panel.panel_id,
@@ -85,7 +82,7 @@ function replaceFigureTokens(text: string, figures: Figure[]): React.ReactNode[]
               image_url: panel.image_url,
               sub_panels: undefined,
             };
-            return <FigurePlaceholder key={i} figure={syntheticFig} />;
+            return <FigurePlaceholder key={i} figure={syntheticFig} paperId={paperId} />;
           }
         }
       }
@@ -102,7 +99,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
 
   // String with figure tokens
   if (typeof data === 'string' && /\[FIGURE:/i.test(data)) {
-    return <div className="space-y-2">{replaceFigureTokens(data, figures)}</div>;
+    return <div className="space-y-2">{replaceFigureTokens(data, figures, paperId)}</div>;
   }
 
   // M1 overview block
@@ -145,7 +142,7 @@ function renderBlock(data: unknown, moduleId: ModuleId, figures: Figure[], paper
             <CarouselContent className="-ml-3">
               {data.map((claim, i) => (
                 <CarouselItem key={i} className="pl-3 basis-full md:basis-1/2">
-                  <ClaimCard claim={claim} moduleId={moduleId} />
+                  <ClaimCard claim={claim} moduleId={moduleId} figures={figures} paperId={paperId} />
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -209,7 +206,6 @@ const ModuleContentRenderer = ({ content, moduleId, figures = [], paperId }: Mod
     };
   }, [contentObj]);
 
-  // Tabbed layout
   if (introduction || contentSections) {
     const sectionKeys = contentSections ? Object.keys(contentSections) : [];
 
@@ -247,7 +243,6 @@ const ModuleContentRenderer = ({ content, moduleId, figures = [], paperId }: Mod
     );
   }
 
-  // Non-tabbed: render directly
   return <div>{renderBlock(content, moduleId, figures, paperId)}</div>;
 };
 

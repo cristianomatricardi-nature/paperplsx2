@@ -1,21 +1,27 @@
 import { useState } from 'react';
 import type { Figure } from '@/types/structured-paper';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { FigureRenderer } from '@/components/paper/FigureRenderer';
 
 interface FigurePlaceholderProps {
   figure: Figure;
+  paperId?: number;
 }
 
-export function FigurePlaceholder({ figure }: FigurePlaceholderProps) {
+export function FigurePlaceholder({ figure, paperId }: FigurePlaceholderProps) {
   const [open, setOpen] = useState(false);
 
+  const hasBoundingBox = !!figure.bounding_box && !!paperId;
   const hasSubPanels = figure.sub_panels && figure.sub_panels.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button className="w-full text-left rounded-md border border-border bg-muted/30 p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-          {figure.image_url ? (
+          {/* Priority: bounding_box crop → image_url → sub_panels → placeholder */}
+          {hasBoundingBox ? (
+            <FigureRenderer figure={figure} paperId={paperId} className="w-full" />
+          ) : figure.image_url ? (
             <img
               src={figure.image_url}
               alt={figure.caption}
@@ -61,7 +67,9 @@ export function FigurePlaceholder({ figure }: FigurePlaceholderProps) {
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
-        {figure.image_url ? (
+        {hasBoundingBox ? (
+          <FigureRenderer figure={figure} paperId={paperId} scale={3} className="w-full" />
+        ) : figure.image_url ? (
           <img src={figure.image_url} alt={figure.caption} className="w-full h-auto rounded-md" />
         ) : hasSubPanels ? (
           <div className={`grid gap-3 ${figure.sub_panels!.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-3'}`}>
