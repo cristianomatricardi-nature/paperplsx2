@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import PaperLibrary from '@/components/researcher-home/PaperLibrary';
 import {
   Dialog,
   DialogContent,
@@ -25,10 +26,12 @@ import { Badge } from '@/components/ui/badge';
 import {
   FlaskConical,
   BookOpen,
+  Library,
   User,
   LogOut,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
   ArrowRight,
   MapPin,
   Tag,
