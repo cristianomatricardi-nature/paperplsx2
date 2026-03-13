@@ -555,22 +555,60 @@ When a figure or sub-panel is referenced in the text you're generating, insert t
       throw new Error("Failed to parse module content from AI response");
     }
 
-    // 8. Cache the result
+    // 7b. Deterministic fallback if AI still omitted module_title
+    if (!content.module_title) {
+      console.warn(`[generate-module-content] AI omitted module_title, generating deterministic fallback`);
+      const tabs = content.tabs as Record<string, unknown> | undefined;
+      let fallbackTitle = "";
+      if (tabs) {
+        // Try extracting from various module structures
+        const overview = tabs.overview as Record<string, string> | undefined;
+        const claims = tabs.claims as Array<{ statement: string }> | undefined;
+        const plainSummary = tabs.plain_language_summary as string | undefined;
+        if (overview?.core_contribution) {
+          fallbackTitle = overview.core_contribution;
+        } else if (claims?.[0]?.statement) {
+          fallbackTitle = claims[0].statement;
+        } else if (plainSummary) {
+          fallbackTitle = plainSummary;
+        } else if (tabs.introduction && typeof tabs.introduction === 'object') {
+          const intro = tabs.introduction as Record<string, string>;
+          fallbackTitle = intro.context_bridge || intro.module_focus || "";
+        }
+      }
+      // Truncate to ~15 words
+      content.module_title = fallbackTitle.split(/\s+/).slice(0, 15).join(" ") || `${moduleId} Analysis`;
+    }
+
+    // 8. Cache the result (upsert to handle backfill of stale entries)
     const sourceChunks = chunks.map((c: { chunk_id: string }) => c.chunk_id);
 
-    const { error: insertError } = await supabase
-      .from("generated_content_cache")
-      .insert({
-        paper_id: paperId,
-        content_type: "module",
-        persona_id: subPersonaId,
-        module_id: moduleId,
-        content: content,
-        source_chunks: sourceChunks,
-      });
-
-    if (insertError) {
-      console.warn("[generate-module-content] Cache insert failed (non-blocking):", insertError);
+    if (cached && !hasTitleInCache) {
+      // Update existing stale cache entry
+      const { error: updateError } = await supabase
+        .from("generated_content_cache")
+        .update({ content: content, source_chunks: sourceChunks })
+        .eq("paper_id", paperId)
+        .eq("content_type", "module")
+        .eq("persona_id", subPersonaId)
+        .eq("module_id", moduleId);
+      if (updateError) {
+        console.warn("[generate-module-content] Cache update failed (non-blocking):", updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("generated_content_cache")
+        .insert({
+          paper_id: paperId,
+          content_type: "module",
+          persona_id: subPersonaId,
+          module_id: moduleId,
+          content: content,
+          source_chunks: sourceChunks,
+        });
+      if (insertError) {
+        console.warn("[generate-module-content] Cache insert failed (non-blocking):", insertError);
+      }
     }
 
     console.log(`[generate-module-content] Generated: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);

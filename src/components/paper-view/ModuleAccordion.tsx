@@ -261,7 +261,7 @@ const ModuleAccordion = ({
           {/* DOI-like footer */}
           <div className="border-t border-border px-5 py-2">
             <span className="font-mono text-[10px] text-muted-foreground select-all">
-              {doiString}
+              10.paper++/{paperId}.{moduleId}.{subPersonaId}
             </span>
           </div>
         </div>
