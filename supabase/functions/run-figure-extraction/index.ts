@@ -152,7 +152,16 @@ Synthesize ALL references into:
 - A rich "visual_description" per figure (what you visually see: chart types, axes, trends, colors, data patterns)
 - For each sub-panel, an "explanation" that combines visual observation with what the paper text says about it
 
-### 3. CITATIONS — Return text references
+### 3. FIGURE ROLE CLASSIFICATION
+For each figure, classify its \`figure_role\` from one of these categories:
+- \`contextualization\` — conceptual illustration showing the idea/big picture of the work (e.g. schematic, concept diagram, graphical abstract)
+- \`characterization\` — material/sample characterization (SEM, XRD, spectra, TEM, AFM)
+- \`calculation\` — computational results, simulations, theoretical plots
+- \`supporting_evidence\` — experimental data directly supporting claims (bar charts, scatter plots, dose-response curves)
+- \`methodology\` — workflow diagrams, experimental setups, apparatus photos
+- \`comparison\` — benchmarking against other work, literature comparison tables/charts
+
+### 4. CITATIONS — Return text references
 For each figure reference found in the sections, return the snippet, section heading, and page number.
 
 ## OUTPUT FORMAT
