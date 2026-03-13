@@ -28,6 +28,7 @@ interface SummaryContent {
   cards?: StoryCard[];
   disclaimer?: string;
   summary_points?: string[];
+  personalized?: boolean;
 }
 
 type AudioState = 'idle' | 'generating' | 'ready' | 'playing';
