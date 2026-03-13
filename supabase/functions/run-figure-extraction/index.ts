@@ -562,6 +562,7 @@ Deno.serve(async (req) => {
           ...fig,
           visual_description: gemini.visual_description || fig.description,
           contextual_analysis: gemini.contextual_analysis || undefined,
+          figure_role: gemini.figure_role || undefined,
           bounding_box: gemini.bounding_box || fig.bounding_box,
           page_number: gemini.page_number || fig.page_number,
           figure_type: gemini.figure_type || fig.figure_type,
