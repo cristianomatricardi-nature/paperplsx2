@@ -113,8 +113,7 @@ export default function UploadSection({ userId, onPaperAdded }: UploadSectionPro
   const handleFileSelect = useCallback((file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file);
-      setPaperId(null);
-      setUploadMode('paperpp');
+    }
     }
   }, []);
 
