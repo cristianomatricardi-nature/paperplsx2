@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: user.id,
         title: file.name.replace(/\.pdf$/i, ""),
-        source_type: "pdf_upload",
+        source_type: sourceType,
         storage_path: storagePath,
         file_size: file.size,
         status: "uploaded",
