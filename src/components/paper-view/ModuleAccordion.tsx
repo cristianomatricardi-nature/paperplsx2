@@ -64,7 +64,7 @@ const ModuleAccordion = ({
   const isCore = moduleDefinition.tier === 'core';
   const borderColor = isCore ? 'border-l-primary' : 'border-l-[hsl(38,92%,50%)]';
   const contentTitle = extractModuleTitle(cachedContent);
-  const doiString = `paper++:${paperId}/${moduleId}/${subPersonaId}`;
+  
 
   const handleToggle = useCallback(async () => {
     onToggle();
@@ -146,22 +146,17 @@ const ModuleAccordion = ({
         <div className="flex items-start gap-3 min-w-0">
           <GripVertical className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-1" />
           <div className="min-w-0 space-y-1">
-            <Badge
-              variant="secondary"
-              className="text-[10px] font-medium uppercase tracking-wider px-2 py-0"
-            >
-              {moduleDefinition.title}
-            </Badge>
             {contentTitle && (
-              <p className="font-sans text-base font-semibold text-foreground leading-snug">
-                {contentTitle}
-              </p>
-            )}
-            {!contentTitle && (
-              <p className="font-sans text-base font-semibold text-foreground leading-snug">
+              <Badge
+                variant="secondary"
+                className="text-[10px] font-medium uppercase tracking-wider px-2 py-0"
+              >
                 {moduleDefinition.title}
-              </p>
+              </Badge>
             )}
+            <p className="font-sans text-base font-semibold text-foreground leading-snug">
+              {contentTitle || moduleDefinition.title}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-1">
@@ -266,7 +261,7 @@ const ModuleAccordion = ({
           {/* DOI-like footer */}
           <div className="border-t border-border px-5 py-2">
             <span className="font-mono text-[10px] text-muted-foreground select-all">
-              {doiString}
+              10.paper++/{paperId}.{moduleId}.{subPersonaId}
             </span>
           </div>
         </div>

@@ -48,6 +48,7 @@ IMPORTANT: The "metrics" array must include EVERY quantitative result reported i
 
 Return JSON with this structure:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific contribution and impact",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what problem does this paper address and why it matters to the field",
@@ -100,6 +101,7 @@ CRITICAL: Extract EVERY quantitative result reported for each claim — p-values
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific claims and evidence quality",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what is this research about and what question does it try to answer",
@@ -159,6 +161,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific methods and protocols",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what problem is being solved and why, what is the research question",
@@ -218,6 +221,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's negative results and limitations",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what was the research trying to achieve and what were the expectations",
@@ -256,6 +260,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's recommended actions and next steps",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what did this paper find and why does it matter",
@@ -296,6 +301,7 @@ STRUCTURE — produce a narrative with three layers:
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's key message for public communication",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what is the big-picture problem and why should the public care",
@@ -364,12 +370,19 @@ Deno.serve(async (req) => {
     .eq("module_id", moduleId)
     .maybeSingle();
 
-  if (cached) {
-    console.log(`[generate-module-content] Cache hit: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
+  const cachedContent = cached?.content as Record<string, unknown> | null;
+  const hasTitleInCache = cachedContent && typeof cachedContent === 'object' && 'module_title' in cachedContent && cachedContent.module_title;
+
+  if (cached && hasTitleInCache) {
+    console.log(`[generate-module-content] Cache hit (with title): paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
     return new Response(
       JSON.stringify({ success: true, cached: true, content: cached.content }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+  }
+
+  if (cached && !hasTitleInCache) {
+    console.log(`[generate-module-content] Cache hit but MISSING module_title — forcing regeneration: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
   }
 
   // 2. Validate module and persona
@@ -543,22 +556,60 @@ When a figure or sub-panel is referenced in the text you're generating, insert t
       throw new Error("Failed to parse module content from AI response");
     }
 
-    // 8. Cache the result
+    // 7b. Deterministic fallback if AI still omitted module_title
+    if (!content.module_title) {
+      console.warn(`[generate-module-content] AI omitted module_title, generating deterministic fallback`);
+      const tabs = content.tabs as Record<string, unknown> | undefined;
+      let fallbackTitle = "";
+      if (tabs) {
+        // Try extracting from various module structures
+        const overview = tabs.overview as Record<string, string> | undefined;
+        const claims = tabs.claims as Array<{ statement: string }> | undefined;
+        const plainSummary = tabs.plain_language_summary as string | undefined;
+        if (overview?.core_contribution) {
+          fallbackTitle = overview.core_contribution;
+        } else if (claims?.[0]?.statement) {
+          fallbackTitle = claims[0].statement;
+        } else if (plainSummary) {
+          fallbackTitle = plainSummary;
+        } else if (tabs.introduction && typeof tabs.introduction === 'object') {
+          const intro = tabs.introduction as Record<string, string>;
+          fallbackTitle = intro.context_bridge || intro.module_focus || "";
+        }
+      }
+      // Truncate to ~15 words
+      content.module_title = fallbackTitle.split(/\s+/).slice(0, 15).join(" ") || `${moduleId} Analysis`;
+    }
+
+    // 8. Cache the result (upsert to handle backfill of stale entries)
     const sourceChunks = chunks.map((c: { chunk_id: string }) => c.chunk_id);
 
-    const { error: insertError } = await supabase
-      .from("generated_content_cache")
-      .insert({
-        paper_id: paperId,
-        content_type: "module",
-        persona_id: subPersonaId,
-        module_id: moduleId,
-        content: content,
-        source_chunks: sourceChunks,
-      });
-
-    if (insertError) {
-      console.warn("[generate-module-content] Cache insert failed (non-blocking):", insertError);
+    if (cached && !hasTitleInCache) {
+      // Update existing stale cache entry
+      const { error: updateError } = await supabase
+        .from("generated_content_cache")
+        .update({ content: content, source_chunks: sourceChunks })
+        .eq("paper_id", paperId)
+        .eq("content_type", "module")
+        .eq("persona_id", subPersonaId)
+        .eq("module_id", moduleId);
+      if (updateError) {
+        console.warn("[generate-module-content] Cache update failed (non-blocking):", updateError);
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("generated_content_cache")
+        .insert({
+          paper_id: paperId,
+          content_type: "module",
+          persona_id: subPersonaId,
+          module_id: moduleId,
+          content: content,
+          source_chunks: sourceChunks,
+        });
+      if (insertError) {
+        console.warn("[generate-module-content] Cache insert failed (non-blocking):", insertError);
+      }
     }
 
     console.log(`[generate-module-content] Generated: paper=${paperId} module=${moduleId} persona=${subPersonaId}`);
