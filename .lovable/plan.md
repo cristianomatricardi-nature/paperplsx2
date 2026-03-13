@@ -1,59 +1,39 @@
 
+## Dynamic Waveform Audio Player (NotebookLM-style)
 
-# Separate Library Paper Storage + Rich Personalization Context
+(Previous plan — implemented)
 
-## What's Already Working
-The orchestrate-pipeline with `library_only: true` already correctly stops after parse → structure → chunk → completed. No modules, no figures, no simulated impact are generated for library papers. This is correct.
+## Gemini-Powered Figure Extraction with Citation Mapping (IMPLEMENTED)
 
-## What Needs to Change
+(Previous plan — implemented)
 
-### 1. Separate Storage Folder for Library Papers
-**File: `supabase/functions/upload-handler/index.ts`**
+## Enhanced Figure Extraction: Coordinates-Only + PNG Cropping (IMPLEMENTED)
 
-Currently all papers are stored at `{user_id}/{timestamp}_{filename}`. Library papers should go to a dedicated subfolder: `{user_id}/library/{timestamp}_{filename}`.
+(Previous plan — implemented)
 
-This keeps library papers organized separately from Paper++ uploads.
+## Gemini-Driven Figure Discovery (IMPLEMENTED)
 
-### 2. Richer Personalization in "What To Do Now"
-**File: `supabase/functions/generate-summary/index.ts`**
+(Previous plan — implemented)
 
-Currently the personalization query only fetches `title` and `abstract` from library papers — a very thin context. After structuring, each library paper has rich data in `structured_papers`: claims, methods, sections, call-to-actions, etc.
+## Story Carousel Summary + Figure Role Classification + Researcher Paper Library (IMPLEMENTED)
 
-Change: For each library paper, also fetch its `structured_papers` data (claims, methods, abstract, sections) and build a much richer context block for the LLM. This way the "What To Do Now" card can identify methodological overlaps, complementary findings, gaps to fill, and concrete synergies across ALL library papers.
+### Changes
 
-**New personalization context flow:**
-1. Query all `papers` where `user_id = X`, `source_type = 'library'`, `status = 'completed'`
-2. For each, join with `structured_papers` to get claims, methods, sections
-3. Build a comprehensive researcher profile: "Paper A claims X using method Y; Paper B claims Z using method W..."
-4. Pass this rich context to the LLM prompt for the "next" card
-
-### 3. Updated Prompt Instructions
-**File: `supabase/functions/_shared/prompt-composers.ts`**
-
-Update the researcher context instruction to tell the LLM it has structured analysis data (not just abstracts) and should cross-reference claims, methods, and findings across all library papers to produce actionable, specific next steps.
-
-## Files to Change
-
-| File | Change |
+| File | Status |
 |------|--------|
-| `supabase/functions/upload-handler/index.ts` | Store library papers at `{user_id}/library/...` path |
-| `supabase/functions/generate-summary/index.ts` | Fetch `structured_papers` (claims, methods, sections) for all library papers, build rich cross-paper context |
-| `supabase/functions/_shared/prompt-composers.ts` | Update researcher context prompt to leverage rich structured data |
-
-## Technical Detail
-
-**Rich context builder (generate-summary):**
-```
-For each library paper:
-  - Title + abstract
-  - Top claims (statement + strength + evidence)
-  - Methods used (technique + description)
-  - Key sections (headings + brief content)
-  
-Concatenate across all library papers → pass as RESEARCHER'S BODY OF WORK
-```
-
-This gives the LLM enough signal to say things like: "Your work on X uses method A — this paper's method B could complement your approach" rather than generic advice based on abstracts alone.
-
-No database migrations needed. No frontend changes needed.
-
+| `src/types/structured-paper.ts` | ✅ Added `FigureRole` type and `figure_role` to `Figure` interface |
+| `src/types/database.ts` | ✅ Added `'library'` to `source_type` union |
+| `supabase/functions/run-figure-extraction/index.ts` | ✅ Added `figure_role` classification to Gemini prompt, interface, and merge logic |
+| `supabase/functions/_shared/prompt-composers.ts` | ✅ Rewrote `composeSummaryPrompt` for 4-card story output with researcherContext + contextFigure |
+| `supabase/functions/generate-summary/index.ts` | ✅ Accepts `user_id`, fetches researcher papers, finds contextualization figure, composite cache key |
+| `src/components/paper-view/PersonalizedSummaryCard.tsx` | ✅ Embla carousel with 4 slides, context figure on "What", backward compat for old format |
+| `src/lib/api.ts` | ✅ `fetchSummary` accepts optional `userId` |
+| `src/components/paper-view/views/ResearcherView.tsx` | ✅ Passes `userId`, `figures`, `onModuleClick` to summary card |
+| `src/components/paper-view/views/EducatorView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/PolicyMakerView.tsx` | ✅ Passes `userId` |
+| `src/components/paper-view/views/FunderView.tsx` | ✅ Passes `userId` |
+| `src/pages/PaperViewPage.tsx` | ✅ Passes `user?.id` to all views |
+| `src/components/researcher-home/UploadSection.tsx` | ✅ Added "My Library" tab with library upload mode |
+| `src/components/researcher-home/PaperCard.tsx` | ✅ Dual styling: teal/primary border for Paper++, grey for library papers |
+| `supabase/functions/upload-handler/index.ts` | ✅ Accepts `source_type` from form data, skips auto-pipeline for library |
+| `supabase/functions/orchestrate-pipeline/index.ts` | ✅ `library_only` flag skips figures/modules/impact, marks completed after chunking |

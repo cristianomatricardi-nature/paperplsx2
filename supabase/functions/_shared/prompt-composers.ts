@@ -113,10 +113,10 @@ In the "what" card, reference this figure conceptually — explain what it illus
   // 6. Researcher context instruction
   let researcherInstruction = "";
   if (opts?.researcherContext) {
-    researcherInstruction = `\n\nRESEARCHER'S OWN WORK (for personalized "What To Do Now" card):
+    researcherInstruction = `\n\nRESEARCHER'S BODY OF WORK — structured analysis of their library papers (claims, methods, sections):
 ${opts.researcherContext}
 
-For the "next" card: Compare this paper's contributions against the researcher's own work listed above. Identify synergies, gaps they could fill, or methods they could adopt. Make the next steps directly actionable for THIS researcher based on their existing body of work.`;
+For the "next" card: Cross-reference this paper's findings against ALL the researcher's papers above. Identify specific methodological overlaps (e.g., shared techniques, complementary tools), complementary claims that could be combined, research gaps in the researcher's body of work that this paper addresses, and concrete collaboration or follow-up opportunities. Reference specific papers from their library by title when drawing connections. Make the next steps directly actionable and grounded in the researcher's actual work.`;
   }
 
   // 7. Summary Task — 4 story cards
