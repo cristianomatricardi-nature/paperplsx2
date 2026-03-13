@@ -136,16 +136,14 @@ Deno.serve(async (req) => {
 
       // Poll: run-structuring upserts structured_papers with sections
       await pollForCondition(
-        "structuring complete (structured_papers.sections populated)",
+        "structuring complete (structured_papers row exists)",
         async () => {
           const { data } = await supabase
             .from("structured_papers")
-            .select("sections")
+            .select("paper_id")
             .eq("paper_id", paperId)
             .maybeSingle();
-          if (!data) return false;
-          const sections = data.sections as unknown[];
-          return Array.isArray(sections) && sections.length > 0;
+          return data != null;
         },
         300_000, // 5 min
       );
