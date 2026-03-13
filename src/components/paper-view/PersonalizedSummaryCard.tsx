@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import PersonaSelector from './PersonaSelector';
 import AudioPlayerBar from './AudioPlayerBar';
 import SectionProgressStrip from './SectionProgressStrip';
-import FigureRenderer from '@/components/paper/FigureRenderer';
+import { FigureRenderer } from '@/components/paper/FigureRenderer';
 import type { AudioSection } from './SectionProgressStrip';
 import type { PolicyViewPayload } from '@/hooks/usePolicyView';
 import useEmblaCarousel from 'embla-carousel-react';
