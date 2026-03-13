@@ -186,8 +186,9 @@ Deno.serve(async (req) => {
         300_000, // 5 min
       );
 
-      // Step 4: Simulated Impact
-      console.log(`[pipeline] Paper ${paperId}: Generating simulated impact scores`);
+      // Step 4: Module Titles + Simulated Impact (parallel)
+      console.log(`[pipeline] Paper ${paperId}: Generating module titles + simulated impact scores`);
+      fireFunction("generate-module-titles", { paper_id: paperId });
       fireFunction("generate-simulated-impact", { paper_id: paperId });
 
       // Poll: generate-simulated-impact sets papers.simulated_impact_scores
