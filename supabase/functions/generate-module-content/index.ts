@@ -101,6 +101,7 @@ CRITICAL: Extract EVERY quantitative result reported for each claim — p-values
 
 Return JSON:
 {
+  "module_title": "Concise 8-15 word title capturing THIS paper's specific claims and evidence quality",
   "tabs": {
     "introduction": {
       "context_bridge": "2-3 sentences: what is this research about and what question does it try to answer",
